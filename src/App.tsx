@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ConnectionPanel } from "./ConnectionPanel";
 import { DesktopWindow } from "./DesktopWindow";
 import { AppearanceSettings } from "./AppearanceSettings";
@@ -7,11 +8,13 @@ import { WorkForm } from "./WorkForm";
 import { useWorkSession } from "./useWorkSession";
 import { formatDuration, formatTime } from "./types";
 import { workView } from "./workView";
+import { HistoryPanel } from "./HistoryPanel";
 import "./App.css";
 
 function App() {
   const session = useWorkSession();
   const appearance = useAppearance();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const active = session.snapshot?.active;
   const view = workView(session);
   const record = view.record;
@@ -104,11 +107,14 @@ function App() {
             {record.remark && <p className="record-remark">{record.remark}</p>}
           </li>)}
         </ul> : <p className="hint">{session.snapshot ? "还没有已完成的记录。完成后会保存在这台电脑上。" : "连接本地数据后可查看真实记录。"}</p>}
-        <p className="hint">此处显示最近 5 条，完整历史查询将在后续阶段加入。</p>
+        <p className="hint">此处显示最近 5 条已完成记录。</p>
       </details>
+      <button type="button" className="secondary history-entry" onClick={() => setHistoryOpen(true)}>查看历史与统计<span aria-hidden="true">↗</span></button>
       <ConnectionPanel />
       <footer>本地保存 · 让每一份投入都有迹可循</footer>
       <AppearanceSettings appearance={appearance} />
+      <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} onDeleted={session.recordDeleted}
+        refreshKey={session.snapshot?.recent_records.map((item) => `${item.id}:${item.end_time}`).join(",") ?? ""} />
     </main>
     </DesktopWindow>
   );

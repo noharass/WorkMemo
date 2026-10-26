@@ -329,3 +329,7 @@ impl Store {
 #[cfg(test)]
 #[path = "database_tests.rs"]
 mod tests;
+
+#[path = "history.rs"]
+mod history;
+pub use history::{HistoryPage, HistoryQuery};

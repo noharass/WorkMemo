@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { Snapshot, StartInput } from "./types";
-import { confirmedFinish } from "./workView";
+import { confirmedFinish, reconcileDeleted } from "./workView";
 
 type WorkCommand = "start_task" | "pause_task" | "resume_task" | "finish_task";
 
@@ -18,6 +18,7 @@ export function useWorkSession() {
   const busyRef = useRef(false);
   const polling = useRef(false);
   const revision = useRef(0);
+  const deletedIds = useRef(new Set<number>());
 
   const refresh = useCallback(async () => {
     if (!native || busyRef.current || polling.current) return;
@@ -26,7 +27,7 @@ export function useWorkSession() {
     try {
       const data = await invoke<Snapshot>("get_snapshot");
       if (mounted.current && request === revision.current) {
-        setSnapshot(data);
+        setSnapshot(reconcileDeleted(data, deletedIds.current));
         setConnectionError("");
       }
     } catch (error: unknown) {
@@ -75,12 +76,13 @@ export function useWorkSession() {
     try {
       const data = await invoke<Snapshot>(command, args);
       if (mounted.current && request === revision.current) {
-        setSnapshot(data);
+        const current = reconcileDeleted(data, deletedIds.current);
+        setSnapshot(current);
         setConnectionError("");
         if (command === "start_task") setSavedId(null);
         if (command === "finish_task") {
           const id = typeof args.id === "number" ? args.id : null;
-          setSavedId(confirmedFinish(data, id)?.id ?? null);
+          setSavedId(confirmedFinish(current, id)?.id ?? null);
         }
       }
       return true;
@@ -93,9 +95,16 @@ export function useWorkSession() {
     }
   }, [native]);
 
+  const recordDeleted = useCallback(async (id: number) => {
+    deletedIds.current.add(id);
+    setSavedId((current) => current === id ? null : current);
+    setSnapshot((current) => current ? reconcileDeleted(current, deletedIds.current) : current);
+    await refresh();
+  }, [refresh]);
+
   return {
     native, snapshot, loading, busy: pending !== null, pending, savedId,
-    connectionError, commandError, refresh,
+    connectionError, commandError, refresh, recordDeleted,
     start: (input: StartInput) => run("start_task", { input }),
     pause: (id: number) => run("pause_task", { id }),
     resume: (id: number) => run("resume_task", { id }),

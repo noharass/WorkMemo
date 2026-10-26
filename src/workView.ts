@@ -14,6 +14,11 @@ export function confirmedFinish(snapshot: Snapshot | null, id: number | null): W
     && record.status === "FINISHED" && record.end_time !== null) ?? null;
 }
 
+// A read started before a confirmed deletion may arrive after it. Never revive that record.
+export function reconcileDeleted(snapshot: Snapshot, deleted: ReadonlySet<number>): Snapshot {
+  return { ...snapshot, recent_records: snapshot.recent_records.filter((record) => !deleted.has(record.id)) };
+}
+
 export function workView({ native, loading, snapshot, connectionError, savedId }: ViewInput) {
   const finished = confirmedFinish(snapshot, savedId);
   const record = snapshot?.active ?? finished;

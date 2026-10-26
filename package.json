@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test:themes": "node --test tests/themes.test.mjs",
     "test:workflow": "node --test tests/workflow.test.mjs",
+    "test:history": "node --test tests/history.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

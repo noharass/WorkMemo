@@ -1,6 +1,6 @@
 use crate::{
     clock::SystemClock,
-    database::{Result, Snapshot, StartInput, Store},
+    database::{HistoryPage, HistoryQuery, Result, Snapshot, StartInput, Store},
 };
 use std::{
     sync::{Arc, Mutex},
@@ -61,20 +61,40 @@ impl Backend {
     }
 }
 
-async fn execute(
+async fn access<T: Send + 'static>(
     shared: SharedStore,
-    action: impl FnOnce(&mut Store) -> Result<()> + Send + 'static,
-) -> Result<Snapshot> {
+    action: impl FnOnce(&mut Store) -> Result<T> + Send + 'static,
+) -> Result<T> {
     tauri::async_runtime::spawn_blocking(move || {
         let mut guard = shared
             .lock()
             .map_err(|_| "本地数据服务异常，请重新打开应用。")?;
         let store = guard.as_mut().map_err(|e| e.clone())?;
+        action(store)
+    })
+    .await
+    .map_err(|e| format!("数据操作未能完成：{e}"))?
+}
+
+async fn execute(
+    shared: SharedStore,
+    action: impl FnOnce(&mut Store) -> Result<()> + Send + 'static,
+) -> Result<Snapshot> {
+    access(shared, move |store| {
         action(store)?;
         store.snapshot()
     })
     .await
-    .map_err(|e| format!("数据操作未能完成：{e}"))?
+}
+
+#[tauri::command]
+pub async fn query_history(state: State<'_, Backend>, query: HistoryQuery) -> Result<HistoryPage> {
+    access(state.inner.clone(), move |store| store.query_history(query)).await
+}
+
+#[tauri::command]
+pub async fn delete_record(state: State<'_, Backend>, id: i64) -> Result<()> {
+    access(state.inner.clone(), move |store| store.delete_record(id)).await
 }
 
 #[tauri::command]
