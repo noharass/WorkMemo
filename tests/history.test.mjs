@@ -43,6 +43,8 @@ test('数量汇总隐藏二进制浮点尾差，同时保留小数量', () => {
   assert.equal(formatQuantity(.1 + .2), '0.3');
   assert.equal(formatQuantity(.000001), '0.000001');
   assert.equal(formatQuantity(1000.25), '1,000.25');
+  assert.equal(formatQuantity(null), '待填写');
+  assert.equal(formatQuantity(0), '0');
 });
 
 test('较早刷新结果不能复活已确认删除的记录或完成提示，同时保留其他数据', () => {

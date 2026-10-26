@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { Snapshot, StartInput } from "./types";
+import type { Snapshot, StartInput, SettleInput } from "./types";
 import { confirmedFinish, reconcileDeleted } from "./workView";
 
-type WorkCommand = "start_task" | "pause_task" | "resume_task" | "finish_task";
+type WorkCommand = "start_task" | "pause_task" | "resume_task" | "finish_task" | "settle_record";
 
 export function useWorkSession() {
   const native = isTauri();
@@ -12,6 +12,7 @@ export function useWorkSession() {
   const [loading, setLoading] = useState(native);
   const [pending, setPending] = useState<WorkCommand | null>(null);
   const [savedId, setSavedId] = useState<number | null>(null);
+  const [dataVersion, setDataVersion] = useState(0);
   const [connectionError, setConnectionError] = useState("");
   const [commandError, setCommandError] = useState("");
   const mounted = useRef(false);
@@ -80,6 +81,7 @@ export function useWorkSession() {
         setSnapshot(current);
         setConnectionError("");
         if (command === "start_task") setSavedId(null);
+        if (command === "start_task" || command === "finish_task" || command === "settle_record") setDataVersion(value => value + 1);
         if (command === "finish_task") {
           const id = typeof args.id === "number" ? args.id : null;
           setSavedId(confirmedFinish(current, id)?.id ?? null);
@@ -97,17 +99,19 @@ export function useWorkSession() {
 
   const recordDeleted = useCallback(async (id: number) => {
     deletedIds.current.add(id);
+    setDataVersion(value => value + 1);
     setSavedId((current) => current === id ? null : current);
     setSnapshot((current) => current ? reconcileDeleted(current, deletedIds.current) : current);
     await refresh();
   }, [refresh]);
 
   return {
-    native, snapshot, loading, busy: pending !== null, pending, savedId,
+    native, snapshot, loading, busy: pending !== null, pending, savedId, dataVersion,
     connectionError, commandError, refresh, recordDeleted,
     start: (input: StartInput) => run("start_task", { input }),
     pause: (id: number) => run("pause_task", { id }),
     resume: (id: number) => run("resume_task", { id }),
     finish: (id: number) => run("finish_task", { id }),
+    settle: (input: SettleInput) => run("settle_record", { input }),
   };
 }

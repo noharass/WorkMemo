@@ -13,16 +13,16 @@ const finished = { active: null, recent_records: [saved], warning: null };
 const view = (overrides = {}) => workView({ native: true, loading: false,
   snapshot, connectionError: '', savedId: null, ...overrides });
 
-test('数量接受正小数、科学计数及上界，保留类别并去除备注首尾空白', () => {
-  for (const [text, quantity] of [['1.25', 1.25], ['.5', .5], ['1e3', 1000], ['1000000000', 1e9]]) {
+test('数量接受明确的0、正小数、科学计数及上界，保留类别并去除备注首尾空白', () => {
+  for (const [text, quantity] of [['0', 0], ['0.0', 0], ['1.25', 1.25], ['.5', .5], ['1e3', 1000], ['1000000000', 1e9]]) {
     assert.deepEqual(validateWorkInput('开发', text, '  内容  '), {
       ok: true, input: { category: '开发', quantity, remark: '内容' },
     });
   }
 });
 
-test('空值、非有限数、非正数、越界、十六进制及逗号不会启动任务', () => {
-  for (const quantity of ['', ' ', 'NaN', 'Infinity', '0', '-1', '1000000001',
+test('非有限数、负数、下溢、越界、十六进制及逗号不会启动任务', () => {
+  for (const quantity of ['NaN', 'Infinity', '-1', '1000000001',
     '1e309', '1e-999', '0x10', '1,000', '1 2', 'abc']) {
     const result = validateWorkInput('开发', quantity, '');
     assert.equal(result.ok, false, quantity);
@@ -30,8 +30,16 @@ test('空值、非有限数、非正数、越界、十六进制及逗号不会�
   }
 });
 
+test('开始允许数量未填，结算必须显式填写；0与未填不同', () => {
+  for (const text of ['', ' ']) {
+    assert.deepEqual(validateWorkInput('开发', text, ''), { ok: true, input: { category: '开发', quantity: null, remark: '' } });
+    assert.equal(validateWorkInput('开发', text, '', true).ok, false);
+  }
+  assert.equal(validateWorkInput('文档', '0', '', true).input.quantity, 0);
+});
+
 test('同时返回各字段错误，拒绝未知类别，按 Unicode 字符计算备注边界', () => {
-  const invalid = validateWorkInput('', '0', '😀'.repeat(2001));
+  const invalid = validateWorkInput('', '-1', '😀'.repeat(2001));
   assert.equal(invalid.ok, false);
   assert.deepEqual(Object.keys(invalid.errors), ['category', 'quantity', 'remark']);
   assert.equal(validateWorkInput('任意类别', '1', '').ok, false);
@@ -81,6 +89,15 @@ test('保存确认保留本次时长；失败、旧记录、开始新任务均�
   assert.equal(view({ snapshot: finished }).mode, 'ready');
   assert.equal(view({ savedId: 7 }).mode, 'working');
   assert.equal(view({ snapshot: finished, savedId: 7, connectionError: '断线' }).mode, 'unavailable');
+});
+
+test('计时结束待补全不显示已结算，且不阻止开始下一项', () => {
+  const pending = { ...saved, quantity: null, settlement_status: 'PENDING' };
+  const state = view({ snapshot: { ...finished, recent_records: [pending], pending_count: 1 }, savedId: 7 });
+  assert.equal(state.mode, 'finished');
+  assert.equal(state.label, '计时已保存，待补全');
+  assert.equal(state.canOperate, true);
+  assert.equal(state.record.quantity, null);
 });
 
 test('浏览器预览不能通过已有快照启用业务操作', () => {

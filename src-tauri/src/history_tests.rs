@@ -36,9 +36,9 @@ fn saved(store: &Store, local_time: &str, category: &str, quantity: f64, duratio
         .connection
         .execute(
             "INSERT INTO work_records(category,quantity,remark,start_time,end_time,
-        duration_ms,duration_seconds,status,is_paused) VALUES(?1,?2,'测试夹具',
+        duration_ms,duration_seconds,status,is_paused,settlement_status) VALUES(?1,?2,'测试夹具',
         CAST(strftime('%s',?3,'utc') AS INTEGER)*1000,
-        CAST(strftime('%s',?3,'utc') AS INTEGER)*1000+86400000,?4,?4/1000,'FINISHED',1)",
+        CAST(strftime('%s',?3,'utc') AS INTEGER)*1000+86400000,?4,?4/1000,'FINISHED',1,'COMPLETE')",
             params![category, quantity, local_time, duration_ms],
         )
         .unwrap();
@@ -201,7 +201,7 @@ fn active_and_paused_records_cannot_be_deleted_or_counted_and_timer_is_untouched
     store
         .start(super::super::StartInput {
             category: "文档".into(),
-            quantity: 2.0,
+            quantity: Some(2.0),
             remark: "".into(),
         })
         .unwrap();
@@ -276,7 +276,7 @@ fn deletion_persists_when_reopened_and_existing_schema_stays_compatible() {
             .connection
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 1);
+        assert_eq!(version, 2);
     }
     // Exact temporary test directory, created above; never a user database path.
     assert_eq!(directory.parent(), Some(std::env::temp_dir().as_path()));

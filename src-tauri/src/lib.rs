@@ -41,6 +41,8 @@ pub fn run() {
             service::finish_task,
             service::query_history,
             service::delete_record,
+            service::get_pending_records,
+            service::settle_record,
         ])
         .build(tauri::generate_context!())
         .expect("WorkMemo failed to start")

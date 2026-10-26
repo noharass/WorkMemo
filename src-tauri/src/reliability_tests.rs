@@ -68,7 +68,7 @@ impl Clock for TestClock {
 fn input(category: &str, quantity: f64) -> StartInput {
     StartInput {
         category: category.into(),
-        quantity,
+        quantity: Some(quantity),
         remark: "隔离可靠性测试，非产品数据".into(),
     }
 }
@@ -152,9 +152,19 @@ fn long_workflow_matches_independent_time_model_across_themes_and_deletion() {
                 (active.id, active.duration_ms, active.is_paused),
                 (id, expected_ms, paused)
             );
-            assert_eq!(active.quantity, quantity);
+            assert_eq!(active.quantity, Some(quantity));
         }
         store.finish(id).unwrap();
+        let finished = store.record(id).unwrap();
+        store
+            .settle(SettleInput {
+                id,
+                expected_revision: finished.revision,
+                category: finished.category,
+                quantity,
+                remark: finished.remark,
+            })
+            .unwrap();
         completed.push((id, expected_ms, quantity));
     }
     let summary = store.query_history(query()).unwrap();
@@ -353,8 +363,8 @@ fn ten_thousand_record_history_keeps_paging_and_aggregates_consistent() {
     {
         let tx = store.connection.transaction().unwrap();
         {
-            let mut insert = tx.prepare("INSERT INTO work_records(category,quantity,remark,start_time,end_time,duration_ms,duration_seconds,status,is_paused)
-                VALUES(?1,1.25,'隔离容量测试',?2,?2+1250,1250,1,'FINISHED',1)").unwrap();
+            let mut insert = tx.prepare("INSERT INTO work_records(category,quantity,remark,start_time,end_time,duration_ms,duration_seconds,status,is_paused,settlement_status)
+                VALUES(?1,1.25,'隔离容量测试',?2,?2+1250,1250,1,'FINISHED',1,'COMPLETE')").unwrap();
             for index in 0..10_000i64 {
                 insert
                     .execute(params![

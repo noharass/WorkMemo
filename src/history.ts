@@ -6,7 +6,7 @@ export interface HistoryQuery {
   category: string | null;
   page: number;
 }
-export interface Totals { records: number; quantity: number; duration_ms: number }
+export interface Totals { records: number; quantity: number; duration_ms: number; pending_records: number }
 export interface HistoryPage {
   records: WorkRecord[];
   page: number;
@@ -46,6 +46,7 @@ export function historyQueryError(query: HistoryQuery): string {
   return "";
 }
 
-export function formatQuantity(quantity: number): string {
+export function formatQuantity(quantity: number | null): string {
+  if (quantity === null) return "待填写";
   return quantity.toLocaleString("zh-CN", { maximumSignificantDigits: 12 });
 }

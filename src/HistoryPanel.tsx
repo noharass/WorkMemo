@@ -15,11 +15,11 @@ function StatsTable({ label, rows }: { label: string; rows: { name: string; tota
   return <section className="stats-section">
     <h3>{label}</h3>
     <div className="stats-scroll"><table>
-      <caption className="sr-only">{label}的记录数、数量和有效工作时长</caption>
+      <caption className="sr-only">{label}的记录数、待补全数、已结算数量和有效工作时长</caption>
       <thead><tr><th scope="col">{label === "每日汇总" ? "工作日期" : "工作类别"}</th>
-        <th scope="col">记录</th><th scope="col">数量</th><th scope="col">有效时长</th></tr></thead>
+        <th scope="col">记录</th><th scope="col">待补全</th><th scope="col">数量</th><th scope="col">有效时长</th></tr></thead>
       <tbody>{rows.map(({ name, totals }) => <tr key={name}><th scope="row">{name}</th>
-        <td>{totals.records}</td><td>{formatQuantity(totals.quantity)}</td>
+        <td>{totals.records}</td><td>{totals.pending_records}</td><td>{formatQuantity(totals.quantity)}</td>
         <td>{formatDuration(totals.duration_ms / 1000)}</td></tr>)}</tbody>
     </table></div>
   </section>;
@@ -64,7 +64,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
         disabled={history.deleting} onClick={onClose}>×</button>
     </div>
     {children}
-    <p className="hint">按本机时间的任务开始日期查询，仅统计已完成记录。跨午夜任务归入开始日。</p>
+    <p className="hint">按本机时间的任务开始日期查询。工时包含待补全记录，数量仅汇总已结算记录。跨午夜归入开始日。</p>
     <form className="history-filters" onSubmit={submit} noValidate>
       <div className="field-row">
         <label>开始日期<input type="date" min="1970-01-01" max="9999-12-31" value={draft.start_date}
@@ -96,19 +96,19 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
         onClick={() => { void history.reload(); }}>重新读取</button>
     </div>}
     {result && <div aria-busy={history.loading}>
-      <p className="history-overview">全部已完成：{result.overview.records} 条 · 数量 {formatQuantity(result.overview.quantity)}
+      <p className="history-overview">全部已结束：{result.overview.records} 条 · 待补全 {result.overview.pending_records} 条 · 已结算数量 {formatQuantity(result.overview.quantity)}
         <br />累计有效时长 {formatDuration(result.overview.duration_ms / 1000)}</p>
       <p className="hint">当前范围：{query.start_date} 至 {query.end_date} · {query.category ?? "全部类别"}</p>
       <dl className="summary-grid">
-        <div><dt>完成记录</dt><dd>{result.filtered.records}<small> 条</small></dd></div>
+        <div><dt>结束记录</dt><dd>{result.filtered.records}<small> 条（待补全 {result.filtered.pending_records}）</small></dd></div>
         <div><dt>工作数量</dt><dd>{formatQuantity(result.filtered.quantity)}</dd></div>
         <div><dt>有效时长</dt><dd>{formatDuration(result.filtered.duration_ms / 1000)}</dd></div>
       </dl>
-      {result.filtered.records === 0 ? <p className="history-empty">这个范围还没有已完成记录。可以调整日期或类别；完成工作后记录会出现在这里。</p>
+      {result.filtered.records === 0 ? <p className="history-empty">这个范围还没有已结束记录。可以调整日期或类别；结束计时后记录会出现在这里。</p>
         : tab === "records" ? <>
           <ol className="history-records">
             {result.records.map((record) => <li key={record.id}>
-              <div className="record-heading"><strong>{record.category} · {formatQuantity(record.quantity)}</strong>
+              <div className="record-heading"><strong>{record.category} · {formatQuantity(record.quantity)} · {record.settlement_status === "PENDING" ? "待补全" : "已结算"}</strong>
                 <span>{formatDuration(record.duration_seconds)}</span></div>
               <p className="hint">工作日期 {localDate(new Date(record.start_time))}<br />
                 开始 {formatTime(record.start_time)}<br />结束 {record.end_time !== null ? formatTime(record.end_time) : "—"}</p>

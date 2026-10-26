@@ -5,16 +5,16 @@ use std::{
 };
 
 #[derive(Clone)]
-struct TestClock(Arc<Mutex<TimePoint>>);
+pub(super) struct TestClock(Arc<Mutex<TimePoint>>);
 
 impl TestClock {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self(Arc::new(Mutex::new(TimePoint {
             wall_ms: 1_000_000,
             ticks_ms: 0,
         })))
     }
-    fn advance(&self, ms: i64) {
+    pub(super) fn advance(&self, ms: i64) {
         let mut time = self.0.lock().unwrap();
         time.wall_ms += ms;
         time.ticks_ms += ms;
@@ -33,7 +33,7 @@ impl Clock for TestClock {
 fn input() -> StartInput {
     StartInput {
         category: "开发".into(),
-        quantity: 2.5,
+        quantity: Some(2.5),
         remark: "实际测试".into(),
     }
 }
@@ -51,9 +51,9 @@ fn id(store: &Store) -> i64 {
     store.active().unwrap().unwrap().id
 }
 
-struct TestDirectory(PathBuf);
+pub(super) struct TestDirectory(PathBuf);
 impl TestDirectory {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let nonce = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -63,7 +63,7 @@ impl TestDirectory {
         std::fs::create_dir(&dir).unwrap();
         Self(dir)
     }
-    fn db(&self) -> PathBuf {
+    pub(super) fn db(&self) -> PathBuf {
         self.0.join("test.sqlite3")
     }
 }
@@ -84,9 +84,9 @@ impl Drop for TestDirectory {
 #[test]
 fn rejects_invalid_input_without_creating_records() {
     let (mut store, _) = memory();
-    for quantity in [0.0, -1.0, f64::NAN, f64::INFINITY, 1_000_000_001.0] {
+    for quantity in [-1.0, f64::NAN, f64::INFINITY, 1_000_000_001.0] {
         let mut value = input();
-        value.quantity = quantity;
+        value.quantity = Some(quantity);
         assert!(store.start(value).is_err());
     }
     for category in ["", "未知"] {
@@ -118,7 +118,7 @@ fn pause_resume_preserves_subseconds_and_excludes_pause() {
     assert_eq!(saved.duration_ms, 3000);
     assert_eq!(saved.duration_seconds, 3);
     assert_eq!(saved.status, "FINISHED");
-    assert_eq!(saved.quantity, 2.5);
+    assert_eq!(saved.quantity, Some(2.5));
 }
 
 #[test]
@@ -325,7 +325,7 @@ fn invalid_switch_does_not_finish_the_paused_record() {
     clock.advance(1500);
     store.pause(task).unwrap();
     let mut invalid = input();
-    invalid.quantity = 0.0;
+    invalid.quantity = Some(-1.0);
     assert!(store.start(invalid).is_err());
     let snapshot = store.snapshot().unwrap();
     assert!(snapshot.recent_records.is_empty());

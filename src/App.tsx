@@ -13,6 +13,7 @@ import { useHistory } from "./useHistory";
 import { formatQuantity } from "./history";
 import { Icon } from "./Icon";
 import { UiDialog } from "./UiDialog";
+import { SettlementPanel } from "./SettlementPanel";
 import "./App.css";
 
 function App() {
@@ -21,13 +22,14 @@ function App() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
+  const [settlementOpen, setSettlementOpen] = useState(false);
   const [density, setDensity] = useState<"compact" | "comfortable">("compact");
   const workspace = useRef<HTMLElement>(null);
   const active = session.snapshot?.active;
   const view = workView(session);
   const record = view.record;
   const unavailable = !view.canOperate || session.busy;
-  const refreshKey = session.snapshot?.recent_records.map((item) => `${item.id}:${item.end_time}`).join(",") ?? "";
+  const refreshKey = `${session.dataVersion}:${session.snapshot?.pending_count ?? 0}:` + (session.snapshot?.recent_records.map((item) => `${item.id}:${item.end_time}:${item.revision}`).join(",") ?? "");
   // Reuse the existing read-only history query and its complete category aggregates.
   const categories = useHistory(session.native, refreshKey, session.recordDeleted);
   const selected = appearance.open ? "appearance" : historyOpen ? "history" : layoutOpen ? "layout" : "home";
@@ -46,9 +48,9 @@ function App() {
         <button type="button" className="nav-button" aria-label="布局设置" title="布局设置" aria-pressed={selected === "layout"}
           onClick={() => setLayoutOpen(true)}><Icon name="layout" /></button>
       </nav>}
-      categories={<div className="category-strip" tabIndex={0} role="region" aria-label="最近30天已完成记录，横向滚动"
+      categories={<div className="category-strip" tabIndex={0} role="region" aria-label="最近30天已结束记录，横向滚动"
         onWheel={(event) => { if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY; }}
-        aria-busy={categories.loading} title={categories.error ? "分类数量暂时无法读取" : "最近30天的已完成记录数，可横向滚动"}>
+        aria-busy={categories.loading} title={categories.error ? "分类数量暂时无法读取" : "最近30天的已结束记录数，可横向滚动"}>
         {CATEGORIES.map((category) => <span className="category-chip" key={category} data-current={active?.category === category}>
           {category}<span>{categories.result
             ? `${categories.result.categories.find((row) => row.category === category)?.totals.records ?? 0}条` : "—"}</span>
@@ -98,7 +100,7 @@ function App() {
             <Icon name="note" /><span>备注</span>
           </button>
           {active && <button type="button" className="quiet-action finish-action" disabled={unavailable} aria-label="结束并保存"
-            onClick={() => { void session.finish(active.id); }}><Icon name="check" /><span>{session.pending === "finish_task" ? "正在保存…" : "完成"}</span></button>}
+            onClick={() => { void session.finish(active.id).then(saved => { if (saved) setSettlementOpen(true); }); }}><Icon name="check" /><span>{session.pending === "finish_task" ? "正在保存…" : "结束计时"}</span></button>}
         </div>}
       </section>
 
@@ -110,6 +112,13 @@ function App() {
         <summary>开始另一项工作</summary>
         <WorkForm disabled={unavailable} switching starting={session.pending === "start_task"} onStart={session.start} />
       </details>}
+
+      {session.native && session.snapshot && <div className="settlement-entry">
+        <button type="button" className="secondary" onClick={() => setSettlementOpen(open => !open)}>
+          待补全工作量（{session.snapshot.pending_count}）</button>
+      </div>}
+      <SettlementPanel open={settlementOpen} onClose={() => setSettlementOpen(false)} refreshKey={refreshKey}
+        busy={unavailable} onSave={session.settle} />
 
       <AppearanceSettings appearance={appearance} />
       <UiDialog open={layoutOpen} onClose={() => setLayoutOpen(false)} id="layout-title" title="布局设置">
@@ -141,13 +150,13 @@ function App() {
           <summary>最近保存的记录</summary>
           {session.snapshot?.recent_records.length ? <ul className="record-list">
             {session.snapshot.recent_records.map((record) => <li key={record.id}>
-              <div className="record-heading"><strong>{record.category} · {record.quantity}</strong>
+              <div className="record-heading"><strong>{record.category} · {formatQuantity(record.quantity)} · {record.settlement_status === "PENDING" ? "待补全" : "已结算"}</strong>
                 <span>{formatDuration(record.duration_seconds)}</span></div>
               <p className="hint">{formatTime(record.start_time)}<br />至 {record.end_time !== null ? formatTime(record.end_time) : "—"}</p>
               {record.remark && <p className="record-remark">{record.remark}</p>}
             </li>)}
-          </ul> : <p className="hint">{session.snapshot ? "还没有已完成的记录。完成后会保存在这台电脑上。" : "连接本地数据后可查看真实记录。"}</p>}
-          <p className="hint">此处显示最近 5 条已完成记录。</p>
+          </ul> : <p className="hint">{session.snapshot ? "还没有已结束的记录。结束计时后会保存在这台电脑上。" : "连接本地数据后可查看真实记录。"}</p>}
+          <p className="hint">此处显示最近 5 条计时已结束的记录。</p>
         </details>
       </HistoryPanel>
     </main>

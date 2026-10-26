@@ -1,6 +1,8 @@
 use crate::{
     clock::SystemClock,
-    database::{HistoryPage, HistoryQuery, Result, Snapshot, StartInput, Store},
+    database::{
+        HistoryPage, HistoryQuery, Result, SettleInput, Snapshot, StartInput, Store, WorkRecord,
+    },
 };
 use std::{
     sync::{Arc, Mutex},
@@ -120,6 +122,16 @@ pub async fn resume_task(state: State<'_, Backend>, id: i64) -> Result<Snapshot>
 #[tauri::command]
 pub async fn finish_task(state: State<'_, Backend>, id: i64) -> Result<Snapshot> {
     execute(state.inner.clone(), move |store| store.finish(id)).await
+}
+
+#[tauri::command]
+pub async fn get_pending_records(state: State<'_, Backend>) -> Result<Vec<WorkRecord>> {
+    access(state.inner.clone(), |store| store.pending_records()).await
+}
+
+#[tauri::command]
+pub async fn settle_record(state: State<'_, Backend>, input: SettleInput) -> Result<Snapshot> {
+    execute(state.inner.clone(), move |store| store.settle(input)).await
 }
 
 pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {

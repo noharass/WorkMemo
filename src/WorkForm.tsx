@@ -51,9 +51,9 @@ export function WorkForm({ disabled, switching = false, starting = false, onStar
           </select>
           {errors.category && <span id={`${id}-category`} className="field-error" role="alert">{errors.category}</span>}
         </label>
-        <label>工作数量
+        <label>工作量（可稍后填写）
           <input ref={quantityRef} type="number" inputMode="decimal" min="0" max="1000000000" step="any"
-            placeholder="大于 0" value={quantity} disabled={disabled}
+            placeholder="结束后填写；0 表示无产出" value={quantity} disabled={disabled}
             aria-invalid={Boolean(errors.quantity)} aria-describedby={errors.quantity ? `${id}-quantity` : undefined}
             onChange={(event) => { setQuantity(event.target.value); clearError("quantity"); }} />
           {errors.quantity && <span id={`${id}-quantity`} className="field-error" role="alert">{errors.quantity}</span>}
@@ -70,7 +70,8 @@ export function WorkForm({ disabled, switching = false, starting = false, onStar
         {errors.remark && <span id={`${id}-remark`} className="field-error" role="alert">{errors.remark}</span>}
       </label>
       </details>
-      {switching && <p className="hint">开始后将结束并保存当前已暂停的任务。</p>}
+      <p className="hint">先记录时间，结束后在待补全列表确认工作量。</p>
+      {switching && <p className="hint">开始后将结束并保存当前已暂停的任务，工作量稍后结算。</p>}
       <button type="submit" disabled={disabled}>{starting ? (switching ? "正在保存并开始…" : "正在开始…") : switching ? "保存上一项，开始新工作" : "开始工作"}<span aria-hidden="true">↗</span></button>
     </form>
   );

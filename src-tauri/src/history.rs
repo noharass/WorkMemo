@@ -21,6 +21,7 @@ pub struct Totals {
     pub records: i64,
     pub quantity: f64,
     pub duration_ms: i64,
+    pub pending_records: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -84,6 +85,7 @@ fn totals(row: &Row<'_>, offset: usize) -> rusqlite::Result<Totals> {
         records: row.get(offset)?,
         quantity: row.get(offset + 1)?,
         duration_ms: row.get(offset + 2)?,
+        pending_records: row.get(offset + 3)?,
     })
 }
 
@@ -117,7 +119,7 @@ impl Store {
         // One read transaction makes records, counts and aggregates a consistent snapshot.
         // History excludes active tasks and does not checkpoint or change their timer.
         let tx = self.connection.transaction().map_err(db_error)?;
-        let columns = "COUNT(*), COALESCE(SUM(quantity),0.0), COALESCE(SUM(duration_ms),0)";
+        let columns = "COUNT(*), COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity END),0.0), COALESCE(SUM(duration_ms),0), COALESCE(SUM(settlement_status='PENDING'),0)";
         let overview = tx
             .query_row(
                 &format!("SELECT {columns} FROM work_records WHERE status='FINISHED'"),

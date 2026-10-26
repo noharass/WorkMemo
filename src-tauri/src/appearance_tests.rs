@@ -151,7 +151,7 @@ fn saving_appearance_never_changes_the_work_session() {
     store
         .start(StartInput {
             category: "开发".into(),
-            quantity: 2.5,
+            quantity: Some(2.5),
             remark: "isolation test".into(),
         })
         .unwrap();
