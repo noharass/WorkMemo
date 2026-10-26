@@ -2,13 +2,15 @@
 
 个人本地工作留痕、任务计时和工作量统计 Windows 桌面工具。
 
-WorkMemo 0.1.0，Windows x64 本地工作记录工具。支持可靠计时、暂停恢复、历史查询、删除确认和每日/类别统计；提供原生透明窗口、Glass / Cream / Dark / Neon 四种皮肤和独立外观保存。
+WorkMemo 0.1.1，Windows x64 本地工作记录工具。支持可靠计时、暂停恢复、历史查询、删除确认和每日/类别统计；提供原生透明窗口、Glass / Cream / Dark / Neon 四种皮肤和独立外观保存。本次更新采用用户选定的黑白 C 图标，记录与计时规则沿用已有实现。
 
-当前为第八阶段最终交付。本机检查与剩余兼容性范围见 docs/PHASE-8.md，上一阶段综合验收见 docs/PHASE-7.md。
+八阶段开发已完成，当前为图标更新。本轮检查见 [图标更新记录](docs/ICON-UPDATE.md)，0.1.0 最终交付与兼容性范围见 docs/PHASE-8.md，综合验收见 docs/PHASE-7.md。
 
 ## 普通用户使用成品
 
-[下载中文安装版](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_x64-setup.exe) · [下载免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_windows_x64.zip) · [v0.1.0 下载页与校验文件](https://github.com/noharass/WorkMemo/releases/tag/v0.1.0)
+当前公开成品仍为 v0.1.0；0.1.1 新图标版在本地构建，尚未公开发布。
+
+[下载 v0.1.0 中文安装版](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_x64-setup.exe) · [下载 v0.1.0 免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_windows_x64.zip) · [v0.1.0 下载页与校验文件](https://github.com/noharass/WorkMemo/releases/tag/v0.1.0)
 
 - 安装版：WorkMemo_0.1.0_x64-setup.exe，中文向导，安装到当前用户；缺少 WebView2 时联网补齐。
 - 免安装版：WorkMemo_0.1.0_windows_x64.zip，解压后运行 WorkMemo/workmemo.exe，需要已安装 WebView2。
@@ -73,7 +75,7 @@ Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
 - src/HistoryPanel.tsx：筛选、历史列表、确认删除和统计面板；src/useHistory.ts：历史查询与删除异步状态；src/history.ts：查询类型、日期校验和显示辅助。
 - src-tauri/src/history.rs：沿用 Store 的历史只读事务和已完成记录删除；src-tauri/src/history_tests.rs：独立临时数据库回归测试。
 - src-tauri/src/reliability_tests.rs：长期状态序列、真实子进程退出恢复、失败保存保护及 1 万条记录隔离测试；只编译到测试程序，不进入桌面程序。
-- public/workmemo.svg：统一图标源；src-tauri/icons 为 Tauri 生成的原生图标。
+- src/assets/workmemo-icon.png：用户选定的原始 C；npm run icons 在原图后添加黑色圆角底板并生成 src-tauri/icons 原生图标和 public/workmemo.png 标题栏/页面图标。
 - scripts/package-windows.ps1：Windows x64 成品打包；scripts/collect-licenses.mjs 汇编锁定依赖的许可文本，docs/THIRD-PARTY-LICENSES.txt 随安装包分发。
 - docs/PRODUCT-SPEC.md：用户提供的完整产品规范。
 - docs/PHASE-1.md：交付、文件清单与实际验收记录。

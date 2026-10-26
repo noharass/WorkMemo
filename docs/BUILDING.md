@@ -60,10 +60,10 @@ npm.cmd run tauri -- build --ci --no-binary-patching
 ```
 
 原始程序：src-tauri/target/release/workmemo.exe。
-中文安装器：src-tauri/target/release/bundle/nsis/WorkMemo_0.1.0_x64-setup.exe。
+中文安装器：src-tauri/target/release/bundle/nsis/WorkMemo_0.1.1_x64-setup.exe。
 
 安装器使用 NSIS，缺 WebView2 时联网下载官方 bootstrapper；不构建 MSI，不要求启用额外的 VBSCRIPT 功能。首次打包需要下载 NSIS 构建工具。安装模式为 currentUser，应用标识保持 com.workmemo.desktop。
 
 本项目未启用自动更新插件。打包时使用 --no-binary-patching，保留安装版与免安装版相同的程序字节，便于核对 SHA256；不写入仅自动更新分发需要的 bundle 类型标记。依赖许可文本不变时不重复改写，避免无意义的重新编译。
 
-版本在 package.json、package-lock.json、src-tauri/Cargo.toml、src-tauri/tauri.conf.json 中保持一致。图标源为 public/workmemo.svg；更新时用 Tauri icon 生成，再保留项目已有平台图标文件。完整源码与阶段记录保存在 docs 中。
+版本在 package.json、package-lock.json、src-tauri/Cargo.toml、src-tauri/Cargo.lock、src-tauri/tauri.conf.json 中保持一致。用户选定的原始 C 图标为 src/assets/workmemo-icon.png；需要重新生成图标时执行 npm.cmd run icons。脚本保持原图标记，在后方添加黑色圆角底板，使用现有 Tauri CLI 生成原生尺寸及 public/workmemo.png；没有新增构建依赖。临时画布和额外平台产物保留在被忽略的 target 目录。完整源码与阶段记录保存在 docs 中。

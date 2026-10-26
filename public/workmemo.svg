@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <title>WorkMemo</title>
-  <rect x="24" y="24" width="464" height="464" rx="118" fill="#3f6856"/>
-  <path d="M108 175 160 337 246 220 320 337 373 175" fill="none" stroke="#fff9ed" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="411" cy="338" r="20" fill="#fff9ed"/>
-</svg>

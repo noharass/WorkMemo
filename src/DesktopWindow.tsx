@@ -45,7 +45,7 @@ export function DesktopWindow({ children, appearanceStyle }: { children: ReactNo
         <header className="titlebar">
           <div className="titlebar-drag" title={native ? "按住这里移动窗口" : "请在桌面应用中移动窗口"}
             onMouseDown={(event) => { void drag(event); }}>
-            <span className="brand-mark" aria-hidden="true">w.</span>
+            <img className="brand-mark" src="/workmemo.png" alt="" aria-hidden="true" draggable={false} />
             <div>
               <span className="brand-name">WorkMemo</span>
               <span className="brand-caption">留住每一份投入</span>

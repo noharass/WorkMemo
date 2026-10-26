@@ -16,7 +16,7 @@ button, input, select, textarea, summary { -webkit-tap-highlight-color: transpar
 .titlebar { display: flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 60px; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--line); background: var(--header-background); user-select: none; }
 .titlebar-drag { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; min-height: 40px; cursor: grab; touch-action: none; }
 .titlebar-drag:active { cursor: grabbing; }
-.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: var(--control-radius); background: var(--accent); color: var(--on-accent); font: 600 24px Georgia, serif; padding-bottom: 5px; }
+.brand-mark { display: block; width: 32px; height: 32px; flex-shrink: 0; object-fit: contain; }
 .brand-name { display: block; font-size: 15px; font-weight: 650; letter-spacing: -.3px; }
 .brand-caption { display: block; margin-top: 3px; font-size: 10px; color: var(--text-muted); letter-spacing: 1px; }
 .drag-grip { margin-left: auto; color: var(--text-muted); opacity: .5; padding: 0 5px; font-size: 18px; }

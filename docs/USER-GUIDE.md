@@ -1,4 +1,4 @@
-# WorkMemo 0.1.0 使用说明
+# WorkMemo 0.1.1 使用说明
 
 Windows 本地工作记录与有效时长工具。项目地址：https://github.com/noharass/WorkMemo
 
@@ -6,7 +6,7 @@ Windows 本地工作记录与有效时长工具。项目地址：https://github.
 
 适用于 Windows 10 / 11 x64；本机已在 Windows 10 22H2 x64 验收，其他环境见项目阶段报告。
 
-- 安装版：运行 WorkMemo_0.1.0_x64-setup.exe，按中文安装向导安装到当前用户。缺少 WebView2 时需要联网，由安装器下载并安装 Microsoft 官方运行环境。
+- 安装版：运行 WorkMemo_0.1.1_x64-setup.exe，按中文安装向导安装到当前用户。缺少 WebView2 时需要联网，由安装器下载并安装 Microsoft 官方运行环境。
 - 免安装版：解压整个 ZIP 后打开 WorkMemo/workmemo.exe。需已安装 Microsoft Edge WebView2 Runtime：https://developer.microsoft.com/microsoft-edge/webview2/
 - 使用成品无需安装 Node.js、Rust、Visual Studio、Python、Git 或 SQLite 服务。
 - 免安装只表示程序不用安装；工作记录仍保存在当前 Windows 用户的数据目录，不随程序文件夹移动。
