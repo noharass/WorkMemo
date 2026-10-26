@@ -1,4 +1,4 @@
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -8,7 +8,7 @@ const DIRECTIONS = [
 type ResizeDirection = (typeof DIRECTIONS)[number];
 
 /** Window controls stay outside the drag area; closing uses the save-on-close path. */
-export function DesktopWindow({ children }: { children: ReactNode }) {
+export function DesktopWindow({ children, appearanceStyle }: { children: ReactNode; appearanceStyle?: CSSProperties }) {
   const native = isTauri();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,7 +40,7 @@ export function DesktopWindow({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="desktop-frame">
+    <div className="desktop-frame" style={appearanceStyle}>
       <div className="app-shell">
         <header className="titlebar">
           <div className="titlebar-drag" title={native ? "按住这里移动窗口" : "请在桌面应用中移动窗口"}

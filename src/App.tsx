@@ -1,5 +1,8 @@
 import { ConnectionPanel } from "./ConnectionPanel";
 import { DesktopWindow } from "./DesktopWindow";
+import { AppearanceSettings } from "./AppearanceSettings";
+import { useAppearance } from "./useAppearance";
+import { THEMES, themeStyle } from "./themes";
 import { WorkForm } from "./WorkForm";
 import { useWorkSession } from "./useWorkSession";
 import { formatDuration, formatTime } from "./types";
@@ -7,18 +10,31 @@ import "./App.css";
 
 function App() {
   const session = useWorkSession();
+  const appearance = useAppearance();
   const active = session.snapshot?.active;
   const unavailable = !session.native || session.loading || session.busy
     || Boolean(session.connectionError) || !session.snapshot;
 
   return (
-    <DesktopWindow>
+    <DesktopWindow appearanceStyle={themeStyle(appearance.current)}>
     <main className="workspace">
       <div className="workspace-toolbar">
         <span className="eyebrow">工作手记</span>
-        <button className="text-button" type="button" disabled={!session.native || session.busy}
-          onClick={() => { void session.refresh(); }}>刷新记录</button>
+        <div className="toolbar-actions">
+          <button className="text-button" type="button" disabled={appearance.loading}
+            onClick={appearance.begin}>外观 · {THEMES[appearance.current.theme].name}</button>
+          <button className="text-button" type="button" disabled={!session.native || session.busy}
+            onClick={() => { void session.refresh(); }}>刷新记录</button>
+        </div>
       </div>
+
+      {appearance.notice && <p className="hint appearance-feedback" role="status">{appearance.notice}</p>}
+      {appearance.loadError && <div className="notice" role="alert">
+        <p>外观设置读取失败，暂时使用默认外观。工作记录不受影响。</p>
+        <p className="appearance-error-detail">{appearance.loadError}</p>
+        <button type="button" className="text-button" disabled={appearance.loading || appearance.open}
+          onClick={() => { void appearance.reload(); }}>重新读取外观</button>
+      </div>}
 
       {!session.native && <p className="notice" role="status">浏览器预览模式。请打开桌面应用，使用本地计时和保存功能。</p>}
       {session.loading && <p className="hint" role="status">正在读取本地工作记录…</p>}
@@ -84,6 +100,7 @@ function App() {
       </details>
       <ConnectionPanel />
       <footer>本地保存 · 让每一份投入都有迹可循</footer>
+      <AppearanceSettings appearance={appearance} />
     </main>
     </DesktopWindow>
   );

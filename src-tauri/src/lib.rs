@@ -1,6 +1,7 @@
 use serde::Serialize;
 use tauri::{Emitter, Manager};
 
+mod appearance;
 mod clock;
 mod database;
 mod service;
@@ -25,11 +26,14 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             app.manage(service::Backend::initialize(app));
+            app.manage(appearance::AppearanceState::initialize(app));
             Ok(())
         })
         .on_window_event(service::handle_window_event)
         .invoke_handler(tauri::generate_handler![
             app_info,
+            appearance::get_appearance,
+            appearance::save_appearance,
             service::get_snapshot,
             service::start_task,
             service::pause_task,

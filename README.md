@@ -2,8 +2,8 @@
 
 个人本地工作留痕、任务计时和工作量统计 Windows 桌面工具。
 
-当前处于第三阶段：在 SQLite 工作记录与可靠计时基础上，接入原生透明窗口、无边框标题栏、拖动区、边缘缩放、最小化和保存关闭。支持开始、暂停、继续、结束、暂停后切换任务，以及未结束任务恢复为暂停。界面显示最近 5 条真实完成记录，并保留基础连接检查。
-四种皮肤、透明度设置、完整历史查询/删除与统计尚未实现。
+当前处于第四阶段：在 SQLite 工作记录、可靠计时与原生透明窗口基础上，提供 Glass、Cream、Dark、Neon 四种皮肤，以及背景不透明度调节和独立外观配置保存。支持开始、暂停、继续、结束、暂停后切换任务，以及未结束任务恢复为暂停。界面显示最近 5 条真实完成记录，并保留基础连接检查。
+完整历史查询/删除与统计尚未实现。
 
 ## Windows 环境
 
@@ -31,12 +31,13 @@ npm run tauri dev
 ```powershell
 npm run build
 cargo test --locked --manifest-path .\src-tauri\Cargo.toml
+npm run test:themes
 cargo fmt --manifest-path .\src-tauri\Cargo.toml -- --check
 npm run tauri build -- --no-bundle
 ```
 
 Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
-构建不生成安装包；正式安装包在后续阶段验收。各项实际验证结果见 docs/PHASE-3.md。
+构建不生成安装包；正式安装包在后续阶段验收。当前阶段实际验证结果见 docs/PHASE-4.md。
 
 `npm run dev` 仅为浏览器预览，不能证明原生能力，页面会明确提示预览模式。
 
@@ -50,10 +51,13 @@ Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
 - src-tauri/tauri.conf.json：窗口、构建、安全配置。
 - src-tauri/capabilities/：仅开放保存错误通知的事件订阅及移动、缩放、最小化、关闭所需窗口权限，不向界面开放文件系统或 SQL。
 - src/DesktopWindow.tsx：自定义标题栏、窗口控制和边缘缩放，关闭使用 Tauri close 保留保存事件。
+- src/themes.ts：四种皮肤的完整设计令牌；src/useAppearance.ts：预览、取消、加载和保存状态。
+- src/AppearanceSettings.tsx：外观选择、滑块及保存面板；src-tauri/src/appearance.rs：独立配置校验与文件保存。
 - docs/PRODUCT-SPEC.md：用户提供的完整产品规范。
 - docs/PHASE-1.md：交付、文件清单与实际验收记录。
 - docs/PHASE-2.md：第二阶段设计、完整文件清单、测试与兼容性说明。
 - docs/PHASE-3.md：原生透明、窗口操作与实际验收记录。
+- docs/PHASE-4.md：换肤、外观持久化、测试及文件清单。
 - AGENTS.md：后续开发约束。
 - package-lock.json / src-tauri/Cargo.lock：锁定前后端依赖。
 
@@ -83,4 +87,7 @@ Windows 仅允许一个进程持有同一数据目录的锁，第二个窗口会
 ## 透明窗口
 
 Tauri 窗口配置 transparent=true、decorations=false、backgroundColor=#00000000；HTML、body、根节点和外围容器均保持透明。只有圆角面板使用半透明背景，文字保持不透明。禁用 Windows 原生阴影，使用面板内的 CSS 轻阴影；noRedirectionBitmap 用于缓解 Windows 透明窗口初始白闪。
-透明度目前是固定默认值，四种皮肤和透明度调节属于下一阶段。浏览器预览不能验证桌面透明效果。
+点击「外观 · 当前皮肤」打开设置。切换皮肤与滑块会即时预览，点击「保存外观」后下次沿用；取消、右上角关闭或 Esc 会还原到上次保存的外观。
+背景不透明度范围 80%–100%，仅影响面板背景，文字和可用按钮不整体变淡。可恢复当前皮肤的默认值：Glass 82%、Cream 88%、Dark 94%、Neon 90%。
+外观保存到 `%APPDATA%\com.workmemo.desktop\appearance.json`，与本地工作 SQLite 分开。临时文件写入并同步后再替换原配置；损坏配置在明确保存修复前会备份，较新版本配置不会覆盖。
+浏览器只支持预览，不能保存桌面配置，也不能证明原生透明效果。重开恢复的实际验收状态见阶段报告。
