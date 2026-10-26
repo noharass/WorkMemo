@@ -1,25 +1,53 @@
 :root {
   font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
   color: #303b35;
-  background: #f5f3ee;
+  background: transparent;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --text-muted: #71766f;
+  --text-muted: #62695f;
   --accent: #3b6551;
   --line: #dedfd5;
-  --panel: #fffdf8;
+  --panel: rgb(255 253 248 / 94%);
   --error: #9b4034;
+  --window-background: rgb(245 243 238 / 88%);
+  --window-border: rgb(255 255 255 / 78%);
+  --window-radius: 20px;
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; }
+html, body, #root { width: 100%; height: 100%; margin: 0; background: transparent; }
+body { overflow: hidden; }
 button, input, select, textarea { font: inherit; }
 button, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
-.workspace { max-width: 520px; margin: 0 auto; padding: 24px; }
-.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
-.brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: #fff; font: 600 25px Georgia, serif; padding-bottom: 5px; }
+.desktop-frame { position: relative; width: 100%; height: 100%; padding: 8px; }
+.app-shell { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; border: 1px solid var(--window-border); border-radius: var(--window-radius); background: var(--window-background); box-shadow: 0 2px 6px rgb(25 39 30 / 18%); }
+.titlebar { display: flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 60px; padding: 8px 10px 8px 14px; border-bottom: 1px solid rgb(120 135 117 / 14%); background: rgb(255 255 255 / 15%); user-select: none; }
+.titlebar-drag { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; min-height: 40px; cursor: grab; touch-action: none; }
+.titlebar-drag:active { cursor: grabbing; }
+.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 10px; background: var(--accent); color: #fff; font: 600 24px Georgia, serif; padding-bottom: 5px; }
 .brand-name { display: block; font-size: 15px; font-weight: 650; letter-spacing: -.3px; }
 .brand-caption { display: block; margin-top: 3px; font-size: 10px; color: var(--text-muted); letter-spacing: 1px; }
+.drag-grip { margin-left: auto; color: rgb(88 105 85 / 45%); padding: 0 5px; font-size: 18px; }
+.window-controls { display: flex; flex-shrink: 0; gap: 3px; }
+.window-content { min-height: 0; flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: rgb(95 112 91 / 36%) transparent; }
+.window-content::-webkit-scrollbar { width: 6px; }
+.window-content::-webkit-scrollbar-track { background: transparent; }
+.window-content::-webkit-scrollbar-thumb { border-radius: 6px; background: rgb(95 112 91 / 36%); }
+.workspace { max-width: 520px; margin: 0 auto; padding: 20px; }
+.workspace-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 17px; }
+.window-error { flex-shrink: 0; margin: 8px 14px 0; padding: 8px 10px; max-height: 90px; overflow: auto; border-radius: 8px; background: #f6e7e2; color: var(--error); font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
+.resize-handle { position: absolute; z-index: 10; touch-action: none; }
+.resize-North, .resize-South { left: 12px; right: 12px; height: 8px; cursor: ns-resize; }
+.resize-North { top: 0; }
+.resize-South { bottom: 0; }
+.resize-East, .resize-West { top: 12px; bottom: 12px; width: 8px; cursor: ew-resize; }
+.resize-East { right: 0; }
+.resize-West { left: 0; }
+.resize-NorthEast, .resize-NorthWest, .resize-SouthEast, .resize-SouthWest { width: 12px; height: 12px; }
+.resize-NorthEast { top: 0; right: 0; cursor: nesw-resize; }
+.resize-NorthWest { top: 0; left: 0; cursor: nwse-resize; }
+.resize-SouthEast { bottom: 0; right: 0; cursor: nwse-resize; }
+.resize-SouthWest { bottom: 0; left: 0; cursor: nesw-resize; }
 button { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 11px 13px; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 9px; font-size: 12px; cursor: pointer; transition: background .15s; }
 button:hover:not(:disabled) { background: #2c513e; }
 button:disabled { opacity: .5; cursor: not-allowed; }
@@ -28,6 +56,10 @@ button.secondary { background: var(--panel); color: var(--accent); border-color:
 button.secondary:hover:not(:disabled) { background: #eeeee5; }
 button.text-button { width: auto; margin-left: auto; background: transparent; color: var(--text-muted); border-color: var(--line); padding: 7px 10px; font-size: 10px; }
 button.text-button:hover:not(:disabled) { background: var(--panel); }
+button.window-control { width: 30px; height: 30px; padding: 6px; justify-content: center; border-radius: 8px; background: transparent; color: var(--text-muted); }
+button.window-control:hover:not(:disabled) { background: rgb(70 90 65 / 10%); }
+button.window-close:hover:not(:disabled) { color: #fff; background: #a94f43; }
+.window-control svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; }
 .timer-card { padding: 21px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: 0 6px 24px #303b3505; }
 .card-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .eyebrow { font-size: 11px; color: var(--accent); letter-spacing: 1px; }
@@ -72,5 +104,5 @@ details[open] > summary { margin-bottom: 15px; }
 .record-heading span { font-variant-numeric: tabular-nums; color: var(--accent); }
 .record-remark { margin: 7px 0 0; font-size: 11px; }
 footer { margin-top: 22px; color: var(--text-muted); font-size: 9px; text-align: center; line-height: 1.8; }
-@media (max-width: 380px) { .workspace { padding: 20px; } .timer-card { padding: 17px; } }
+@media (max-width: 380px) { .workspace { padding: 17px; } .timer-card { padding: 17px; } .drag-grip { display: none; } }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }

@@ -2,8 +2,8 @@
 
 个人本地工作留痕、任务计时和工作量统计 Windows 桌面工具。
 
-当前处于第二阶段：SQLite 工作记录与可靠计时。支持开始、暂停、继续、结束、暂停后切换任务，以及未结束任务恢复为暂停。界面显示最近 5 条真实完成记录，并保留基础连接检查。
-原生透明、四种皮肤、完整历史查询/删除与统计尚未实现。
+当前处于第三阶段：在 SQLite 工作记录与可靠计时基础上，接入原生透明窗口、无边框标题栏、拖动区、边缘缩放、最小化和保存关闭。支持开始、暂停、继续、结束、暂停后切换任务，以及未结束任务恢复为暂停。界面显示最近 5 条真实完成记录，并保留基础连接检查。
+四种皮肤、透明度设置、完整历史查询/删除与统计尚未实现。
 
 ## Windows 环境
 
@@ -24,7 +24,9 @@ npm run tauri dev
 ```
 
 原生窗口应显示任务表单；基础连接检查折叠面板中的「重新检查」仍会调用 Rust。
-保留系统标题栏。窗口移动、缩放与完整鼠标流程尚待人工验收，不能以编译通过代替交互验收。
+标题栏左侧可拖动窗口；右侧提供最小化与保存关闭，输入区不参与拖动。拖动窗口边缘或四角可缩放，内容区可滚动。窗口保留任务栏入口，不强制置顶。
+用户已在本机确认透明效果、文字可读性、移动、缩放和最小化恢复正常；其他实际验收结果见 docs/PHASE-3.md。
+用户已确认保存关闭正常退出，正式版已在开发服务器关闭后独立启动并读取本地记录。
 
 ```powershell
 npm run build
@@ -34,7 +36,7 @@ npm run tauri build -- --no-bundle
 ```
 
 Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
-构建不生成安装包；正式安装包在后续阶段验收。各项实际验证结果见 docs/PHASE-2.md。
+构建不生成安装包；正式安装包在后续阶段验收。各项实际验证结果见 docs/PHASE-3.md。
 
 `npm run dev` 仅为浏览器预览，不能证明原生能力，页面会明确提示预览模式。
 
@@ -46,10 +48,12 @@ Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
 - src-tauri/src/service.rs：Tauri 命令、后台检查点与关闭保存。
 - src-tauri/migrations/：按 user_version 管理的数据库结构。
 - src-tauri/tauri.conf.json：窗口、构建、安全配置。
-- src-tauri/capabilities/：仅开放接收保存错误通知所需的事件订阅权限，不向界面开放文件系统或 SQL。
+- src-tauri/capabilities/：仅开放保存错误通知的事件订阅及移动、缩放、最小化、关闭所需窗口权限，不向界面开放文件系统或 SQL。
+- src/DesktopWindow.tsx：自定义标题栏、窗口控制和边缘缩放，关闭使用 Tauri close 保留保存事件。
 - docs/PRODUCT-SPEC.md：用户提供的完整产品规范。
 - docs/PHASE-1.md：交付、文件清单与实际验收记录。
 - docs/PHASE-2.md：第二阶段设计、完整文件清单、测试与兼容性说明。
+- docs/PHASE-3.md：原生透明、窗口操作与实际验收记录。
 - AGENTS.md：后续开发约束。
 - package-lock.json / src-tauri/Cargo.lock：锁定前后端依赖。
 
@@ -75,3 +79,8 @@ Rust 使用单调时钟计算有效时长，每秒尝试保存检查点；暂停
 异常退出只恢复最后成功保存的检查点，不能保证最后一秒绝不丢失；调度或磁盘问题可能使检查点间隔更长。
 不要用手机时间与记录起止时间之差代替有效工作时间。
 Windows 仅允许一个进程持有同一数据目录的锁，第二个窗口会显示错误并保持数据不变。
+
+## 透明窗口
+
+Tauri 窗口配置 transparent=true、decorations=false、backgroundColor=#00000000；HTML、body、根节点和外围容器均保持透明。只有圆角面板使用半透明背景，文字保持不透明。禁用 Windows 原生阴影，使用面板内的 CSS 轻阴影；noRedirectionBitmap 用于缓解 Windows 透明窗口初始白闪。
+透明度目前是固定默认值，四种皮肤和透明度调节属于下一阶段。浏览器预览不能验证桌面透明效果。

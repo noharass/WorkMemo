@@ -1,4 +1,5 @@
 import { ConnectionPanel } from "./ConnectionPanel";
+import { DesktopWindow } from "./DesktopWindow";
 import { WorkForm } from "./WorkForm";
 import { useWorkSession } from "./useWorkSession";
 import { formatDuration, formatTime } from "./types";
@@ -11,16 +12,13 @@ function App() {
     || Boolean(session.connectionError) || !session.snapshot;
 
   return (
+    <DesktopWindow>
     <main className="workspace">
-      <header className="brand">
-        <span className="brand-mark" aria-hidden="true">w.</span>
-        <div>
-          <span className="brand-name">WorkMemo</span>
-          <span className="brand-caption">留住每一份投入</span>
-        </div>
+      <div className="workspace-toolbar">
+        <span className="eyebrow">工作手记</span>
         <button className="text-button" type="button" disabled={!session.native || session.busy}
           onClick={() => { void session.refresh(); }}>刷新记录</button>
-      </header>
+      </div>
 
       {!session.native && <p className="notice" role="status">浏览器预览模式。请打开桌面应用，使用本地计时和保存功能。</p>}
       {session.loading && <p className="hint" role="status">正在读取本地工作记录…</p>}
@@ -87,6 +85,7 @@ function App() {
       <ConnectionPanel />
       <footer>本地保存 · 让每一份投入都有迹可循</footer>
     </main>
+    </DesktopWindow>
   );
 }
 
