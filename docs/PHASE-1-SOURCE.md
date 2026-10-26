@@ -1,5 +1,5 @@
 # 第一阶段完整源码
-以下为当前源码与配置的完整内容，已同步 GitHub 开发约定。自动生成的依赖锁文件和二进制图标保留在对应项目路径；产品规范见 PRODUCT-SPEC.md。
+这是第一阶段（提交 22cfacc）的历史源码快照，保留当时完整内容。后续实现请查看对应阶段源码文档及项目实际文件；第二阶段见 PHASE-2-SOURCE.md。
 
 ## NEW FILE — E:\WorkMemo\.gitattributes
 

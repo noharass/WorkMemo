@@ -1,45 +1,14 @@
-import { useEffect, useState } from "react";
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { ConnectionPanel } from "./ConnectionPanel";
+import { WorkForm } from "./WorkForm";
+import { useWorkSession } from "./useWorkSession";
+import { formatDuration, formatTime } from "./types";
 import "./App.css";
 
-interface AppInfo {
-  name: string;
-  version: string;
-}
-
-type Connection =
-  | { status: "checking" }
-  | { status: "ready"; info: AppInfo }
-  | { status: "error"; message: string }
-  | { status: "browser" };
-
 function App() {
-  const [connection, setConnection] = useState<Connection>({ status: "checking" });
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!isTauri()) {
-      setConnection({ status: "browser" });
-      return;
-    }
-    setConnection({ status: "checking" });
-    invoke<AppInfo>("app_info")
-      .then((info) => {
-        if (!cancelled) setConnection({ status: "ready", info });
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) setConnection({ status: "error", message: String(error) });
-      });
-    return () => { cancelled = true; };
-  }, [attempt]);
-
-  const statusText = {
-    checking: "正在检查桌面连接",
-    ready: "桌面连接正常",
-    error: "桌面连接失败",
-    browser: "浏览器预览模式",
-  }[connection.status];
+  const session = useWorkSession();
+  const active = session.snapshot?.active;
+  const unavailable = !session.native || session.loading || session.busy
+    || Boolean(session.connectionError) || !session.snapshot;
 
   return (
     <main className="workspace">
@@ -49,43 +18,74 @@ function App() {
           <span className="brand-name">WorkMemo</span>
           <span className="brand-caption">留住每一份投入</span>
         </div>
-        <span className="stage">初始版本</span>
+        <button className="text-button" type="button" disabled={!session.native || session.busy}
+          onClick={() => { void session.refresh(); }}>刷新记录</button>
       </header>
-      <section className="welcome" aria-labelledby="welcome-title">
-        <span className="eyebrow">你的桌面工作手记</span>
-        <h1 id="welcome-title">专注当下，<br />让工作留下痕迹。</h1>
-        <p className="intro">一个轻巧、安静的本地空间，<br />用来记录工作，也看见自己的积累。</p>
-      </section>
-      <section className="connection-card" aria-labelledby="connection-title">
+
+      {!session.native && <p className="notice" role="status">浏览器预览模式。请打开桌面应用，使用本地计时和保存功能。</p>}
+      {session.loading && <p className="hint" role="status">正在读取本地工作记录…</p>}
+      {session.connectionError && <div className="error-banner" role="alert">
+        <strong>无法读取或保存本地数据</strong>
+        <p>{session.connectionError}</p>
+        <p>显示为上次读取的状态，操作暂不可用。可先尝试刷新；若已打开另一个 WorkMemo，请使用原窗口。仍无法恢复时请重新打开应用。</p>
+      </div>}
+      {session.commandError && <p className="error-banner" role="alert">{session.commandError}</p>}
+      {session.snapshot?.warning && <p className="notice" role="alert">{session.snapshot.warning}</p>}
+      {active?.recovery_pending && <p className="notice" role="status">
+        已恢复上次未结束的任务，并保持暂停。应用关闭期间不计时，请确认后继续。
+      </p>}
+
+      <section className="timer-card" aria-label="当前工作">
         <div className="card-heading">
-          <h2 id="connection-title">基础连接检查</h2>
-          <span className={`status-dot ${connection.status}`} aria-hidden="true" />
+          <span className="eyebrow">{active ? active.category : "为今天留下一笔"}</span>
+          <span className={`state-label ${active && !active.is_paused ? "working" : ""}`}>
+            {active ? (active.is_paused ? "已暂停" : "进行中") : "准备开始"}
+          </span>
         </div>
-        <p className="connection-status" role="status" aria-live="polite">{statusText}</p>
-        <p className="connection-detail">
-          {connection.status === "ready"
-            ? `${connection.info.name} ${connection.info.version} · 已连接本地 Rust 服务`
-            : connection.status === "browser"
-              ? "请打开桌面应用，验证原生窗口与本地服务。"
-              : connection.status === "error"
-                ? "未能连接本地服务，请重试或重新打开应用。"
-                : "正在确认界面与本地服务可以正常通信。"}
+        <output className="timer" aria-label="有效工作时长">
+          {formatDuration(active?.duration_seconds ?? 0)}
+        </output>
+        <p className="timer-caption">
+          {session.connectionError ? "连接中断，时长暂未更新" : active?.is_paused ? "暂停期间不计时" : "有效工作时长"}
         </p>
-        {connection.status === "error" && (
-          <details className="error-detail">
-            <summary>查看错误详情</summary><pre>{connection.message}</pre>
-          </details>
-        )}
-        <button type="button" onClick={() => setAttempt((value) => value + 1)}
-          disabled={connection.status === "checking"}>
-          {connection.status === "checking" ? "检查中…" : "重新检查"}
-          <span aria-hidden="true">↗</span>
-        </button>
+        {active && <>
+          <div className="task-meta"><span>工作数量</span><strong>{active.quantity}</strong></div>
+          {active.remark && <p className="task-remark">{active.remark}</p>}
+          <p className="hint">开始于 {formatTime(active.start_time)}</p>
+          <div className="actions">
+            <button type="button" disabled={unavailable}
+              onClick={() => { void (active.is_paused ? session.resume(active.id) : session.pause(active.id)); }}>
+              {active.is_paused ? "继续工作" : "暂停"}
+            </button>
+            <button className="secondary" type="button" disabled={unavailable}
+              onClick={() => { void session.finish(active.id); }}>结束并保存</button>
+          </div>
+        </>}
       </section>
-      <footer>
-        <span className="footer-line" aria-hidden="true" />
-        <p>当前为基础工程验收版<br /><span>工作计时与记录将在后续阶段接入</span></p>
-      </footer>
+
+      {!active && <section className="form-card" aria-label="开始新的工作">
+        <h1>工作，从一次专注开始。</h1>
+        <WorkForm disabled={unavailable} onStart={session.start} />
+      </section>}
+      {active?.is_paused && <details className="switch-panel">
+        <summary>开始另一项工作</summary>
+        <WorkForm disabled={unavailable} switching onStart={session.start} />
+      </details>}
+
+      <details className="recent-panel">
+        <summary>最近保存的记录</summary>
+        {session.snapshot?.recent_records.length ? <ul className="record-list">
+          {session.snapshot.recent_records.map((record) => <li key={record.id}>
+            <div className="record-heading"><strong>{record.category} · {record.quantity}</strong>
+              <span>{formatDuration(record.duration_seconds)}</span></div>
+            <p className="hint">{formatTime(record.start_time)}<br />至 {record.end_time !== null ? formatTime(record.end_time) : "—"}</p>
+            {record.remark && <p className="record-remark">{record.remark}</p>}
+          </li>)}
+        </ul> : <p className="hint">{session.snapshot ? "还没有已完成的记录。完成后会保存在这台电脑上。" : "连接本地数据后可查看真实记录。"}</p>}
+        <p className="hint">此处显示最近 5 条，完整历史查询将在后续阶段加入。</p>
+      </details>
+      <ConnectionPanel />
+      <footer>本地保存 · 让每一份投入都有迹可循</footer>
     </main>
   );
 }
