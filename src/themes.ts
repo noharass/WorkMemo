@@ -52,16 +52,16 @@ interface Theme {
 
 export const THEMES: Record<ThemeId, Theme> = {
   glass: {
-    name: "Glass", description: "清透玻璃", defaultOpacity: 82, scheme: "light",
-    windowRgb: "225 237 242", surfaceRgb: "247 252 255", inputRgb: "252 254 255",
-    text: "#233e45", muted: "#344d54", accent: "#365e70", accentHover: "#244959",
-    accentText: "#214955", onAccent: "#ffffff", line: "#c0d0d8", border: "rgb(255 255 255 / 85%)",
-    header: "rgb(255 255 255 / 24%)", controlHover: "rgb(48 85 104 / 13%)", secondaryHover: "#e4eff4",
-    shadow: "0 2px 6px rgb(18 45 60 / 20%)", panelShadow: "0 4px 18px rgb(31 72 89 / 5%)",
-    buttonShadow: "none", timerShadow: "none", timerFont: '"Segoe UI", sans-serif', radius: 20, controlRadius: 9,
-    noticeText: "#2b4e60", noticeBg: "#e5eff6", noticeBorder: "#b8d0df",
-    errorText: "#852e2d", errorBg: "#f9e8e6", errorBorder: "#e6bdb7",
-    closeBg: "#a84a48", onClose: "#ffffff", scroll: "rgb(54 94 112 / 42%)",
+    name: "Glass", description: "薄荷烟玻璃", defaultOpacity: 82, scheme: "dark",
+    windowRgb: "30 42 57", surfaceRgb: "43 58 76", inputRgb: "31 44 59",
+    text: "#f0f5fa", muted: "#c5d2e0", accent: "#83dfce", accentHover: "#a7eddf",
+    accentText: "#a0efdf", onAccent: "#142f2c", line: "#52657b", border: "rgb(196 218 241 / 27%)",
+    header: "transparent", controlHover: "rgb(188 218 235 / 12%)", secondaryHover: "#3d5369",
+    shadow: "0 2px 8px rgb(9 20 35 / 24%)", panelShadow: "inset 0 1px 0 rgb(255 255 255 / 5%), 0 4px 16px rgb(4 15 29 / 10%)",
+    buttonShadow: "none", timerShadow: "none", timerFont: '"Segoe UI", sans-serif', radius: 24, controlRadius: 10,
+    noticeText: "#e3e6c3", noticeBg: "#394233", noticeBorder: "#6d7958",
+    errorText: "#ffd4cc", errorBg: "#482f39", errorBorder: "#916272",
+    closeBg: "#a84a48", onClose: "#ffffff", scroll: "rgb(197 220 235 / 30%)",
   },
   cream: {
     name: "Cream", description: "温暖奶油", defaultOpacity: 88, scheme: "light",

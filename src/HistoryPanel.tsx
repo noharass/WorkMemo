@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { CATEGORIES, formatDuration, formatTime } from "./types";
 import { formatQuantity, historyQueryError, localDate, type Totals } from "./history";
 import { useHistory } from "./useHistory";
@@ -8,6 +8,7 @@ interface Props {
   onClose: () => void;
   refreshKey: string;
   onDeleted: (id: number) => Promise<void>;
+  children?: ReactNode;
 }
 
 function StatsTable({ label, rows }: { label: string; rows: { name: string; totals: Totals }[] }) {
@@ -24,7 +25,7 @@ function StatsTable({ label, rows }: { label: string; rows: { name: string; tota
   </section>;
 }
 
-export function HistoryPanel({ open, onClose, refreshKey, onDeleted }: Props) {
+export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }: Props) {
   const history = useHistory(open, refreshKey, onDeleted);
   const { query, result, target } = history;
   const dialog = useRef<HTMLDialogElement>(null);
@@ -62,6 +63,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted }: Props) {
       <button type="button" className="window-control" aria-label="关闭历史与统计"
         disabled={history.deleting} onClick={onClose}>×</button>
     </div>
+    {children}
     <p className="hint">按本机时间的任务开始日期查询，仅统计已完成记录。跨午夜任务归入开始日。</p>
     <form className="history-filters" onSubmit={submit} noValidate>
       <div className="field-row">

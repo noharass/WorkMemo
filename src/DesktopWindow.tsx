@@ -8,7 +8,10 @@ const DIRECTIONS = [
 type ResizeDirection = (typeof DIRECTIONS)[number];
 
 /** Window controls stay outside the drag area; closing uses the save-on-close path. */
-export function DesktopWindow({ children, appearanceStyle }: { children: ReactNode; appearanceStyle?: CSSProperties }) {
+export function DesktopWindow({ children, appearanceStyle, navigation, categories, density = "compact" }: {
+  children: ReactNode; appearanceStyle?: CSSProperties; navigation?: ReactNode; categories?: ReactNode;
+  density?: "compact" | "comfortable";
+}) {
   const native = isTauri();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,18 +43,16 @@ export function DesktopWindow({ children, appearanceStyle }: { children: ReactNo
   }
 
   return (
-    <div className="desktop-frame" style={appearanceStyle}>
+    <div className="desktop-frame" data-density={density} style={appearanceStyle}>
       <div className="app-shell">
         <header className="titlebar">
           <div className="titlebar-drag" title={native ? "按住这里移动窗口" : "请在桌面应用中移动窗口"}
             onMouseDown={(event) => { void drag(event); }}>
             <img className="brand-mark" src="/workmemo.png" alt="" aria-hidden="true" draggable={false} />
-            <div>
-              <span className="brand-name">WorkMemo</span>
-              <span className="brand-caption">留住每一份投入</span>
-            </div>
-            <span className="drag-grip" aria-hidden="true">⠿</span>
+            <span className="brand-name">WorkMemo</span>
           </div>
+          {navigation}
+          {categories}
           <div className="window-controls" aria-label="窗口操作">
             <button type="button" className="window-control" aria-label="最小化窗口"
               title={native ? "最小化" : "仅桌面应用可用"} disabled={!native || busy}

@@ -1,6 +1,7 @@
 import { useId, useRef, useState, type FormEvent } from "react";
 import { CATEGORIES, type StartInput } from "./types";
 import { validateWorkInput, type InputErrors } from "./workInput";
+import { Icon } from "./Icon";
 
 interface Props {
   disabled: boolean;
@@ -18,6 +19,7 @@ export function WorkForm({ disabled, switching = false, starting = false, onStar
   const categoryRef = useRef<HTMLSelectElement>(null);
   const quantityRef = useRef<HTMLInputElement>(null);
   const remarkRef = useRef<HTMLTextAreaElement>(null);
+  const remarkDetails = useRef<HTMLDetailsElement>(null);
 
   function clearError(field: keyof StartInput) {
     setErrors((current) => ({ ...current, [field]: undefined }));
@@ -29,6 +31,7 @@ export function WorkForm({ disabled, switching = false, starting = false, onStar
     const result = validateWorkInput(category, quantity, remark);
     if (!result.ok) {
       setErrors(result.errors);
+      if (result.errors.remark && remarkDetails.current) remarkDetails.current.open = true;
       (result.errors.category ? categoryRef : result.errors.quantity ? quantityRef : remarkRef).current?.focus();
       return;
     }
@@ -56,14 +59,17 @@ export function WorkForm({ disabled, switching = false, starting = false, onStar
           {errors.quantity && <span id={`${id}-quantity`} className="field-error" role="alert">{errors.quantity}</span>}
         </label>
       </div>
-      <label>备注 <span className="optional">选填</span>
-        <textarea ref={remarkRef} rows={2} maxLength={4000} placeholder="记下这次工作的内容…" value={remark}
+      <details className="form-note" ref={remarkDetails}>
+      <summary><Icon name="note" />备注 <span className="optional">选填</span></summary>
+      <label><span className="sr-only">工作备注</span>
+        <textarea ref={remarkRef} rows={1} maxLength={4000} placeholder="记下这次工作的内容…" value={remark}
           disabled={disabled} aria-invalid={Boolean(errors.remark)}
           aria-describedby={`${id}-remark-count${errors.remark ? ` ${id}-remark` : ""}`}
           onChange={(event) => { setRemark(event.target.value); clearError("remark"); }} />
         <span id={`${id}-remark-count`} className="field-count">{Array.from(remark.trim()).length} / 2000</span>
         {errors.remark && <span id={`${id}-remark`} className="field-error" role="alert">{errors.remark}</span>}
       </label>
+      </details>
       {switching && <p className="hint">开始后将结束并保存当前已暂停的任务。</p>}
       <button type="submit" disabled={disabled}>{starting ? (switching ? "正在保存并开始…" : "正在开始…") : switching ? "保存上一项，开始新工作" : "开始工作"}<span aria-hidden="true">↗</span></button>
     </form>
