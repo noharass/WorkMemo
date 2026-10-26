@@ -2,7 +2,7 @@
 
 个人本地工作留痕、任务计时和工作量统计 Windows 桌面工具。
 
-当前处于第四阶段：在 SQLite 工作记录、可靠计时与原生透明窗口基础上，提供 Glass、Cream、Dark、Neon 四种皮肤，以及背景不透明度调节和独立外观配置保存。支持开始、暂停、继续、结束、暂停后切换任务，以及未结束任务恢复为暂停。界面显示最近 5 条真实完成记录，并保留基础连接检查。
+当前处于第五阶段：完善主界面读取、就绪、工作、暂停、完成保存和连接失败的反馈。在 SQLite 工作记录、可靠计时与原生透明窗口基础上，保留 Glass、Cream、Dark、Neon 四种皮肤、背景不透明度调节和独立外观配置。支持开始、暂停、继续、结束、暂停后切换任务，以及未结束任务恢复为暂停。界面显示最近 5 条真实完成记录，并保留基础连接检查。
 完整历史查询/删除与统计尚未实现。
 
 ## Windows 环境
@@ -32,12 +32,13 @@ npm run tauri dev
 npm run build
 cargo test --locked --manifest-path .\src-tauri\Cargo.toml
 npm run test:themes
+npm run test:workflow
 cargo fmt --manifest-path .\src-tauri\Cargo.toml -- --check
 npm run tauri build -- --no-bundle
 ```
 
 Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
-构建不生成安装包；正式安装包在后续阶段验收。当前阶段实际验证结果见 docs/PHASE-4.md。
+构建不生成安装包；正式安装包在后续阶段验收。当前阶段实际验证结果见 docs/PHASE-5.md。
 
 `npm run dev` 仅为浏览器预览，不能证明原生能力，页面会明确提示预览模式。
 
@@ -53,16 +54,26 @@ Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
 - src/DesktopWindow.tsx：自定义标题栏、窗口控制和边缘缩放，关闭使用 Tauri close 保留保存事件。
 - src/themes.ts：四种皮肤的完整设计令牌；src/useAppearance.ts：预览、取消、加载和保存状态。
 - src/AppearanceSettings.tsx：外观选择、滑块及保存面板；src-tauri/src/appearance.rs：独立配置校验与文件保存。
+- src/workInput.ts：开始任务的前端字段校验；src/workView.ts：根据真实快照派生界面状态和保存确认。
 - docs/PRODUCT-SPEC.md：用户提供的完整产品规范。
 - docs/PHASE-1.md：交付、文件清单与实际验收记录。
 - docs/PHASE-2.md：第二阶段设计、完整文件清单、测试与兼容性说明。
 - docs/PHASE-3.md：原生透明、窗口操作与实际验收记录。
 - docs/PHASE-4.md：换肤、外观持久化、测试及文件清单。
+- docs/PHASE-5.md：主界面反馈、表单校验、实际测试与完整源码交付。
 - AGENTS.md：后续开发约束。
 - package-lock.json / src-tauri/Cargo.lock：锁定前后端依赖。
 
 开发顺序：可靠持久化与计时 → 原生透明 → 主题 → 主界面 → 历史统计 → 综合验收。
 每阶段结束后等待用户确认。
+
+## 主界面状态
+
+启动读取完成前及连接失败时，不把未知数据显示为准备开始；连接中断保留上次读取的任务和时长并禁用业务操作。前端每秒重新读取后端有效时长，不自行逐秒累加。
+
+各业务按钮提交期间会显示正在开始、暂停、继续或保存，并禁止重复提交。结束命令成功且返回同 id、FINISHED、带结束时间的真实记录后，保留本次时长、数量与保存时间，并提示已保存在本机。开始下一项后清除本次完成提示；重启只读取真实记录，不伪造上次操作成功提示。
+
+类别、数量与备注错误分别在字段旁提示，并将焦点移到首个错误字段。备注按 Unicode 字符计数，最多 2000 字符；后端仍保留最终校验。保存失败保留输入和现有任务，显示错误，不显示保存成功。
 
 ## GitHub 同步
 

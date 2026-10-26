@@ -1,53 +1,71 @@
-import { useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { CATEGORIES, type StartInput } from "./types";
+import { validateWorkInput, type InputErrors } from "./workInput";
 
 interface Props {
   disabled: boolean;
   switching?: boolean;
+  starting?: boolean;
   onStart: (input: StartInput) => Promise<boolean>;
 }
 
-export function WorkForm({ disabled, switching = false, onStart }: Props) {
+export function WorkForm({ disabled, switching = false, starting = false, onStart }: Props) {
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState("");
   const [remark, setRemark] = useState("");
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<InputErrors>({});
+  const id = useId();
+  const categoryRef = useRef<HTMLSelectElement>(null);
+  const quantityRef = useRef<HTMLInputElement>(null);
+  const remarkRef = useRef<HTMLTextAreaElement>(null);
+
+  function clearError(field: keyof StartInput) {
+    setErrors((current) => ({ ...current, [field]: undefined }));
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (disabled) return;
-    if (!CATEGORIES.some((value) => value === category)) { setError("请选择工作类别。"); return; }
-    const amount = Number(quantity);
-    if (!quantity.trim() || !Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) {
-      setError("数量必须大于 0，且不超过 10 亿。"); return;
+    const result = validateWorkInput(category, quantity, remark);
+    if (!result.ok) {
+      setErrors(result.errors);
+      (result.errors.category ? categoryRef : result.errors.quantity ? quantityRef : remarkRef).current?.focus();
+      return;
     }
-    if (Array.from(remark.trim()).length > 2000) { setError("备注不能超过 2000 个字符。"); return; }
-    setError("");
-    await onStart({ category, quantity: amount, remark });
+    setErrors({});
+    await onStart(result.input);
   }
 
   return (
-    <form className="work-form" onSubmit={(event) => { void submit(event); }} noValidate>
+    <form className="work-form" aria-busy={starting} onSubmit={(event) => { void submit(event); }} noValidate>
       <div className="field-row">
         <label>工作类别
-          <select value={category} onChange={(event) => setCategory(event.target.value)} disabled={disabled}>
+          <select ref={categoryRef} value={category} disabled={disabled}
+            aria-invalid={Boolean(errors.category)} aria-describedby={errors.category ? `${id}-category` : undefined}
+            onChange={(event) => { setCategory(event.target.value); clearError("category"); }}>
             <option value="">请选择类别</option>
             {CATEGORIES.map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
+          {errors.category && <span id={`${id}-category`} className="field-error" role="alert">{errors.category}</span>}
         </label>
         <label>工作数量
-          <input type="number" inputMode="decimal" min="0" max="1000000000" step="any"
+          <input ref={quantityRef} type="number" inputMode="decimal" min="0" max="1000000000" step="any"
             placeholder="大于 0" value={quantity} disabled={disabled}
-            onChange={(event) => setQuantity(event.target.value)} />
+            aria-invalid={Boolean(errors.quantity)} aria-describedby={errors.quantity ? `${id}-quantity` : undefined}
+            onChange={(event) => { setQuantity(event.target.value); clearError("quantity"); }} />
+          {errors.quantity && <span id={`${id}-quantity`} className="field-error" role="alert">{errors.quantity}</span>}
         </label>
       </div>
       <label>备注 <span className="optional">选填</span>
-        <textarea rows={2} maxLength={4000} placeholder="记下这次工作的内容…" value={remark}
-          disabled={disabled} onChange={(event) => setRemark(event.target.value)} />
+        <textarea ref={remarkRef} rows={2} maxLength={4000} placeholder="记下这次工作的内容…" value={remark}
+          disabled={disabled} aria-invalid={Boolean(errors.remark)}
+          aria-describedby={`${id}-remark-count${errors.remark ? ` ${id}-remark` : ""}`}
+          onChange={(event) => { setRemark(event.target.value); clearError("remark"); }} />
+        <span id={`${id}-remark-count`} className="field-count">{Array.from(remark.trim()).length} / 2000</span>
+        {errors.remark && <span id={`${id}-remark`} className="field-error" role="alert">{errors.remark}</span>}
       </label>
       {switching && <p className="hint">开始后将结束并保存当前已暂停的任务。</p>}
-      {error && <p className="inline-error" role="alert">{error}</p>}
-      <button type="submit" disabled={disabled}>{switching ? "保存上一项，开始新工作" : "开始工作"}<span aria-hidden="true">↗</span></button>
+      <button type="submit" disabled={disabled}>{starting ? (switching ? "正在保存并开始…" : "正在开始…") : switching ? "保存上一项，开始新工作" : "开始工作"}<span aria-hidden="true">↗</span></button>
     </form>
   );
 }

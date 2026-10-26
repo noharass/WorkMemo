@@ -6,14 +6,16 @@ import { THEMES, themeStyle } from "./themes";
 import { WorkForm } from "./WorkForm";
 import { useWorkSession } from "./useWorkSession";
 import { formatDuration, formatTime } from "./types";
+import { workView } from "./workView";
 import "./App.css";
 
 function App() {
   const session = useWorkSession();
   const appearance = useAppearance();
   const active = session.snapshot?.active;
-  const unavailable = !session.native || session.loading || session.busy
-    || Boolean(session.connectionError) || !session.snapshot;
+  const view = workView(session);
+  const record = view.record;
+  const unavailable = !view.canOperate || session.busy;
 
   return (
     <DesktopWindow appearanceStyle={themeStyle(appearance.current)}>
@@ -37,53 +39,59 @@ function App() {
       </div>}
 
       {!session.native && <p className="notice" role="status">浏览器预览模式。请打开桌面应用，使用本地计时和保存功能。</p>}
-      {session.loading && <p className="hint" role="status">正在读取本地工作记录…</p>}
       {session.connectionError && <div className="error-banner" role="alert">
         <strong>无法读取或保存本地数据</strong>
         <p>{session.connectionError}</p>
         <p>显示为上次读取的状态，操作暂不可用。可先尝试刷新；若已打开另一个 WorkMemo，请使用原窗口。仍无法恢复时请重新打开应用。</p>
       </div>}
-      {session.commandError && <p className="error-banner" role="alert">{session.commandError}</p>}
-      {session.snapshot?.warning && <p className="notice" role="alert">{session.snapshot.warning}</p>}
+      {!session.connectionError && session.commandError && <p className="error-banner" role="alert">{session.commandError}</p>}
+      {!session.connectionError && !session.commandError && session.snapshot?.warning
+        && <p className="notice" role="alert">{session.snapshot.warning}</p>}
       {active?.recovery_pending && <p className="notice" role="status">
         已恢复上次未结束的任务，并保持暂停。应用关闭期间不计时，请确认后继续。
       </p>}
 
-      <section className="timer-card" aria-label="当前工作">
+      <section className={`timer-card${view.mode === "finished" ? " finished-card" : ""}`}
+        aria-label="当前工作" aria-busy={session.loading || session.busy}>
         <div className="card-heading">
-          <span className="eyebrow">{active ? active.category : "为今天留下一笔"}</span>
-          <span className={`state-label ${active && !active.is_paused ? "working" : ""}`}>
-            {active ? (active.is_paused ? "已暂停" : "进行中") : "准备开始"}
+          <span className="eyebrow">{record ? record.category : "为今天留下一笔"}</span>
+          <span className={`state-label ${view.mode === "working" ? "working" : ""}`} role="status">
+            {view.label}
           </span>
         </div>
-        <output className="timer" aria-label="有效工作时长">
-          {formatDuration(active?.duration_seconds ?? 0)}
+        <output className="timer" aria-label="有效工作时长" aria-live="off">
+          {view.timer}
         </output>
         <p className="timer-caption">
-          {session.connectionError ? "连接中断，时长暂未更新" : active?.is_paused ? "暂停期间不计时" : "有效工作时长"}
+          {view.caption}
         </p>
+        {record && <>
+          <div className="task-meta"><span>工作数量</span><strong>{record.quantity}</strong></div>
+          {record.remark && <p className="task-remark">{record.remark}</p>}
+          <p className="hint">开始于 {formatTime(record.start_time)}
+            {record.end_time !== null && <><br />保存于 {formatTime(record.end_time)}</>}</p>
+        </>}
+        {view.mode === "finished" && <p className="saved-feedback">记录已保存在这台电脑上，可在下方查看，也可以开始下一项。</p>}
         {active && <>
-          <div className="task-meta"><span>工作数量</span><strong>{active.quantity}</strong></div>
-          {active.remark && <p className="task-remark">{active.remark}</p>}
-          <p className="hint">开始于 {formatTime(active.start_time)}</p>
           <div className="actions">
             <button type="button" disabled={unavailable}
               onClick={() => { void (active.is_paused ? session.resume(active.id) : session.pause(active.id)); }}>
-              {active.is_paused ? "继续工作" : "暂停"}
+              {session.pending === "resume_task" ? "正在继续…" : session.pending === "pause_task" ? "正在暂停…"
+                : active.is_paused ? "继续工作" : "暂停"}
             </button>
             <button className="secondary" type="button" disabled={unavailable}
-              onClick={() => { void session.finish(active.id); }}>结束并保存</button>
+              onClick={() => { void session.finish(active.id); }}>{session.pending === "finish_task" ? "正在保存…" : "结束并保存"}</button>
           </div>
         </>}
       </section>
 
-      {!active && <section className="form-card" aria-label="开始新的工作">
-        <h1>工作，从一次专注开始。</h1>
-        <WorkForm disabled={unavailable} onStart={session.start} />
+      {!active && (session.snapshot || !session.native) && <section className="form-card" aria-label="开始新的工作">
+        <h1>{view.finished ? "下一份投入，从这里开始。" : "工作，从一次专注开始。"}</h1>
+        <WorkForm disabled={unavailable} starting={session.pending === "start_task"} onStart={session.start} />
       </section>}
       {active?.is_paused && <details className="switch-panel">
         <summary>开始另一项工作</summary>
-        <WorkForm disabled={unavailable} switching onStart={session.start} />
+        <WorkForm disabled={unavailable} switching starting={session.pending === "start_task"} onStart={session.start} />
       </details>}
 
       <details className="recent-panel">

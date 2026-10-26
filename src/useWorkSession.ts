@@ -2,12 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { Snapshot, StartInput } from "./types";
+import { confirmedFinish } from "./workView";
+
+type WorkCommand = "start_task" | "pause_task" | "resume_task" | "finish_task";
 
 export function useWorkSession() {
   const native = isTauri();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(native);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<WorkCommand | null>(null);
+  const [savedId, setSavedId] = useState<number | null>(null);
   const [connectionError, setConnectionError] = useState("");
   const [commandError, setCommandError] = useState("");
   const mounted = useRef(false);
@@ -62,10 +66,10 @@ export function useWorkSession() {
     };
   }, [native, refresh]);
 
-  const run = useCallback(async (command: string, args: Record<string, unknown>) => {
+  const run = useCallback(async (command: WorkCommand, args: Record<string, unknown>) => {
     if (!native || busyRef.current) return false;
     busyRef.current = true;
-    setBusy(true);
+    setPending(command);
     setCommandError("");
     const request = ++revision.current;
     try {
@@ -73,6 +77,11 @@ export function useWorkSession() {
       if (mounted.current && request === revision.current) {
         setSnapshot(data);
         setConnectionError("");
+        if (command === "start_task") setSavedId(null);
+        if (command === "finish_task") {
+          const id = typeof args.id === "number" ? args.id : null;
+          setSavedId(confirmedFinish(data, id)?.id ?? null);
+        }
       }
       return true;
     } catch (error: unknown) {
@@ -80,12 +89,13 @@ export function useWorkSession() {
       return false;
     } finally {
       busyRef.current = false;
-      if (mounted.current) { setBusy(false); setLoading(false); }
+      if (mounted.current) { setPending(null); setLoading(false); }
     }
   }, [native]);
 
   return {
-    native, snapshot, loading, busy, connectionError, commandError, refresh,
+    native, snapshot, loading, busy: pending !== null, pending, savedId,
+    connectionError, commandError, refresh,
     start: (input: StartInput) => run("start_task", { input }),
     pause: (id: number) => run("pause_task", { id }),
     resume: (id: number) => run("resume_task", { id }),

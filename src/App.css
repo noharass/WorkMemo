@@ -86,6 +86,11 @@ textarea { resize: vertical; min-height: 65px; max-height: 200px; line-height: 1
 .error-banner { color: var(--error); background: var(--error-background); border: 1px solid var(--error-border); }
 .error-banner p { margin: 5px 0 0; }
 .inline-error { font-size: 11px; color: var(--error); margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.field-error { display: block; margin-top: 6px; color: var(--error); font-size: 10px; overflow-wrap: anywhere; }
+.field-count { display: block; text-align: right; margin-top: 4px; color: var(--text-muted); font-size: 10px; }
+[aria-invalid="true"] { border-color: var(--error); }
+.finished-card { border-color: var(--accent-text); }
+.saved-feedback { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); color: var(--accent-text); font-size: 11px; line-height: 1.8; }
 .switch-panel, .recent-panel, .connection-panel { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 14px; font-size: 11px; }
 summary { color: var(--text-muted); cursor: pointer; padding: 3px 0; }
 details[open] > summary { margin-bottom: 15px; }
