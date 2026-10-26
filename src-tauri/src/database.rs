@@ -333,3 +333,7 @@ mod tests;
 #[path = "history.rs"]
 mod history;
 pub use history::{HistoryPage, HistoryQuery};
+
+#[cfg(test)]
+#[path = "reliability_tests.rs"]
+mod reliability_tests;
