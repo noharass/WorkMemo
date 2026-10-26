@@ -2,8 +2,20 @@
 
 个人本地工作留痕、任务计时和工作量统计 Windows 桌面工具。
 
-当前处于第七阶段综合验收。应用提供历史查询、删除确认及数量和有效时长汇总；保留可靠计时、原生透明窗口、Glass/Cream/Dark/Neon 四种皮肤和独立外观配置。支持开始、暂停、继续、结束、暂停后切换任务，以及未结束任务恢复为暂停。主界面显示最近 5 条真实完成记录，并保留基础连接检查。
-本机验收结果、实际检查限制和跨环境待验收项见 docs/PHASE-7.md，未将本机测试等同于所有 Windows 环境验证。
+WorkMemo 0.1.0，Windows x64 本地工作记录工具。支持可靠计时、暂停恢复、历史查询、删除确认和每日/类别统计；提供原生透明窗口、Glass / Cream / Dark / Neon 四种皮肤和独立外观保存。
+
+当前为第八阶段最终交付。本机检查与剩余兼容性范围见 docs/PHASE-8.md，上一阶段综合验收见 docs/PHASE-7.md。
+
+## 普通用户使用成品
+
+- 安装版：WorkMemo_0.1.0_x64-setup.exe，中文向导，安装到当前用户；缺少 WebView2 时联网补齐。
+- 免安装版：WorkMemo_0.1.0_windows_x64.zip，解压后运行 WorkMemo/workmemo.exe，需要已安装 WebView2。
+- 无需 Node.js、Rust、Visual Studio、Git、Python 或数据库服务。使用、更新和数据备份见 [使用说明](docs/USER-GUIDE.md)。
+- 源码仓库不提交二进制产物；本机构建输出在 artifacts/0.1.0，下载发布情况见仓库 Releases。
+
+## 从源码运行
+
+需要 Node 24 x64、Rust stable MSVC、Visual Studio 2022 C++ Build Tools（含 Windows SDK）和 WebView2；使用 git clone 时还需 Git。SQLite 已编入程序，不用单独安装。完整安装清单与命令见 [源码构建说明](docs/BUILDING.md)。
 
 ## Windows 环境
 
@@ -39,7 +51,7 @@ npm run tauri build -- --no-bundle
 ```
 
 Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
-构建不生成安装包；正式安装包在后续阶段验收。当前阶段实际验证结果见 docs/PHASE-7.md。
+以上 --no-bundle 仅构建程序；正式打包运行 scripts/package-windows.ps1，生成中文 NSIS 安装器、免安装 ZIP、第三方许可文本和 SHA256SUMS.txt。也可使用 npm run tauri -- build --ci --no-binary-patching 只生成 Tauri 官方安装器。实际结果见 docs/PHASE-8.md。
 
 `npm run dev` 仅为浏览器预览，不能证明原生能力，页面会明确提示预览模式。
 
@@ -59,6 +71,8 @@ Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
 - src/HistoryPanel.tsx：筛选、历史列表、确认删除和统计面板；src/useHistory.ts：历史查询与删除异步状态；src/history.ts：查询类型、日期校验和显示辅助。
 - src-tauri/src/history.rs：沿用 Store 的历史只读事务和已完成记录删除；src-tauri/src/history_tests.rs：独立临时数据库回归测试。
 - src-tauri/src/reliability_tests.rs：长期状态序列、真实子进程退出恢复、失败保存保护及 1 万条记录隔离测试；只编译到测试程序，不进入桌面程序。
+- public/workmemo.svg：统一图标源；src-tauri/icons 为 Tauri 生成的原生图标。
+- scripts/package-windows.ps1：Windows x64 成品打包；scripts/collect-licenses.mjs 汇编锁定依赖的许可文本，docs/THIRD-PARTY-LICENSES.txt 随安装包分发。
 - docs/PRODUCT-SPEC.md：用户提供的完整产品规范。
 - docs/PHASE-1.md：交付、文件清单与实际验收记录。
 - docs/PHASE-2.md：第二阶段设计、完整文件清单、测试与兼容性说明。
@@ -67,6 +81,7 @@ Release 可执行文件：E:\WorkMemo\src-tauri\target\release\workmemo.exe。
 - docs/PHASE-5.md：主界面反馈、表单校验、实际测试与完整源码交付。
 - docs/PHASE-6.md：历史查询、删除、统计口径与实际验收；完整文件清单和源码见同名前缀的 FILES、SOURCE 文档。
 - docs/PHASE-7.md：综合验收矩阵、故障测试方法、实际结果及剩余限制；同名前缀 FILES、SOURCE 提供文件与完整变更源码。
+- docs/PHASE-8.md：最终交付、安装验证、校验值和限制；docs/USER-GUIDE.md、docs/BUILDING.md 分别面向普通用户与源码开发者。
 - AGENTS.md：后续开发约束。
 - package-lock.json / src-tauri/Cargo.lock：锁定前后端依赖。
 

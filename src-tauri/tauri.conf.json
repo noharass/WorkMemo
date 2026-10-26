@@ -36,7 +36,26 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "publisher": "noharass",
+    "shortDescription": "本地工作记录与有效时长工具",
+    "category": "Productivity",
+    "resources": {
+      "../docs/THIRD-PARTY-LICENSES.txt": "THIRD-PARTY-LICENSES.txt"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -1,4 +1,8 @@
 * text=auto eol=lf
+
+# Preserve third-party license text verbatim, including upstream whitespace.
+docs/THIRD-PARTY-LICENSES.txt -whitespace
+scripts/third-party-licenses/*.txt -whitespace
 *.png binary
 *.ico binary
 *.icns binary
