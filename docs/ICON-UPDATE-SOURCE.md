@@ -1389,14 +1389,14 @@ WorkMemo 0.1.1，Windows x64 本地工作记录工具。支持可靠计时、暂
 
 ## 普通用户使用成品
 
-当前公开成品仍为 v0.1.0；0.1.1 新图标版在本地构建，尚未公开发布。
+最新公开版本为 v0.1.1，采用选定的黑白 C 图标。更新前请保存关闭旧版窗口，安装后沿用现有记录与外观配置。
 
-[下载 v0.1.0 中文安装版](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_x64-setup.exe) · [下载 v0.1.0 免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_windows_x64.zip) · [v0.1.0 下载页与校验文件](https://github.com/noharass/WorkMemo/releases/tag/v0.1.0)
+[下载 v0.1.1 中文安装版](https://github.com/noharass/WorkMemo/releases/download/v0.1.1/WorkMemo_0.1.1_x64-setup.exe) · [下载 v0.1.1 免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.1.1/WorkMemo_0.1.1_windows_x64.zip) · [v0.1.1 下载页与校验文件](https://github.com/noharass/WorkMemo/releases/tag/v0.1.1)
 
-- 安装版：WorkMemo_0.1.0_x64-setup.exe，中文向导，安装到当前用户；缺少 WebView2 时联网补齐。
-- 免安装版：WorkMemo_0.1.0_windows_x64.zip，解压后运行 WorkMemo/workmemo.exe，需要已安装 WebView2。
+- 安装版：WorkMemo_0.1.1_x64-setup.exe，中文向导，安装到当前用户；缺少 WebView2 时联网补齐。
+- 免安装版：WorkMemo_0.1.1_windows_x64.zip，解压后运行 WorkMemo/workmemo.exe，需要已安装 WebView2。
 - 无需 Node.js、Rust、Visual Studio、Git、Python 或数据库服务。使用、更新和数据备份见 [使用说明](docs/USER-GUIDE.md)。
-- 源码仓库不提交二进制产物；本机构建输出在 artifacts/0.1.0，公开成品通过上述 GitHub Releases 分发。
+- 源码仓库不提交二进制产物；本机构建输出在 artifacts/0.1.1，公开成品通过上述 GitHub Releases 分发。
 
 ## 从源码运行
 

@@ -72,7 +72,39 @@ Get-FileHash .\artifacts\0.1.1\WorkMemo_0.1.1_x64-setup.exe
 
 目标为 Windows 10 / 11 x64，本机为 Windows 10 22H2 x64；新机器、Windows 11、不同 DPI/多显示器未在本轮实测。程序仍未签名。图标变更不构成对其他兼容性项目的重新验收。
 
-0.1.1 成品保存在 E:\WorkMemo\artifacts\0.1.1；不提交 Git。既有公开 v0.1.0 保留，本轮未发布新的 GitHub Release 或覆盖旧附件。源码推送按既有授权执行。
+0.1.1 成品保存在 E:\WorkMemo\artifacts\0.1.1；不提交 Git。用户随后明确要求更新下载页，已公开发布 [WorkMemo v0.1.1](https://github.com/noharass/WorkMemo/releases/tag/v0.1.1) 并设为最新版，既有 v0.1.0 保留。源码推送按既有授权执行。
+
+## 公开发布检查（2026-10-26）
+
+tag v0.1.1 指向构建源码提交 c52733d7b7050822ef303dc4f6b6a6fc1a80a87f。通过既有 GitHub 凭据在内存中授权，先建草稿、上传并核对 4 个资产的大小与摘要，再公开发布。凭据没有写入文件或 URL；本地 RELEASE-RECEIPT.json 仅含公开发布元数据，位于被忽略的 artifacts 目录。
+
+公开 API 确认非草稿、非预发布，releases/latest 返回 v0.1.1；远程 tag 与构建源码提交一致。另以无认证方式实际下载安装器、ZIP、第三方许可和校验文件，逐项 SHA256 与本地交付表一致。README 的 3 个下载入口及文件名已更新，完整源码汇编中的 README 同步更新。本次只修改文档并发布此前已检查的成品，没有重新构建或更改业务代码。
+
+本次 UPDATE 路径：E:\WorkMemo\README.md、E:\WorkMemo\docs\ICON-UPDATE.md、E:\WorkMemo\docs\ICON-UPDATE-SOURCE.md；完整文件清单仍见 ICON-UPDATE-FILES.md。兼容性与原生截图验收限制沿用上文，不因发布成功而扩充。
+
+以下为不需要凭据的下载复核方法，预期文件哈希与上表及 SHA256SUMS.txt 一致：
+
+```powershell
+Set-Location 'E:\WorkMemo'
+Invoke-RestMethod 'https://api.github.com/repos/noharass/WorkMemo/releases/latest' | Select-Object tag_name, html_url
+[void](New-Item -ItemType Directory -Path '.\artifacts\0.1.1\download-check' -Force)
+Invoke-WebRequest 'https://github.com/noharass/WorkMemo/releases/download/v0.1.1/WorkMemo_0.1.1_x64-setup.exe' -OutFile '.\artifacts\0.1.1\download-check\WorkMemo_0.1.1_x64-setup.exe'
+Get-FileHash '.\artifacts\0.1.1\download-check\WorkMemo_0.1.1_x64-setup.exe'
+git ls-remote origin refs/tags/v0.1.1
+```
+
+下载文档同步使用以下命令；先核对远程和暂存内容，随后检查本地与远程提交标识相同、工作区干净：
+
+```powershell
+git fetch origin main
+git add README.md docs/ICON-UPDATE.md docs/ICON-UPDATE-SOURCE.md
+git diff --cached --check
+git commit -m "docs: publish v0.1.1 download links and release verification"
+git push origin main
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
+git status --short --branch
+```
 
 ## Git 命令与同步
 
