@@ -8,8 +8,8 @@
 * text=auto eol=lf
 
 # Preserve third-party license text verbatim, including upstream whitespace.
-docs/THIRD-PARTY-LICENSES.txt -whitespace
-scripts/third-party-licenses/*.txt -whitespace
+docs/THIRD-PARTY-LICENSES.txt -text -whitespace
+scripts/third-party-licenses/*.txt -text -whitespace
 *.png binary
 *.ico binary
 *.icns binary
@@ -1367,10 +1367,12 @@ WorkMemo 0.1.0，Windows x64 本地工作记录工具。支持可靠计时、暂
 
 ## 普通用户使用成品
 
+[下载中文安装版](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_x64-setup.exe) · [下载免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_windows_x64.zip) · [v0.1.0 下载页与校验文件](https://github.com/noharass/WorkMemo/releases/tag/v0.1.0)
+
 - 安装版：WorkMemo_0.1.0_x64-setup.exe，中文向导，安装到当前用户；缺少 WebView2 时联网补齐。
 - 免安装版：WorkMemo_0.1.0_windows_x64.zip，解压后运行 WorkMemo/workmemo.exe，需要已安装 WebView2。
 - 无需 Node.js、Rust、Visual Studio、Git、Python 或数据库服务。使用、更新和数据备份见 [使用说明](docs/USER-GUIDE.md)。
-- 源码仓库不提交二进制产物；本机构建输出在 artifacts/0.1.0，下载发布情况见仓库 Releases。
+- 源码仓库不提交二进制产物；本机构建输出在 artifacts/0.1.0，公开成品通过上述 GitHub Releases 分发。
 
 ## 从源码运行
 

@@ -100,7 +100,12 @@ Get-FileHash .\artifacts\0.1.0\WorkMemo_0.1.0_windows_x64.zip -Algorithm SHA256
 
 程序本体 E:\WorkMemo\src-tauri\target\release\workmemo.exe，6,137,856 字节，SHA256 5cab45d472feaf7d87804630ea824f7f5cf540427d3b50e9332c92772eda0acb。安装位置中的程序与其一致。现有所有阶段记录保留，真实任务已由用户主动结束。
 
-GitHub 成品下载发布状态在用户确认公开发布后更新；源码同步与二进制发布分别记录。
+用户明确授权后，已公开发布 [WorkMemo v0.1.0](https://github.com/noharass/WorkMemo/releases/tag/v0.1.0)，tag 指向本轮构建源码提交 38b69c09a3982485f6d0433fc4cf64db01173ec3。安装包、ZIP、许可文本、校验文件共 4 个资产；上传响应摘要及大小核对通过，公开 API 确认非草稿，另以无认证方式实际下载全部 4 项并逐个复算 SHA256，与上传前一致。发布回执仅保存公开元数据到被忽略的 artifacts 目录，没有把认证凭据写入文件或 URL。
+
+- [中文安装版](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_x64-setup.exe)
+- [免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/WorkMemo_0.1.0_windows_x64.zip)
+- [校验文件](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/SHA256SUMS.txt)
+- [第三方许可](https://github.com/noharass/WorkMemo/releases/download/v0.1.0/THIRD-PARTY-LICENSES.txt)
 
 ## 8. Git 和发布边界
 
@@ -117,4 +122,4 @@ git ls-remote origin refs/heads/main
 git status --short --branch
 ```
 
-公开发布安装包会创建新的 GitHub 下载版本；成品通过实际检查后再确认该发布动作，未发布前不声称 GitHub 已有成品下载。完成本阶段后总结最终交付，不自动扩展功能。
+公开发布已按用户明确确认完成。构建源码与随后补充的下载文档分别提交同步，未强制推送、覆盖远程历史或变更仓库公开范围。完成第八阶段及本轮最终交付后，等待新的明确需求，不自动扩展功能。
