@@ -4,6 +4,8 @@
 
 用户要求后已发布独立数据的 release 优化预览 ZIP：[v0.2.0-alpha.3](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.3)。从 GitHub 下载后按 PREVIEW-GUIDE.md 接入；下文保留本机 debug 验收包路径与源码准备步骤，两种程序使用相同测试数据标识，不能同时运行。
 
+遇到 Specified native messaging host not found 时，参见 BROWSER-REGISTRATION-FIX.md。新的 alpha.3 R2 EXE 会自动注册当前用户主机；早先 EXE 与 ZIP 仍需要注册步骤，源码扩展与预览包的主机名不能混用。R2 实际检查与下载见 BROWSER-REGISTRATION-DELIVERY.md。
+
 ## 本机已准备的独立验收包
 
 - 程序：E:\WorkMemo\artifacts\browser-bridge\com.workmemo.test.monitor\workmemo-test.exe

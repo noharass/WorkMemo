@@ -60,7 +60,13 @@ Set-Location 'E:\WorkMemo'
 & .\scripts\package-preview-installer.ps1 -PortableZip .\artifacts\0.2.0-alpha.3\WorkMemo_0.2.0-alpha.3_windows_x64_preview.zip -ExpectedSha256 15a6dd85dca26eb589fd7a2675f9d4cd21c67b3cbf5a2fb19563b7baa6f527a3
 ~~~
 
-输出到 artifacts/0.2.0-alpha.3/installer。NSIS 当前用户安装器使用 WorkMemo Preview 名称及 workmemo-preview.exe 进程，包含主机与扩展，沿用独立测试数据。安装器打包与解包字节核对已完成，实际安装/卸载仍待验收；公开下载和校验结果见 RELEASE-0.2.0-alpha.3.md。
+当前打包脚本默认生成 R2，输出到 artifacts/0.2.0-alpha.3/installer-r2。NSIS 当前用户安装器使用 WorkMemo Preview 名称及 workmemo-preview.exe 进程，包含主机与扩展，沿用独立测试数据，并自动注册 HKCU 的 Chrome 本机主机。主机清单是相对 EXE 路径的固定资源，安装后写注册，卸载成功后只清除所属目录的注册。成品字节核对、隔离安装/卸载测试及公开下载复算见 BROWSER-REGISTRATION-DELIVERY.md。
+
+~~~powershell
+& .\scripts\test-browser-registration.ps1
+~~~
+
+测试只使用 artifacts 内的随机目录与 HKCU\Software\WorkMemo\RegistrationTests 隔离键；真实 Chrome 注册前后须相同。R2 另包含不依赖 PowerShell 的 Register-Browser.cmd。客户机不需要运行源码测试或修改执行策略；接入步骤见 BROWSER-REGISTRATION-FIX.md。
 
 下面正式安装器打包记录对应已发布的稳定版源码；预览阶段使用上面的独立数据打包入口。
 

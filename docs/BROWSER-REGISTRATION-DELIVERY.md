@@ -39,7 +39,24 @@
 - CMD 使用 ASCII 内容和 CRLF 换行，Git 属性显式保留 Windows 换行，避免后续检出改变修复文件格式。
 - 不依赖客户机 PowerShell 执行策略；测试工具使用 PowerShell 只是源码环境的检查方式。没有为测试修改系统策略、停止用户任务或操作真实工作数据库。
 
-打包成品、上传和公开下载复算结果在完成后补充。本次未修改业务代码，不将先前的 106 个测试执行项称为本轮重新执行。其他用户机器的真实 Chrome 重连需要用户反馈，不以隔离测试替代。
+- R2 实际 NSIS 打包通过，7-Zip 完整性测试、解包与 17 项应用/资源字节核对通过；原始主程序及主机字节与 alpha.3 ZIP 一致，CMD 为 ASCII/CRLF。
+- 安装包、修复 CMD、说明、校验文件共 4 个新资产上传成功；从正式公开地址无认证下载后逐项复算大小与 SHA256，全部一致。原 7 个资产字节不变，当前预发布共 11 个资产，latest 稳定版仍为 v0.1.1。
+- 本次未修改业务代码，不将先前的 106 个测试执行项称为本轮重新执行。其他用户机器的真实 Chrome 重连需要用户反馈，不以隔离测试替代；没有在当前真实安装目录运行成品安装器或卸载器。
+
+## 下载与校验
+
+[R2 EXE 安装修复版](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.3/WorkMemo_0.2.0-alpha.3_x64-preview-setup-r2.exe) · [一键修复 CMD](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.3/Register-Browser.cmd) · [使用说明](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.3/REGISTRATION-FIX-GUIDE.md)
+
+本机交付目录 E:\WorkMemo\artifacts\0.2.0-alpha.3\installer-r2；公开回执 RELEASE-RECEIPT.json 与下载复算副本 download-check 位于该忽略目录，不提交产物或私密配置。
+
+| 文件 | 字节数 | SHA256 |
+| --- | ---: | --- |
+| WorkMemo_0.2.0-alpha.3_x64-preview-setup-r2.exe | 2441209 | b5e3b9cfc3811fc2af7ec28d6d51e78ba31c1e1c9eda9d455187efe984379c7d |
+| Register-Browser.cmd | 2500 | c67408890124940fedd9cfb100a01b8aae0cc3b80967ff247e90cb52e01c2cc6 |
+| REGISTRATION-FIX-GUIDE.md | 3025 | f9811efd308fd2f04103041e2d8ea05ddcbec3913334f618d7849e6ff614edc4 |
+| REGISTRATION-FIX-SHA256SUMS.txt | 296 | 7ab31fd7560744aec0585bd7d31dc687956b529e9c9e80d8a8ba53587ebb0b16 |
+
+原应用源码提交 fb615040ab95448cecb3236f67e08e44cee77e66，R2 打包源码 b52fae6；随后文档回执另行提交。原应用标签不移动。
 
 ## PowerShell 重现与预期
 
