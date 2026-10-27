@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][string]$PortableZip,
-    [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedSha256
+    [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedSha256,
+    [ValidatePattern('^[a-z0-9-]+$')][string]$InstallerRevision = 'r2'
 )
 
 Set-StrictMode -Version Latest
@@ -12,7 +13,7 @@ $taskZipPath = (Resolve-Path -LiteralPath $PortableZip).ProviderPath
 if ((Get-FileHash -LiteralPath $taskZipPath -Algorithm SHA256).Hash -ne $ExpectedSha256) { throw 'Portable ZIP checksum mismatch.' }
 $taskVersion = (Get-Content -LiteralPath (Join-Path $taskRoot 'package.json') -Raw -Encoding UTF8 | ConvertFrom-Json).version
 if ($taskVersion -notmatch '^\d+\.\d+\.\d+-alpha\.\d+$') { throw 'Expected an alpha version.' }
-$taskOutput = Join-Path $taskRoot ('artifacts\' + $taskVersion + '\installer')
+$taskOutput = Join-Path $taskRoot ('artifacts\' + $taskVersion + '\installer-' + $InstallerRevision)
 $taskStaging = Join-Path $taskOutput 'staging'
 [IO.Directory]::CreateDirectory((Join-Path $taskStaging 'extension')) | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -48,8 +49,9 @@ foreach ($taskName in $taskNames) {
     $taskResources[(Join-Path $taskStaging $taskName)] = $taskName
 }
 $taskResources[(Join-Path $taskRoot 'docs\PREVIEW-INSTALLER-GUIDE.md')] = '使用说明.md'
+$taskResources[(Join-Path $taskRoot 'scripts\register-preview-browser.cmd')] = 'Register-Browser.cmd'
 $taskResources[(Join-Path $taskStaging 'INSTALLER-BUILD-INFO.json')] = 'INSTALLER-BUILD-INFO.json'
-$taskOverlay = @{mainBinaryName='workmemo-preview';bundle=@{resources=$taskResources;windows=@{nsis=@{startMenuFolder='WorkMemo Preview'}}}}
+$taskOverlay = @{mainBinaryName='workmemo-preview';bundle=@{resources=$taskResources;windows=@{nsis=@{startMenuFolder='WorkMemo Preview';installerHooks=(Join-Path $taskRoot 'src-tauri\installer\browser-bridge.nsh')}}}}
 $taskOverlayPath = Join-Path $taskOutput 'installer.conf.json'
 [IO.File]::WriteAllText($taskOverlayPath, ($taskOverlay | ConvertTo-Json -Depth 10), $taskUtf8)
 Push-Location $taskRoot
@@ -59,11 +61,12 @@ try {
 } finally { Pop-Location }
 if ((Get-FileHash -LiteralPath $taskBinary).Hash -ne (Get-FileHash -LiteralPath (Join-Path $taskStaging 'workmemo-preview.exe')).Hash) { throw 'Bundler changed published application bytes.' }
 $taskGeneratedSetup = Join-Path $taskRoot ('src-tauri\target\release\bundle\nsis\WorkMemo Preview_' + $taskVersion + '_x64-setup.exe')
-$taskSetupName = 'WorkMemo_' + $taskVersion + '_x64-preview-setup.exe'
+$taskSetupName = 'WorkMemo_' + $taskVersion + '_x64-preview-setup-' + $InstallerRevision + '.exe'
 Copy-Item -LiteralPath $taskGeneratedSetup -Destination (Join-Path $taskOutput $taskSetupName) -Force
-Copy-Item -LiteralPath (Join-Path $taskRoot 'docs\PREVIEW-INSTALLER-GUIDE.md') -Destination (Join-Path $taskOutput 'INSTALLER-GUIDE.md') -Force
-$taskChecksums = foreach ($taskName in @($taskSetupName,'INSTALLER-GUIDE.md')) {
+Copy-Item -LiteralPath (Join-Path $taskRoot 'docs\BROWSER-REGISTRATION-FIX.md') -Destination (Join-Path $taskOutput 'REGISTRATION-FIX-GUIDE.md') -Force
+Copy-Item -LiteralPath (Join-Path $taskRoot 'scripts\register-preview-browser.cmd') -Destination (Join-Path $taskOutput 'Register-Browser.cmd') -Force
+$taskChecksums = foreach ($taskName in @($taskSetupName,'REGISTRATION-FIX-GUIDE.md','Register-Browser.cmd')) {
     (Get-FileHash -LiteralPath (Join-Path $taskOutput $taskName)).Hash.ToLowerInvariant() + '  ' + $taskName
 }
-[IO.File]::WriteAllLines((Join-Path $taskOutput 'INSTALLER-SHA256SUMS.txt'), $taskChecksums, $taskUtf8)
+[IO.File]::WriteAllLines((Join-Path $taskOutput 'REGISTRATION-FIX-SHA256SUMS.txt'), $taskChecksums, $taskUtf8)
 Write-Output ('Installer delivery: ' + $taskOutput)
