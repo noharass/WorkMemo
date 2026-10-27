@@ -27,7 +27,26 @@
 
 ## 检查记录
 
-准备中。实际构建、解包核对、上传、公开下载复算结果在完成后补充。此前 102 个测试执行项和 release 构建通过属于上一轮实际检查，本轮复用相同应用字节，不重复声称已重新执行这些业务测试。
+- 脚本语法解析通过，Tauri tauri bundle --bundles nsis --no-binary-patching 实际执行成功。安装器约 2.33 MiB。打包日志与生成脚本确认 currentUser、WorkMemo Preview、workmemo-preview.exe、com.workmemo.test.monitor。
+- 7-Zip 对实际 EXE 执行完整性测试及解包成功；逐项核对主程序、主机、profile、扩展、注册脚本、说明、许可与构建信息，共 15 个应用/资源文件，字节与原始输入完全一致。另有标准 NSIS 插件及卸载器。
+- 主程序使用原公开 ZIP 的原始字节，没有因为打包写入 bundle 类型标记。程序与数据逻辑没有变化，本轮没有重新执行此前已通过的 102 个业务测试执行项。
+- EXE、安装说明和安装校验文件上传成功，GitHub 返回的大小、SHA256 与本地一致；又从 3 个公开地址无认证下载复算，全部一致。
+- 原有 4 个资产的大小、摘要均未改变。Release 正文顶部已加入 EXE 直链，目前共 7 个公开资产；latest 稳定版 API 仍为 v0.1.1。
+- 没有实际安装、卸载或启动本安装器中的程序，未为验收改动用户任务、数据库或现有主机注册。原生交互及完整安装流程仍待验收；没有把解包检查称为实际安装通过。
+
+## 下载与校验
+
+[下载 EXE 安装包](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.2/WorkMemo_0.2.0-alpha.2_x64-preview-setup.exe) · [安装说明](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.2/INSTALLER-GUIDE.md) · [校验文件](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.2/INSTALLER-SHA256SUMS.txt)
+
+交付目录 E:\WorkMemo\artifacts\0.2.0-alpha.2\installer，公开回执保存 INSTALLER-RELEASE-RECEIPT.json，公开下载复算副本保存 download-check；这些产物不提交 Git。
+
+| 文件 | 字节数 | SHA256 |
+| --- | ---: | --- |
+| WorkMemo_0.2.0-alpha.2_x64-preview-setup.exe | 2438793 | 1f9c467a42718e84e7bb300158c545befd83f4c339a8d32095becff26e979057 |
+| INSTALLER-GUIDE.md | 3356 | bb9d739eaa9b7eed8276ff3b830fac16bab6f688c156de2be193bcaed0ab352c |
+| INSTALLER-SHA256SUMS.txt | 198 | ffdcbf73923de4a999b494c57fce830f7a5f29611a631615e4df8b3ecc7ffe2e |
+
+应用源码标识 556c85e9eeb9a99ec19e7dc205d03314250fa88a；补充安装器打包源码 3cf68e6，随后文档回执另行提交，不移动原标签。
 
 ## PowerShell 重现
 

@@ -54,6 +54,14 @@ Set-Location 'E:\WorkMemo'
 & .\scripts\package-preview.ps1
 ~~~
 
+用户要求补充的 EXE 安装器使用已经公开且校验一致的预览 ZIP 字节，不重新编译业务程序：
+
+~~~powershell
+& .\scripts\package-preview-installer.ps1 -PortableZip .\artifacts\0.2.0-alpha.2\WorkMemo_0.2.0-alpha.2_windows_x64_preview.zip -ExpectedSha256 ec9e0fa7da07655eadf2515eac77ba406f686daf5fa6f7f68a34605e74e1dcc6
+~~~
+
+输出到 artifacts/0.2.0-alpha.2/installer。NSIS 当前用户安装器使用 WorkMemo Preview 名称及 workmemo-preview.exe 进程，包含主机与扩展，沿用独立测试数据。安装器打包与解包字节核对已完成，实际安装/卸载仍待验收；公开下载和校验结果见 RELEASE-0.2.0-alpha.2-INSTALLER.md。
+
 下面正式安装器打包记录对应已发布的稳定版源码；预览阶段使用上面的独立数据打包入口。
 
 先保存关闭全部 WorkMemo 窗口，然后在 Windows PowerShell 中执行：

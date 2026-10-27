@@ -4,6 +4,8 @@
 
 目标是提供第二阶段自动记录代码的可下载 Windows x64 预览包，不跨入第三阶段开发。真实 Chrome 接入、5/7 分钟等待、离页 2+10 分钟、锁屏/休眠、托盘、提醒焦点与四皮肤原生透明仍待实际验收。
 
+用户随后要求的 [EXE 安装包](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.2/WorkMemo_0.2.0-alpha.2_x64-preview-setup.exe) 已补充到同一 Release；详见 [安装器交付与完整源码](RELEASE-0.2.0-alpha.2-INSTALLER.md)。下文保留最初 4 个资产的检查回执，原有资产字节未替换；目前另有安装器、安装说明、安装器校验文件，共 7 个公开资产。
+
 ## 文件与兼容性
 
 | 状态 | 完整路径 |
@@ -26,7 +28,7 @@
 
 应用版本统一为 0.2.0-alpha.2。完整变更文本代码见 [RELEASE-0.2.0-alpha.2-SOURCE.md](RELEASE-0.2.0-alpha.2-SOURCE.md)，原始代码保存在表中各文件；历史第二阶段源码汇编保持原样。
 
-没有改动业务计时、数据库迁移、历史或换肤代码。预览包使用 com.workmemo.test.monitor，沿用本机独立验收数据标识；正式 com.workmemo.desktop 不变。使用独立窗口标题、release 优化的主程序和配套原生主机，不发布安装器，不覆盖 v0.1.1 Release。
+没有改动业务计时、数据库迁移、历史或换肤代码。预览包使用 com.workmemo.test.monitor，沿用本机独立验收数据标识；正式 com.workmemo.desktop 不变。使用独立窗口标题、release 优化的主程序和配套原生主机；首次发布 ZIP，后来按用户要求补充独立安装器，均不覆盖 v0.1.1 Release。
 
 注册脚本随 ZIP 分发，按解压目录生成绝对主机路径；仅在用户主动运行时注册 HKCU 的测试主机，不修改 Chrome 站点权限。PrepareOnly 仅生成本地清单，Unregister 仅移除仍归本目录所有的注册值。打包 ZIP 使用明确文件清单，不递归收集本地配置、工作数据库或 previous-registration 备份。
 

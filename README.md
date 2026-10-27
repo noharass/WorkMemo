@@ -4,7 +4,7 @@
 
 当前源码正在分阶段改造自动工作记录。第一阶段已加入持久计时区间和结束后补填工作量；第二阶段已实现 Windows 输入/系统状态、Chrome 原生通信、5/7 分钟与离页计时规则、托盘和非模态提醒的代码，**真实 Chrome 接入及原生交互尚待验收**。已确认规则见 [自动记录规范](docs/AUTO-TRACKING-SPEC.md)，当前结果见 [第二阶段进度](docs/AUTO-TRACKING-PHASE-2.md)，接入步骤见 [独立验收说明](docs/BROWSER-BRIDGE.md)。源码数据库升级到版本 3 后，旧版程序会拒绝读取；本轮未迁移真实工作数据库。下文成品信息及既有验收记录对应已发布版本，不能作为此次改造的验收结果。
 
-[下载自动记录预览版 v0.2.0-alpha.2](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.2)：Windows x64 免安装包包含独立数据的主程序、浏览器主机、Chrome 扩展及接入脚本；[使用说明](docs/PREVIEW-GUIDE.md) · [发布检查、完整路径与源码](docs/RELEASE-0.2.0-alpha.2.md)。真实浏览器与原生交互仍待验收，稳定版下载保留如下。
+[下载自动记录预览版 v0.2.0-alpha.2](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.2)：[中文 EXE 安装包](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.2/WorkMemo_0.2.0-alpha.2_x64-preview-setup.exe) · [Windows x64 免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.2/WorkMemo_0.2.0-alpha.2_windows_x64_preview.zip)。均包含独立数据的主程序、浏览器主机、Chrome 扩展及接入脚本；[安装版说明](docs/PREVIEW-INSTALLER-GUIDE.md) · [免安装版说明](docs/PREVIEW-GUIDE.md) · [发布检查、完整路径与源码](docs/RELEASE-0.2.0-alpha.2.md)。真实浏览器与原生交互仍待验收，稳定版下载保留如下。
 
 WorkMemo 0.1.1，Windows x64 本地工作记录工具。支持可靠计时、暂停恢复、历史查询、删除确认和每日/类别统计；提供原生透明窗口、Glass / Cream / Dark / Neon 四种皮肤和独立外观保存。本次更新采用用户选定的黑白 C 图标，记录与计时规则沿用已有实现。
 
