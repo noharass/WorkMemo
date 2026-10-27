@@ -153,7 +153,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1 | 2 | 3 | 4 => {}
+            1 | 2 | 3 | 4 | 5 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -172,6 +172,12 @@ impl Store {
             tx.execute_batch(include_str!("../migrations/004_tracking_times.sql"))
                 .map_err(db_error)?;
             tx.pragma_update(None, "user_version", 4)
+                .map_err(db_error)?;
+        }
+        if version < 5 {
+            tx.execute_batch(include_str!("../migrations/005_monitor_options.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 5)
                 .map_err(db_error)?;
         }
         // Never infer work while the application was closed from wall-clock time.
@@ -307,6 +313,17 @@ impl Store {
         })
     }
 
+    pub fn start_checked(
+        &mut self,
+        input: StartInput,
+        expected_active_id: Option<i64>,
+    ) -> Result<()> {
+        if self.active()?.map(|record| record.id) != expected_active_id {
+            return Err("当前任务已变化，请刷新后重新确认。".into());
+        }
+        self.start(input)
+    }
+
     pub fn start(&mut self, input: StartInput) -> Result<()> {
         if self.monitor.active && !self.monitor.status.native_available {
             return Err("当前无法确认系统活动状态，暂不能开始计时；已有记录保持保存。".into());
@@ -368,11 +385,19 @@ impl Store {
     pub fn pause(&mut self, id: i64) -> Result<()> {
         let record = self.current(id)?;
         if record.is_paused {
-            self.connection.execute("UPDATE work_records SET pause_reason='MANUAL',control_mode='MANUAL',recovery_pending=0 WHERE id=?1",[id]).map_err(db_error)?;
+            self.connection
+                .execute(
+                    "UPDATE work_records SET pause_reason='MANUAL' WHERE id=?1",
+                    [id],
+                )
+                .map_err(db_error)?;
+            self.monitor.input_floor = self.clock.now().ticks_ms;
             self.monitor.status.idle_warning = false;
             return Ok(());
         }
-        self.pause_with_reason(id, "MANUAL")
+        self.pause_with_reason(id, "MANUAL")?;
+        self.monitor.input_floor = self.clock.now().ticks_ms;
+        Ok(())
     }
 
     fn pause_with_reason(&mut self, id: i64, reason: &str) -> Result<()> {
@@ -391,7 +416,13 @@ impl Store {
         if self.monitor.active && !self.monitor.status.native_available {
             return Err("当前无法确认系统活动状态，暂不能继续计时。".into());
         }
-        self.resume_at(id, self.clock.now(), "MANUAL")
+        let record = self.current(id)?;
+        let mode = if record.control_mode == "AUTO" {
+            "AUTO"
+        } else {
+            "MANUAL"
+        };
+        self.resume_at(id, self.clock.now(), mode)
     }
     fn resume_at(&mut self, id: i64, now: TimePoint, mode: &str) -> Result<()> {
         let record = self.current(id)?;

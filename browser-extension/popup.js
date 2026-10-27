@@ -1,4 +1,26 @@
 import { permissionOrigins } from './matching.js';
+import LinkOutlined from '@ant-design/icons-svg/es/asn/LinkOutlined';
+import GlobalOutlined from '@ant-design/icons-svg/es/asn/GlobalOutlined';
+import SafetyCertificateOutlined from '@ant-design/icons-svg/es/asn/SafetyCertificateOutlined';
+import ReloadOutlined from '@ant-design/icons-svg/es/asn/ReloadOutlined';
+import './popup.css';
+
+// Render the locally bundled Ant Design SVG definitions without injecting HTML.
+function iconNode(definition) {
+  function make(node) {
+    const element = document.createElementNS('http://www.w3.org/2000/svg', node.tag);
+    for (const [key, value] of Object.entries(node.attrs ?? {})) element.setAttribute(key, value);
+    for (const child of node.children ?? []) element.append(make(child));
+    return element;
+  }
+  const icon = make(definition.icon);
+  icon.setAttribute('aria-hidden', 'true');
+  icon.setAttribute('fill', 'currentColor');
+  return icon;
+}
+for (const [id, icon] of [['connection-icon', LinkOutlined], ['sites-icon', GlobalOutlined], ['grant-icon', SafetyCertificateOutlined], ['refresh-icon', ReloadOutlined]]) {
+  document.getElementById(id).append(iconNode(icon));
+}
 const status = document.querySelector('#status');
 const list = document.querySelector('#rules');
 const permissionStatus = document.querySelector('#permissions');

@@ -1,7 +1,14 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WorkMemo 工作监测</title><link rel="stylesheet" href="popup.css"></head>
-<body><h1>WorkMemo 工作监测</h1><p id="status" role="status">正在读取连接状态…</p>
-<p>仅使用授权工作站点的当前标签页 URL 判断规则，不读取网页内容或输入文本。匹配结果只发给本机 WorkMemo。</p>
-<ul id="rules"></ul><p id="permissions"></p>
-<button id="grant" disabled>同步工作站点授权</button><button id="refresh">刷新连接状态</button>
-<p id="error" role="alert"></p><p>修改 WorkMemo 工作 URL 后，请在这里同步授权。未授权或连接中断时不会猜测工作时间。</p>
-<script type="module" src="popup.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WorkMemo 工作监测</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <main class="popup-shell">
+    <header class="popup-header"><span class="brand-mark" aria-hidden="true">C</span><div><p class="eyebrow">WORKMEMO</p><h1>工作监测</h1></div></header>
+    <section class="status-card" aria-label="连接状态"><div class="section-label"><span id="connection-icon" aria-hidden="true"></span>本机连接</div><p id="status" role="status">正在读取连接状态…</p></section>
+    <section class="rules-card" aria-labelledby="rules-title"><div class="section-label"><span id="sites-icon" aria-hidden="true"></span><span id="rules-title">已配置工作页面</span></div><ul id="rules"></ul><p id="permissions" class="permissions"></p></section>
+    <div class="actions"><button id="grant" class="primary-action" disabled><span id="grant-icon" aria-hidden="true"></span>同步工作站点授权</button><button id="refresh" class="secondary-action"><span id="refresh-icon" aria-hidden="true"></span>刷新连接状态</button></div>
+    <p id="error" role="alert"></p>
+    <p class="privacy">仅使用授权工作站点的当前标签页 URL 判断规则，不读取网页内容或输入文本。匹配结果只发给本机 WorkMemo。修改工作 URL 后，请在这里同步授权。未授权或连接中断时不会猜测工作时间。</p>
+  </main>
+  <script type="module" src="popup.js"></script>
+</body></html>

@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useEffect, useState, type FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { CATEGORIES, formatDuration, formatTime, type SettleInput, type WorkRecord } from "./types";
@@ -25,7 +26,7 @@ export function SettlementForm({ record, busy, onSave }: {
       有效结束 {record.end_time === null ? "—" : formatTime(record.end_time)}<br />
       系统确认 {record.confirmed_end_time === null ? "—" : formatTime(record.confirmed_end_time)}<br />
       有效工时 {formatDuration(record.duration_seconds)}</p>
-    <div className="field-row">
+    <div className="field-row grid grid-cols-2 gap-3">
       <label>工作类别<select value={category} disabled={busy} onChange={(event) => setCategory(event.target.value)}>
         {CATEGORIES.map(value => <option key={value}>{value}</option>)}
       </select></label>
@@ -35,7 +36,7 @@ export function SettlementForm({ record, busy, onSave }: {
     <label>备注（选填）<textarea rows={2} value={remark} disabled={busy} maxLength={4000}
       onChange={(event) => setRemark(event.target.value)} /></label>
     {error && <p className="inline-error" role="alert">{error}</p>}
-    <button type="submit" disabled={busy}>{busy ? "正在保存…" : "填写工作量并保存"}</button>
+    <button type="submit" disabled={busy}><span>{busy ? "正在保存…" : "填写工作量并保存"}</span><Icon name="check" /></button>
   </form>;
 }
 

@@ -6,6 +6,8 @@ import { spawnSync } from 'node:child_process';
 export const extensionFiles = JSON.parse(readFileSync(new URL('./browser-resource-files.json', import.meta.url), 'utf8'));
 export function stage({ root, binary, output, identifier, version }) {
   if (!/^com\.workmemo\.(desktop|test\.[a-z0-9_.-]+)$/.test(identifier)) throw new Error('Unsupported profile');
+  const popupBuild = spawnSync(process.execPath, [join(root, 'scripts', 'build-extension-popup.mjs')], { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 60000 });
+  if (popupBuild.error || popupBuild.status !== 0) throw new Error(`Cannot build extension popup: ${popupBuild.stderr || popupBuild.error}`);
   mkdirSync(join(output, 'extension'), { recursive: true });
   if (resolve(binary) !== resolve(output, 'workmemo-browser.exe')) cpSync(binary, join(output, 'workmemo-browser.exe'));
   writeFileSync(join(output, 'workmemo-browser.profile.json'), JSON.stringify({ identifier }));
@@ -13,7 +15,10 @@ export function stage({ root, binary, output, identifier, version }) {
   if (probe.error || probe.status !== 0) throw new Error(`Cannot inspect bridge: ${probe.stderr || probe.error}`);
   const info = JSON.parse(probe.stdout);
   if (info.version !== version || info.identifier !== identifier || info.protocol !== 1) throw new Error('Bridge version/profile mismatch');
-  for (const name of extensionFiles) cpSync(join(root, 'browser-extension', name), join(output, 'extension', name));
+  for (const name of extensionFiles) {
+    const source = ['popup.js', 'popup.css'].includes(name) ? join(root, 'src-tauri', 'target', 'extension-popup', name) : join(root, 'browser-extension', name);
+    cpSync(source, join(output, 'extension', name));
+  }
   const host = identifier === 'com.workmemo.desktop' ? 'com.workmemo.browser_bridge' : 'com.workmemo.browser_bridge_test';
   writeFileSync(join(output, 'extension', 'bridge-config.js'), `export const HOST_NAME = ${JSON.stringify(host)};\n`);
   for (const [source, target] of [['register-preview-browser.cmd', 'Register-Browser.cmd'], ['register-preview-browser.ps1', 'Register-Browser.ps1']]) cpSync(join(root, 'scripts', source), join(output, target));

@@ -297,8 +297,15 @@ pub async fn get_snapshot(state: State<'_, Backend>) -> Result<Snapshot> {
 }
 
 #[tauri::command]
-pub async fn start_task(state: State<'_, Backend>, input: StartInput) -> Result<Snapshot> {
-    execute(state.inner.clone(), move |store| store.start(input)).await
+pub async fn start_task(
+    state: State<'_, Backend>,
+    input: StartInput,
+    expected_active_id: Option<i64>,
+) -> Result<Snapshot> {
+    execute(state.inner.clone(), move |store| {
+        store.start_checked(input, expected_active_id)
+    })
+    .await
 }
 
 #[tauri::command]

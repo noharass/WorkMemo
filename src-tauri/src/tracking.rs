@@ -13,12 +13,12 @@ pub struct Notice {
 
 impl Store {
     pub fn monitor_config(&self) -> Result<MonitorConfig> {
-        let (enabled, revision, times) = self
+        let (enabled, revision, times, poll_interval_seconds, auto_resume_manual) = self
             .connection
             .query_row(
-                "SELECT enabled,revision,idle_warning_seconds,idle_end_seconds,away_pause_seconds,hold_seconds FROM monitoring_settings WHERE id=1",
+                "SELECT enabled,revision,idle_warning_seconds,idle_end_seconds,away_pause_seconds,hold_seconds,poll_interval_seconds,auto_resume_manual FROM monitoring_settings WHERE id=1",
                 [],
-                |r| Ok((r.get(0)?, r.get(1)?, TrackingTimes { idle_warning_seconds: r.get(2)?, idle_end_seconds: r.get(3)?, away_pause_seconds: r.get(4)?, hold_seconds: r.get(5)? })),
+                |r| Ok((r.get(0)?, r.get(1)?, TrackingTimes { idle_warning_seconds: r.get(2)?, idle_end_seconds: r.get(3)?, away_pause_seconds: r.get(4)?, hold_seconds: r.get(5)? }, r.get(6)?, r.get(7)?)),
             )
             .map_err(db_error)?;
         let mut statement = self
@@ -37,7 +37,12 @@ impl Store {
             .collect::<rusqlite::Result<Vec<_>>>()
             .map_err(db_error)?;
         times.validate()?;
+        if !(1..=5).contains(&poll_interval_seconds) {
+            return Err("检测间隔必须为 1 到 5 秒。".into());
+        }
         Ok(MonitorConfig {
+            poll_interval_seconds,
+            auto_resume_manual,
             times,
             enabled,
             revision,
@@ -47,6 +52,9 @@ impl Store {
 
     pub fn save_monitor_config(&mut self, input: ConfigInput) -> Result<MonitorConfig> {
         input.times.validate()?;
+        if !(1..=5).contains(&input.poll_interval_seconds) {
+            return Err("检测间隔必须为 1 到 5 秒。".into());
+        }
         if input.rules.len() > 50 || (input.enabled && input.rules.is_empty()) {
             return Err("请配置 1 到 50 条工作 URL 后启用自动识别。".into());
         }
@@ -90,8 +98,8 @@ impl Store {
             .map_err(db_error)?;
         }
         tx.execute(
-            "UPDATE monitoring_settings SET enabled=?1,revision=revision+1,idle_warning_seconds=?2,idle_end_seconds=?3,away_pause_seconds=?4,hold_seconds=?5 WHERE id=1",
-            params![input.enabled,input.times.idle_warning_seconds,input.times.idle_end_seconds,input.times.away_pause_seconds,input.times.hold_seconds],
+            "UPDATE monitoring_settings SET enabled=?1,revision=revision+1,idle_warning_seconds=?2,idle_end_seconds=?3,away_pause_seconds=?4,hold_seconds=?5,poll_interval_seconds=?6,auto_resume_manual=?7 WHERE id=1",
+            params![input.enabled,input.times.idle_warning_seconds,input.times.idle_end_seconds,input.times.away_pause_seconds,input.times.hold_seconds,input.poll_interval_seconds,input.auto_resume_manual],
         )
         .map_err(db_error)?;
         tx.commit().map_err(db_error)?;
@@ -127,23 +135,23 @@ impl Store {
     }
 
     pub fn monitor_sample_due(&self, now: i64) -> bool {
-        self.monitor
-            .native
-            .is_none_or(|sample| now.saturating_sub(sample.at.ticks_ms) >= INPUT_POLL_MS)
-            || self.monitor.last_input.is_some_and(|last| {
-                [
-                    self.monitor.config.times.idle_warning_seconds * 1000,
-                    self.monitor.config.times.idle_end_seconds * 1000,
-                ]
-                .iter()
-                .any(|threshold| {
-                    now >= last + threshold
-                        && self
-                            .monitor
-                            .native
-                            .is_none_or(|s| s.at.ticks_ms < last + threshold)
-                })
+        self.monitor.native.is_none_or(|sample| {
+            now.saturating_sub(sample.at.ticks_ms)
+                >= self.monitor.config.poll_interval_seconds * 1000
+        }) || self.monitor.last_input.is_some_and(|last| {
+            [
+                self.monitor.config.times.idle_warning_seconds * 1000,
+                self.monitor.config.times.idle_end_seconds * 1000,
+            ]
+            .iter()
+            .any(|threshold| {
+                now >= last + threshold
+                    && self
+                        .monitor
+                        .native
+                        .is_none_or(|s| s.at.ticks_ms < last + threshold)
             })
+        })
     }
 
     pub fn observe_browser_page(&mut self, client: u64, page: PageSample) {
@@ -291,12 +299,40 @@ impl Store {
             && self.monitor.page.as_ref().is_some_and(|p| p.focused)
             && rule.is_some();
         if matched && !self.monitor.page_was_matched {
-            self.monitor.entered_at = Some(now.ticks_ms);
+            self.monitor.entered_at = self.monitor.page.as_ref().map(|page| page.at.ticks_ms);
         }
         if !matched {
             self.monitor.entered_at = None;
         }
         self.monitor.page_was_matched = matched;
+
+        // Manual pauses remain protected from deadlines. A new input after the pause,
+        // on a confirmed matching page, may explicitly resume the same record under
+        // automatic monitoring when the user has enabled this behavior.
+        if matched && native_ok && self.monitor.config.auto_resume_manual {
+            if let Some(record) = self.active()?.filter(|r| {
+                r.is_paused && !r.recovery_pending && r.pause_reason.as_deref() == Some("MANUAL")
+            }) {
+                if let (Some(last), Some(entered)) = (new_input, self.monitor.entered_at) {
+                    if last >= entered
+                        && last > self.monitor.input_floor
+                        && now.ticks_ms - last <= RECENT_INPUT_MS
+                    {
+                        self.resume_at(
+                            record.id,
+                            TimePoint {
+                                ticks_ms: last,
+                                wall_ms: now
+                                    .wall_ms
+                                    .saturating_sub(now.ticks_ms - last)
+                                    .max(record.start_time),
+                            },
+                            "AUTO",
+                        )?;
+                    }
+                }
+            }
+        }
 
         if let Some(record) = self.active()?.filter(|r| !protected(r)) {
             if record.control_mode == "AUTO" && (!page_known || !native_ok) {
@@ -468,7 +504,11 @@ impl Store {
             .active()?
             .is_some_and(|r| r.pause_reason.as_deref() == Some("MANUAL"))
         {
-            "已手动暂停，等待明确继续"
+            if self.monitor.config.auto_resume_manual {
+                "已手动暂停，返回工作页面操作后自动继续"
+            } else {
+                "已手动暂停，等待明确继续"
+            }
         } else if !connected {
             "等待 Chrome 扩展连接"
         } else if !page_known {

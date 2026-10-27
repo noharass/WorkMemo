@@ -21,6 +21,8 @@ impl Harness {
         .unwrap();
         store
             .save_monitor_config(ConfigInput {
+                poll_interval_seconds: 1,
+                auto_resume_manual: true,
                 times: TrackingTimes::default(),
                 enabled: true,
                 expected_revision: 0,
@@ -242,8 +244,9 @@ fn first_input_at_idle_deadline_starts_new_record_instead_of_merging() {
 }
 
 #[test]
-fn manual_pause_is_never_ended_resumed_or_bypassed_and_manual_resume_ignores_url() {
+fn manual_pause_remains_protected_when_auto_resume_disabled() {
     let mut h = Harness::new();
+    h.store.monitor.config.auto_resume_manual = false;
     let id = h.start();
     h.advance(10_000, true);
     h.store.pause(id).unwrap();
@@ -256,9 +259,10 @@ fn manual_pause_is_never_ended_resumed_or_bypassed_and_manual_resume_ignores_url
     h.tick();
     h.store.resume(id).unwrap();
     h.advance(180_000, true);
-    assert_eq!(h.saved(id).control_mode, "MANUAL");
-    assert!(!h.saved(id).is_paused);
-    assert_eq!(h.saved(id).duration_ms, 190_000);
+    assert_eq!(h.saved(id).control_mode, "AUTO");
+    assert!(h.saved(id).is_paused);
+    assert_eq!(h.saved(id).pause_reason.as_deref(), Some("AWAY"));
+    assert_eq!(h.saved(id).duration_ms, 135_000);
 }
 
 #[test]
@@ -351,6 +355,8 @@ fn config_validation_conflict_and_storage_failure_keep_previous_rules() {
         assert!(
             h.store
                 .save_monitor_config(ConfigInput {
+                    poll_interval_seconds: 1,
+                    auto_resume_manual: true,
                     times: TrackingTimes::default(),
                     enabled: true,
                     expected_revision: original.revision,
@@ -366,6 +372,8 @@ fn config_validation_conflict_and_storage_failure_keep_previous_rules() {
     assert!(
         h.store
             .save_monitor_config(ConfigInput {
+                poll_interval_seconds: 1,
+                auto_resume_manual: true,
                 times: TrackingTimes::default(),
                 enabled: true,
                 expected_revision: original.revision,
@@ -750,6 +758,8 @@ fn configured_deadlines_control_work_and_status() {
     };
     h.store
         .save_monitor_config(ConfigInput {
+            poll_interval_seconds: 1,
+            auto_resume_manual: true,
             enabled: true,
             expected_revision: cfg.revision,
             times: cfg.times.clone(),
@@ -787,6 +797,8 @@ fn configured_idle_deadline_and_notice_are_consistent() {
     let cfg = h.store.monitor_config().unwrap();
     h.store
         .save_monitor_config(ConfigInput {
+            poll_interval_seconds: 1,
+            auto_resume_manual: true,
             enabled: true,
             expected_revision: cfg.revision,
             times: TrackingTimes {
@@ -859,6 +871,8 @@ fn schema_three_migrates_defaults_and_settings_persist_with_validation() {
         assert!(
             store
                 .save_monitor_config(ConfigInput {
+                    poll_interval_seconds: 1,
+                    auto_resume_manual: true,
                     enabled: true,
                     expected_revision: 8,
                     times: invalid,
@@ -869,6 +883,8 @@ fn schema_three_migrates_defaults_and_settings_persist_with_validation() {
         assert_eq!(store.monitor_config().unwrap().revision, 8);
         store
             .save_monitor_config(ConfigInput {
+                poll_interval_seconds: 1,
+                auto_resume_manual: true,
                 enabled: true,
                 expected_revision: 8,
                 times: chosen.clone(),
@@ -892,6 +908,8 @@ fn saving_settings_clears_old_away_deadline_and_requires_fresh_input() {
     let cfg = h.store.monitor_config().unwrap();
     h.store
         .save_monitor_config(ConfigInput {
+            poll_interval_seconds: 1,
+            auto_resume_manual: true,
             enabled: true,
             expected_revision: cfg.revision,
             times: cfg.times,
@@ -913,4 +931,301 @@ fn saving_settings_clears_old_away_deadline_and_requires_fresh_input() {
     h.step(1_000, true);
     assert!(!h.saved(id).is_paused);
     assert_eq!(h.store.active().unwrap().unwrap().id, id);
+}
+
+#[test]
+fn manual_pause_auto_resumes_same_record_only_after_fresh_matching_input() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.advance(10_000, true);
+    h.store.pause(id).unwrap();
+    h.step(1_000, false);
+    assert!(h.saved(id).is_paused);
+    h.matched = false;
+    h.step(1_000, true);
+    assert!(h.saved(id).is_paused);
+    h.matched = true;
+    h.step(1, false);
+    assert!(h.saved(id).is_paused);
+    h.step(1_000, true);
+    assert_eq!(h.saved(id).id, id);
+    assert!(!h.saved(id).is_paused);
+    assert_eq!(h.saved(id).control_mode, "AUTO");
+    assert_eq!(h.saved(id).duration_ms, 10_000);
+    h.advance(121_000, true);
+    assert!(!h.saved(id).is_paused);
+    h.matched = false;
+    h.step(1_000, true);
+    h.advance(120_000, true);
+    assert_eq!(h.saved(id).pause_reason.as_deref(), Some("AWAY"));
+}
+
+#[test]
+fn manual_started_active_is_not_replaced_and_automatic_resume_switches_same_record_to_auto() {
+    let mut h = Harness::new();
+    h.store
+        .start(StartInput {
+            category: "文档".into(),
+            quantity: None,
+            remark: "".into(),
+        })
+        .unwrap();
+    let id = h.store.active().unwrap().unwrap().id;
+    h.advance(10_000, true);
+    assert_eq!(h.store.active().unwrap().unwrap().id, id);
+    assert_eq!(h.saved(id).control_mode, "MANUAL");
+    h.store.pause(id).unwrap();
+    h.step(1_000, true);
+    assert_eq!(h.saved(id).id, id);
+    assert!(!h.saved(id).is_paused);
+    assert_eq!(h.saved(id).control_mode, "AUTO");
+}
+
+#[test]
+fn checked_start_rejects_stale_or_missing_confirmation_without_modifying_task() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.store.pause(id).unwrap();
+    let input = || StartInput {
+        category: "文档".into(),
+        quantity: None,
+        remark: "".into(),
+    };
+    assert!(h.store.start_checked(input(), None).is_err());
+    assert!(h.store.start_checked(input(), Some(id + 1)).is_err());
+    assert_eq!(h.store.active().unwrap().unwrap().id, id);
+    assert_eq!(h.saved(id).status, "WORKING");
+    h.store.start_checked(input(), Some(id)).unwrap();
+    assert_eq!(h.saved(id).end_reason.as_deref(), Some("SWITCH"));
+    assert_ne!(h.store.active().unwrap().unwrap().id, id);
+}
+
+#[test]
+fn browser_evidence_time_allows_first_input_before_next_state_machine_tick() {
+    let mut h = Harness::new();
+    h.matched = false;
+    h.step(1_000, true);
+    let at = h.clock.now();
+    h.store.observe_page(PageSample {
+        at,
+        focused: true,
+        rule_id: Some(h.store.monitor.config.rules[0].id),
+        revision: h.store.monitor.config.revision,
+        ready: true,
+    });
+    h.clock.advance(100);
+    let input = h.clock.now();
+    h.clock.advance(400);
+    let now = h.clock.now();
+    h.store
+        .monitor_tick(
+            NativeSample {
+                at: now,
+                last_input_ticks: input.ticks_ms,
+                chrome_foreground: true,
+                unlocked: true,
+                reliable: true,
+            },
+            now,
+        )
+        .unwrap();
+    let active = h
+        .store
+        .active()
+        .unwrap()
+        .expect("first input after confirmed page should start");
+    assert_eq!(active.control_mode, "AUTO");
+    assert_eq!(active.duration_ms, 400);
+}
+
+#[test]
+fn monitor_interval_is_validated_persisted_and_changes_sample_due() {
+    let mut h = Harness::new();
+    let cfg = h.store.monitor_config().unwrap();
+    assert_eq!(cfg.poll_interval_seconds, 1);
+    assert!(cfg.auto_resume_manual);
+    let input = |seconds| ConfigInput {
+        enabled: true,
+        expected_revision: cfg.revision,
+        times: cfg.times.clone(),
+        poll_interval_seconds: seconds,
+        auto_resume_manual: false,
+        rules: cfg
+            .rules
+            .iter()
+            .map(|r| RuleInput {
+                url_prefix: r.url_prefix.clone(),
+                category: r.category.clone(),
+            })
+            .collect(),
+    };
+    assert!(h.store.save_monitor_config(input(0)).is_err());
+    assert!(h.store.save_monitor_config(input(6)).is_err());
+    h.store.save_monitor_config(input(5)).unwrap();
+    let saved = h.store.monitor_config().unwrap();
+    assert_eq!(saved.poll_interval_seconds, 5);
+    assert!(!saved.auto_resume_manual);
+    let now = h.clock.now();
+    h.store.monitor.native = Some(NativeSample {
+        at: now,
+        last_input_ticks: 0,
+        chrome_foreground: true,
+        unlocked: true,
+        reliable: true,
+    });
+    assert!(!h.store.monitor_sample_due(now.ticks_ms + 4_999));
+    assert!(h.store.monitor_sample_due(now.ticks_ms + 5_000));
+}
+
+#[test]
+fn schema_four_migrates_options_without_changing_records_or_existing_thresholds() {
+    let directory = TestDirectory::new();
+    let path = directory.db();
+    let clock = TestClock::new();
+    {
+        let c = Connection::open(&path).unwrap();
+        c.execute_batch(include_str!("../migrations/001_initial.sql"))
+            .unwrap();
+        c.execute_batch(include_str!("../migrations/002_settlement.sql"))
+            .unwrap();
+        c.execute_batch(include_str!("../migrations/003_monitoring.sql"))
+            .unwrap();
+        c.execute_batch(include_str!("../migrations/004_tracking_times.sql"))
+            .unwrap();
+        c.execute_batch("PRAGMA user_version=4; INSERT INTO work_urls(url_prefix,category) VALUES('https://work.example/','开发'); UPDATE monitoring_settings SET enabled=1,revision=9,idle_warning_seconds=12,idle_end_seconds=23,away_pause_seconds=34,hold_seconds=45 WHERE id=1; INSERT INTO work_records(id,category,quantity,start_time,end_time,duration_ms,duration_seconds,status,is_paused,settlement_status,confirmed_end_time) VALUES(17,'开发',NULL,1000,2250,1250,1,'FINISHED',1,'PENDING',7000);").unwrap();
+    }
+    {
+        let mut store = Store::open(&path, Box::new(clock.clone())).unwrap();
+        let cfg = store.monitor_config().unwrap();
+        assert_eq!(cfg.revision, 9);
+        assert_eq!(cfg.poll_interval_seconds, 1);
+        assert!(cfg.auto_resume_manual);
+        assert_eq!(
+            cfg.times,
+            TrackingTimes {
+                idle_warning_seconds: 12,
+                idle_end_seconds: 23,
+                away_pause_seconds: 34,
+                hold_seconds: 45
+            }
+        );
+        assert_eq!(store.record(17).unwrap().duration_ms, 1250);
+        store
+            .save_monitor_config(ConfigInput {
+                enabled: true,
+                expected_revision: 9,
+                times: cfg.times,
+                poll_interval_seconds: 5,
+                auto_resume_manual: false,
+                rules: cfg
+                    .rules
+                    .into_iter()
+                    .map(|r| RuleInput {
+                        url_prefix: r.url_prefix,
+                        category: r.category,
+                    })
+                    .collect(),
+            })
+            .unwrap();
+    }
+    let store = Store::open(&path, Box::new(clock)).unwrap();
+    let cfg = store.monitor_config().unwrap();
+    assert_eq!(cfg.poll_interval_seconds, 5);
+    assert!(!cfg.auto_resume_manual);
+    assert_eq!(store.record(17).unwrap().duration_ms, 1250);
+}
+
+#[test]
+fn manually_paused_task_is_not_auto_resumed_after_restart() {
+    let directory = TestDirectory::new();
+    let path = directory.db();
+    let clock = TestClock::new();
+    let id;
+    {
+        let mut store = Store::open(&path, Box::new(clock.clone())).unwrap();
+        store
+            .start(StartInput {
+                category: "开发".into(),
+                quantity: None,
+                remark: String::new(),
+            })
+            .unwrap();
+        id = store.active().unwrap().unwrap().id;
+        store.pause(id).unwrap();
+    }
+    let mut store = Store::open(&path, Box::new(clock.clone())).unwrap();
+    let cfg = store.monitor_config().unwrap();
+    store
+        .save_monitor_config(ConfigInput {
+            enabled: true,
+            expected_revision: cfg.revision,
+            times: cfg.times,
+            poll_interval_seconds: 1,
+            auto_resume_manual: true,
+            rules: vec![RuleInput {
+                url_prefix: "https://work.example/".into(),
+                category: "开发".into(),
+            }],
+        })
+        .unwrap();
+    store.activate_monitoring();
+    clock.advance(1000);
+    let now = clock.now();
+    store.observe_page(PageSample {
+        at: now,
+        focused: true,
+        rule_id: Some(store.monitor.config.rules[0].id),
+        revision: store.monitor.config.revision,
+        ready: true,
+    });
+    store
+        .monitor_tick(
+            NativeSample {
+                at: now,
+                last_input_ticks: now.ticks_ms,
+                chrome_foreground: true,
+                unlocked: true,
+                reliable: true,
+            },
+            now,
+        )
+        .unwrap();
+    let record = store.active().unwrap().unwrap();
+    assert_eq!(record.id, id);
+    assert!(record.is_paused && record.recovery_pending);
+}
+
+#[test]
+fn input_before_page_evidence_does_not_start_or_backfill_unknown_time() {
+    let mut h = Harness::new();
+    h.matched = false;
+    h.step(1000, true);
+    let before_evidence = h.clock.now().ticks_ms;
+    h.clock.advance(100);
+    let at = h.clock.now();
+    h.store.observe_page(PageSample {
+        at,
+        focused: true,
+        rule_id: Some(h.store.monitor.config.rules[0].id),
+        revision: h.store.monitor.config.revision,
+        ready: true,
+    });
+    h.clock.advance(400);
+    let now = h.clock.now();
+    h.store
+        .monitor_tick(
+            NativeSample {
+                at: now,
+                last_input_ticks: before_evidence,
+                chrome_foreground: true,
+                unlocked: true,
+                reliable: true,
+            },
+            now,
+        )
+        .unwrap();
+    assert!(h.store.active().unwrap().is_none());
+    h.matched = true;
+    h.step(1000, true);
+    assert!(h.store.active().unwrap().is_some());
 }

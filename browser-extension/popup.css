@@ -1,1 +1,27 @@
-:root{font:13px/1.7 "Segoe UI","Microsoft YaHei UI",sans-serif;color:#25342f;background:#f4f7f4}body{width:320px;margin:0;padding:18px;box-sizing:border-box}h1{font-size:17px;margin:0 0 12px}button{width:100%;padding:10px;margin-top:8px;border:1px solid #96b7a7;border-radius:8px;background:#e0eee6;color:#203e30;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button:focus-visible{outline:2px solid #116746;outline-offset:2px}li{overflow-wrap:anywhere}#error{color:#a42424}#status{font-weight:600}
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "./popup.html";
+
+:root { font: 13px/1.55 "Segoe UI", "Microsoft YaHei UI", sans-serif; color: #263c35; background: #f3f7f3; }
+body { width: 340px; margin: 0; }
+.popup-shell { @apply p-4; }
+.popup-header { @apply flex items-center gap-3 mb-4; }
+.brand-mark { @apply flex items-center justify-center rounded-2xl w-10 h-10 text-lg font-bold; color: #e3fff1; background: #204a3c; }
+.eyebrow { @apply text-xs font-semibold tracking-widest m-0; color: #668779; }
+h1 { @apply text-lg font-semibold m-0; }
+.status-card, .rules-card { @apply rounded-2xl p-3 mb-3; border: 1px solid #d3e4d8; background: #ffffffdb; }
+.section-label { @apply flex items-center gap-2 text-xs font-semibold; color: #507465; }
+.section-label svg, button svg { @apply w-4 h-4; }
+#status { @apply font-semibold m-0 mt-2; overflow-wrap: anywhere; }
+#rules { @apply m-0 mt-2 pl-4; }
+#rules li { @apply my-1; overflow-wrap: anywhere; }
+.permissions { @apply text-xs m-0 mt-2; color: #527568; }
+.actions { @apply flex flex-col gap-2; }
+button { @apply flex items-center justify-center gap-2 w-full rounded-xl py-2.5 px-3 font-semibold cursor-pointer; font-family: inherit; font-size: inherit; border: 1px solid #a6c6b5; }
+.primary-action { color: #fff; background: #28644c; border-color: #28644c; }
+.secondary-action { color: #315c49; background: #eff7f1; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid #116746; outline-offset: 2px; }
+#error { color: #a42424; }
+#error:empty { display: none; }
+.privacy { @apply text-xs m-0 mt-3; color: #607a6d; }

@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { CATEGORIES, formatDuration, formatTime } from "./types";
 import { formatQuantity, historyQueryError, localDate, type Totals } from "./history";
@@ -61,12 +62,12 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
     <div className="settings-heading">
       <h2 id="history-title">历史与统计</h2>
       <button type="button" className="window-control" aria-label="关闭历史与统计"
-        disabled={history.deleting} onClick={onClose}>×</button>
+        disabled={history.deleting} onClick={onClose}><Icon name="close" /></button>
     </div>
     {children}
     <p className="hint">按本机时间的任务开始日期查询。工时包含待补全记录，数量仅汇总已结算记录。跨午夜归入开始日。</p>
     <form className="history-filters" onSubmit={submit} noValidate>
-      <div className="field-row">
+      <div className="field-row grid grid-cols-2 gap-3">
         <label>开始日期<input type="date" min="1970-01-01" max="9999-12-31" value={draft.start_date}
           disabled={!history.native || history.deleting} onChange={(event) => { setFilterError(""); setDraft({ ...draft, start_date: event.target.value }); }} /></label>
         <label>结束日期<input type="date" min="1970-01-01" max="9999-12-31" value={draft.end_date}
@@ -79,14 +80,14 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
           {CATEGORIES.map((category) => <option key={category}>{category}</option>)}
         </select></label>
         <button type="submit" disabled={!history.native || history.loading || history.deleting}>
-          {history.loading ? "正在查询…" : "查询"}</button>
+          <Icon name="search" />{history.loading ? "正在查询…" : "查询"}</button>
       </div>
       <p className="hint">默认最近 30 天，单次最多 366 天；可更改日期查看更早记录。</p>
       {filterError && <p className="inline-error" role="alert">{filterError}</p>}
     </form>
-    <div className="history-tabs" aria-label="查看内容">
-      <button type="button" className="secondary" aria-pressed={tab === "records"} onClick={() => setTab("records")}>工作记录</button>
-      <button type="button" className="secondary" aria-pressed={tab === "stats"} onClick={() => setTab("stats")}>统计汇总</button>
+    <div className="history-tabs grid grid-cols-2 gap-2" aria-label="查看内容">
+      <button type="button" className="secondary" aria-pressed={tab === "records"} onClick={() => setTab("records")}><Icon name="list" />工作记录</button>
+      <button type="button" className="secondary" aria-pressed={tab === "stats"} onClick={() => setTab("stats")}><Icon name="chart" />统计汇总</button>
     </div>
     {!history.native && <p className="notice">浏览器预览不能查询或删除本地工作记录，请打开桌面应用。</p>}
     {history.notice && <p className="history-feedback" role="status">{history.notice}</p>}
@@ -114,15 +115,15 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
                 开始 {formatTime(record.start_time)}<br />结束 {record.end_time !== null ? formatTime(record.end_time) : "—"}</p>
               <p className="record-remark">{record.remark || "未填写备注"}</p>
               <button type="button" className="text-button delete-link" disabled={history.loading || history.deleting}
-                aria-label={`删除 ${record.category} 记录 ${record.id}`} onClick={() => history.chooseDelete(record)}>删除记录</button>
+                aria-label={`删除 ${record.category} 记录 ${record.id}`} onClick={() => history.chooseDelete(record)}><Icon name="delete" />删除记录</button>
             </li>)}
           </ol>
           <nav className="history-pagination" aria-label="历史记录分页">
             <button type="button" className="secondary" disabled={history.loading || result.page <= 1}
-              onClick={() => history.apply({ ...query, page: result.page - 1 })}>上一页</button>
+              onClick={() => history.apply({ ...query, page: result.page - 1 })}><Icon name="left" />上一页</button>
             <span>第 {result.page} / {pages} 页</span>
             <button type="button" className="secondary" disabled={history.loading || result.page >= pages}
-              onClick={() => history.apply({ ...query, page: result.page + 1 })}>下一页</button>
+              onClick={() => history.apply({ ...query, page: result.page + 1 })}>下一页<Icon name="right" /></button>
           </nav>
         </> : <>
           <StatsTable label="按类别汇总" rows={result.categories.map((row) => ({ name: row.category, totals: row.totals }))} />
@@ -142,7 +143,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
         <p className="record-remark">{target.remark || "未填写备注"}</p>
       </div>}
       {history.deleteError && <p className="error-banner" role="alert">{history.deleteError}</p>}
-      <div className="settings-actions">
+      <div className="settings-actions grid grid-cols-2 gap-3">
         <button ref={cancelDelete} type="button" className="secondary" disabled={history.deleting} onClick={history.cancelDelete}>取消</button>
         <button type="button" className="danger-button" disabled={history.deleting} onClick={() => { void history.remove(); }}>
           {history.deleting ? "正在删除…" : "确认删除"}</button>

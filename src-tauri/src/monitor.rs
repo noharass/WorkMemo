@@ -1,7 +1,6 @@
 use crate::clock::TimePoint;
 use serde::{Deserialize, Serialize};
 
-pub const INPUT_POLL_MS: i64 = 5_000;
 pub const RECENT_INPUT_MS: i64 = 5_000;
 pub const BROWSER_TIMEOUT_MS: i64 = 15_000;
 
@@ -55,6 +54,8 @@ pub struct MonitorConfig {
     pub revision: i64,
     pub rules: Vec<WorkUrl>,
     pub times: TrackingTimes,
+    pub poll_interval_seconds: i64,
+    pub auto_resume_manual: bool,
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -69,6 +70,8 @@ pub struct ConfigInput {
     pub expected_revision: i64,
     pub rules: Vec<RuleInput>,
     pub times: TrackingTimes,
+    pub poll_interval_seconds: i64,
+    pub auto_resume_manual: bool,
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -69,11 +70,11 @@ export function NotificationApp() {
       <span className="island-mark">C</span><span className="island-info"><strong>{active?.category ?? "状态读取中"}</strong><small>{snapshot ? (active ? state : "无活动任务") : "状态不可用"}</small></span>
       <strong className="island-time">{active ? formatDuration(active.duration_seconds) : "--:--:--"}</strong>
     </div>
-    <button type="button" className="island-open" onClick={() => { void invoke("show_main", { settlement: false }).catch(failure => setError(String(failure))); }} aria-label="打开 WorkMemo">↗</button>
+    <button type="button" className="island-open" onClick={() => { void invoke("show_main", { settlement: false }).catch(failure => setError(String(failure))); }} aria-label="打开 WorkMemo"><Icon name="open" /></button>
     {(error || readError) && <span className="island-error" role="alert" title={[error, readError].filter(Boolean).join("；")}>!</span>}
   </div></div>;
   return <div className="desktop-frame notice-frame" style={themeStyle(appearance.current)}><div className="app-shell">
-    <header className="notice-titlebar"><span onMouseDown={event => { if (event.button === 0) void getCurrentWindow().startDragging().catch(() => {}); }}>WorkMemo 工作提醒</span>
+    <header className="notice-titlebar flex items-center gap-3"><span onMouseDown={event => { if (event.button === 0) void getCurrentWindow().startDragging().catch(() => {}); }}>WorkMemo 工作提醒</span>
       <button className="secondary" type="button" disabled={!notice || busy} onClick={() => { void later(); }}>稍后</button></header>
     <main className="notice-content">
       {error && <p className="error-banner" role="alert">{error}</p>}

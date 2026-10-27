@@ -8,7 +8,7 @@ import { useAppearance } from "./useAppearance";
 import { themeStyle } from "./themes";
 import { WorkForm } from "./WorkForm";
 import { useWorkSession } from "./useWorkSession";
-import { CATEGORIES, formatDuration, formatTime } from "./types";
+import { CATEGORIES, formatDuration, formatTime, type StartInput } from "./types";
 import { workView } from "./workView";
 import { HistoryPanel } from "./HistoryPanel";
 import { useHistory } from "./useHistory";
@@ -27,6 +27,7 @@ function App() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [settlementOpen, setSettlementOpen] = useState(false);
   const [monitorOpen, setMonitorOpen] = useState(false);
+  const [switchRequest, setSwitchRequest] = useState<{ input: StartInput; id: number; category: string } | null>(null);
   const [navigationError, setNavigationError] = useState("");
   const [density, setDensity] = useState<"compact" | "comfortable">("compact");
   const workspace = useRef<HTMLElement>(null);
@@ -51,7 +52,7 @@ function App() {
 
   return (
     <DesktopWindow appearanceStyle={themeStyle(appearance.current)} density={density}
-      navigation={<nav className="main-nav" aria-label="主导航">
+      navigation={<nav className="main-nav flex items-center gap-1" aria-label="主导航">
         <button type="button" className="nav-button" aria-label="首页" title="首页" aria-pressed={selected === "home"}
           onClick={() => { workspace.current?.focus(); workspace.current?.scrollIntoView({ block: "start" }); }}><Icon name="home" /></button>
         <button type="button" className="nav-button" aria-label="历史记录" title="历史记录" aria-pressed={selected === "history"}
@@ -98,19 +99,23 @@ function App() {
 
       <section className={`timer-card${view.mode === "finished" ? " finished-card" : ""}`}
         aria-label="当前工作" aria-busy={session.loading || session.busy}>
-        <div className="task-row">
+        <div className="task-row flex items-center justify-between gap-4">
           <div className="task-copy">
+            <div className="task-eyebrow flex items-center gap-1.5"><Icon name="clock" /><span>当前工作</span></div>
             <h1>{record ? record.category : view.label}</h1>
             <p className="task-summary">
               {record ? <>数量 {formatQuantity(record.quantity)}<span className="meta-dot" aria-hidden="true">·</span>
-                <span className={`state-label ${view.mode === "working" ? "working" : ""}`} role="status">{view.label}</span></>
+                <span className={`state-label ${view.mode === "working" ? "working" : ""}`} role="status">{view.label}</span>
+                <span className="task-control-mode">{record.control_mode === "AUTO" ? "自动监测" : "手动计时"}</span></>
                 : view.caption}
             </p>
             {record && view.mode === "unavailable" && <p className="hint">{view.caption}</p>}
+            {active && !active.is_paused && <p className="task-mode-hint">{active.control_mode === "AUTO" ? "工作页面与操作满足条件时自动记录" : "当前由你手动计时，自动监测不会覆盖此任务"}</p>}
+            {active?.is_paused && active.pause_reason === "MANUAL" && <p className="task-mode-hint">可手动继续；开启自动恢复后，返回工作页面并操作也可继续。</p>}
           </div>
           <output className={`timer${view.timer.length > 9 ? " timer-long" : ""}`} aria-label="有效工作时长" title={view.caption} aria-live="off">{view.timer}</output>
         </div>
-        {record && <div className="actions">
+        {record && <div className="actions flex items-center gap-3">
           {active && <button type="button" className="round-action" disabled={unavailable} aria-label={pauseLabel} title={pauseLabel}
             onClick={() => { void (active.is_paused ? session.resume(active.id) : session.pause(active.id)); }}>
             <Icon name={active.is_paused ? "play" : "pause"} /><span className="sr-only">{pauseLabel}</span>
@@ -129,7 +134,9 @@ function App() {
       </section>}
       {active?.is_paused && <details className="switch-panel">
         <summary>开始另一项工作</summary>
-        <WorkForm disabled={unavailable} switching starting={session.pending === "start_task"} onStart={session.start} />
+        <WorkForm disabled={unavailable} switching starting={session.pending === "start_task"} onStart={async input => {
+          setSwitchRequest({ input, id: active.id, category: active.category }); return false;
+        }} />
       </details>}
 
       {session.native && session.snapshot && <div className="settlement-entry">
@@ -139,6 +146,15 @@ function App() {
       <SettlementPanel open={settlementOpen} onClose={() => setSettlementOpen(false)} refreshKey={refreshKey}
         busy={unavailable} onSave={session.settle} />
 
+      <UiDialog open={switchRequest !== null} onClose={() => { if (!session.busy) setSwitchRequest(null); }} id="switch-title" title="确认切换工作">
+        {switchRequest && <div className="switch-confirm grid gap-3">
+          <p>将结束并保存当前暂停的“{switchRequest.category}”，然后开始手动工作“{switchRequest.input.category}”。</p>
+          <p className="hint">原任务会保留在待补全列表；此操作不会覆盖记录。</p>
+          {session.commandError && <p className="error-banner" role="alert">{session.commandError}</p>}
+          <div className="confirm-actions flex gap-2"><button type="button" className="secondary" disabled={session.busy} onClick={() => setSwitchRequest(null)}>取消</button>
+            <button type="button" disabled={session.busy} onClick={() => { void session.start(switchRequest.input, switchRequest.id).then(saved => { if (saved) setSwitchRequest(null); }); }}>确认保存并开始</button></div>
+        </div>}
+      </UiDialog>
       <AppearanceSettings appearance={appearance} />
       <MonitoringSettings open={monitorOpen} onClose={() => setMonitorOpen(false)} onSaved={() => { void session.refresh(); }} />
       <UiDialog open={layoutOpen} onClose={() => setLayoutOpen(false)} id="layout-title" title="布局设置">

@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useEffect, useRef } from "react";
 import { MAX_OPACITY, MIN_OPACITY, THEME_IDS, THEMES, themeStyle } from "./themes";
 import type { AppearanceController } from "./useAppearance";
@@ -17,12 +18,12 @@ export function AppearanceSettings({ appearance }: { appearance: AppearanceContr
       <div className="settings-heading">
         <h2 id="appearance-title">外观设置</h2>
         <button type="button" className="window-control" aria-label="取消预览并关闭外观设置"
-          disabled={appearance.saving} onClick={appearance.cancel}>×</button>
+          disabled={appearance.saving} onClick={appearance.cancel}><Icon name="close" /></button>
       </div>
       <p className="hint">即时预览，保存后下次沿用。</p>
       <fieldset disabled={appearance.saving} className="theme-fieldset">
         <legend>选择皮肤</legend>
-        <div className="theme-grid">
+        <div className="theme-grid grid grid-cols-2 gap-3">
           {THEME_IDS.map((id) => <button type="button" key={id}
             className="theme-choice" aria-pressed={appearance.current.theme === id}
             style={themeStyle({ version: 1, theme: id, opacity: THEMES[id].defaultOpacity })}
@@ -47,7 +48,7 @@ export function AppearanceSettings({ appearance }: { appearance: AppearanceContr
       {!appearance.native && <p className="notice">浏览器仅预览，不能保存桌面设置。</p>}
       {appearance.loadError && <p className="notice">原外观设置读取失败，当前为临时预览。</p>}
       {appearance.saveError && <p className="error-banner" role="alert">{appearance.saveError}</p>}
-      <div className="settings-actions">
+      <div className="settings-actions grid grid-cols-2 gap-3">
         <button type="button" className="secondary" disabled={appearance.saving} onClick={appearance.cancel}>取消</button>
         <button type="button" disabled={!appearance.native || appearance.saving}
           onClick={() => { void appearance.save(); }}>{appearance.saving ? "正在保存…" : "保存外观"}</button>

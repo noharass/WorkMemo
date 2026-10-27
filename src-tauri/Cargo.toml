@@ -1,6 +1,6 @@
 [package]
 name = "workmemo"
-version = "0.2.0-alpha.5"
+version = "0.2.0-alpha.6"
 description = "Local personal work journal and focus timer"
 edition = "2024"
 default-run = "workmemo"

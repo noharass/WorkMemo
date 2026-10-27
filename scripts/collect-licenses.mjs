@@ -11,6 +11,8 @@ const sections = ['WorkMemo third-party dependency notices',
   'Collected from locally installed package archives. Cargo entries include build and cross-platform dependencies; not every listed package is linked into the Windows executable.', ''];
 let count = 0;
 const supplemental = {
+  '@ant-design/icons-svg@4.6.0': ['ant-design-icons-MIT.txt', 'https://github.com/ant-design/ant-design-icons/blob/7f2516ac91226d2b41f93b35cb5197c8d94f7189/LICENSE'],
+  'is-mobile@5.0.0': ['is-mobile-MIT.txt', 'https://github.com/juliangruber/is-mobile/blob/2708dd8f07d91f354a46b8dff3053abb6b840067/Readme.md'],
   'alloc-stdlib@0.3.0': ['alloc-stdlib-BSD-3-Clause.txt', 'https://github.com/dropbox/rust-alloc-no-stdlib/blob/0a81fd6928ea3b33c8cd484aa4575d50ffb98012/LICENSE'],
   'selectors@0.38.0': ['MPL-2.0.txt', 'https://www.mozilla.org/en-US/MPL/2.0/'],
   'webview2-com@0.39.1': ['webview2-rs-MIT.txt', 'https://github.com/wravery/webview2-rs/blob/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE'],
@@ -40,7 +42,7 @@ const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
 for (const [path, entry] of Object.entries(lock.packages).filter(([path, entry]) => path && !entry.dev).sort()) {
   const directory = join(root, path);
   const pkg = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'));
-  collect(`npm ${pkg.name} ${entry.version}`, directory, pkg.license, pkg.repository);
+  collect(`npm ${pkg.name} ${entry.version}`, directory, pkg.license, pkg.repository, supplemental[`${pkg.name}@${entry.version}`]);
 }
 mkdirSync(dirname(destination), { recursive: true });
 const output = `${sections.join('\n')}\n`;

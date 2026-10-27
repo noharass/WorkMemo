@@ -41,7 +41,7 @@ export function WorkForm({ disabled, switching = false, starting = false, onStar
 
   return (
     <form className="work-form" aria-busy={starting} onSubmit={(event) => { void submit(event); }} noValidate>
-      <div className="field-row">
+      <div className="field-row grid grid-cols-2 gap-3">
         <label>工作类别
           <select ref={categoryRef} value={category} disabled={disabled}
             aria-invalid={Boolean(errors.category)} aria-describedby={errors.category ? `${id}-category` : undefined}
@@ -72,7 +72,7 @@ export function WorkForm({ disabled, switching = false, starting = false, onStar
       </details>
       <p className="hint">先记录时间，结束后在待补全列表确认工作量。</p>
       {switching && <p className="hint">开始后将结束并保存当前已暂停的任务，工作量稍后结算。</p>}
-      <button type="submit" disabled={disabled}>{starting ? (switching ? "正在保存并开始…" : "正在开始…") : switching ? "保存上一项，开始新工作" : "开始工作"}<span aria-hidden="true">↗</span></button>
+      <button type="submit" disabled={disabled}>{starting ? (switching ? "正在保存并开始…" : "正在开始…") : switching ? "保存上一项，开始新工作" : "手动开始工作"}<Icon name="open" /></button>
     </form>
   );
 }

@@ -116,7 +116,7 @@ export function useWorkSession() {
   return {
     native, snapshot, loading, busy: pending !== null, pending, savedId, dataVersion,
     connectionError, commandError, refresh, recordDeleted,
-    start: (input: StartInput) => run("start_task", { input }),
+    start: (input: StartInput, expectedActiveId: number | null = null) => run("start_task", { input, expectedActiveId }),
     pause: (id: number) => run("pause_task", { id }),
     resume: (id: number) => run("resume_task", { id }),
     finish: (id: number) => run("finish_task", { id }),

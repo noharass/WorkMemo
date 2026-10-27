@@ -30,6 +30,7 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
     try {
       const saved = await invoke<MonitorConfig>("save_monitor_config", { input: {
         enabled: config.enabled, expected_revision: config.revision, times: config.times,
+        poll_interval_seconds: config.poll_interval_seconds, auto_resume_manual: config.auto_resume_manual,
         rules: config.rules.map(({ url_prefix, category }) => ({ url_prefix, category })),
       } });
       setConfig(saved); setNotice("配置已保存。请在 Chrome 扩展中同步工作站点授权。"); onSaved();
@@ -51,10 +52,20 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
       <button type="button" className="text-button" onClick={() => { void invoke("open_browser_extension").catch((failure: unknown) => setError(String(failure))); }}>打开配套扩展文件夹</button>
       <p className="hint">Chrome 扩展需加载一次本目录。EXE、ZIP 和源码版启动时均会检查并修复当前用户的本机主机注册。</p>
     </section>}
-    {config && <form className="monitor-settings" onSubmit={(event) => { void save(event); }}>
+    {config && <form className="monitor-settings grid gap-4" onSubmit={(event) => { void save(event); }}>
       <label className="monitor-toggle"><input type="checkbox" checked={config.enabled} disabled={busy}
         onChange={event => setConfig({ ...config, enabled: event.target.checked })} />启用工作页面自动识别</label>
       <p className="hint">浏览器前台工作页面匹配，并有新的输入活动时开始。仅打开页面不会开始。手动计时也受空闲保护。</p>
+      <fieldset className="monitor-rule"><legend>识别与恢复</legend>
+        <label>浏览器状态检查间隔（秒）<select value={config.poll_interval_seconds} disabled={busy}
+          onChange={event => setConfig({ ...config, poll_interval_seconds: Number(event.target.value) })}>
+          {[1, 2, 3, 4, 5].map(seconds => <option key={seconds} value={seconds}>{seconds} 秒</option>)}
+        </select></label>
+        <p className="hint">间隔越短，状态更新通常越快，也会增加少量后台活动。网络或系统忙碌时可能延迟。</p>
+        <label className="monitor-toggle"><input type="checkbox" checked={config.auto_resume_manual} disabled={busy}
+          onChange={event => setConfig({ ...config, auto_resume_manual: event.target.checked })} />返回工作页面并产生新操作后，自动恢复手动暂停的任务</label>
+        <p className="hint">恢复原任务，不创建新记录；需要可信的页面连接和新的输入。关闭后需手动继续。</p>
+      </fieldset>
       <fieldset className="monitor-rule"><legend>计时参数（秒）</legend>
         {([
           ["away_pause_seconds", "离开工作页面后继续计时"],

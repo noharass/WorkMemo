@@ -11,11 +11,14 @@ const flush = async () => { for (let index = 0; index < 4; index++) await Promis
 async function backgroundScenario(run) {
   const previousChrome = globalThis.chrome;
   const previousInterval = globalThis.setInterval;
+  const previousClearInterval = globalThis.clearInterval;
   const previousNow = Date.now;
   let now = previousNow();
   Date.now = () => now;
   const messages = [];
   let tick;
+  let nextTimer = 0;
+  const timers = new Map();
   let connections = 0;
   const ports = [];
   const names = [];
@@ -33,7 +36,8 @@ async function backgroundScenario(run) {
     alarms: { onAlarm: event(), create: async () => {} },
   };
   globalThis.chrome = chrome;
-  globalThis.setInterval = callback => { tick = callback; return 0; };
+  globalThis.setInterval = (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, delay }); tick = callback; return id; };
+  globalThis.clearInterval = id => { timers.delete(id); };
   try {
     await import(`../browser-extension/background.js?runtime-test=${++moduleId}`);
     await flush();
@@ -42,11 +46,12 @@ async function backgroundScenario(run) {
       chrome.runtime.onMessage.emit({ type: 'status' }, { id: chrome.runtime.id, url: chrome.runtime.getURL('popup.html') }, reply => { value = reply; });
       return value;
     };
-    await run({ get native() { return ports.at(-1); }, ports, names, chrome, messages, status, connections: () => connections, tick: async (advance = 5000) => { now += advance; tick(); await flush(); } });
+    await run({ get native() { return ports.at(-1); }, ports, names, chrome, messages, status, timers, connections: () => connections, tick: async (advance = 5000) => { now += advance; tick(); await flush(); } });
   } finally {
     Date.now = previousNow;
     globalThis.chrome = previousChrome;
     globalThis.setInterval = previousInterval;
+    globalThis.clearInterval = previousClearInterval;
   }
 }
 
@@ -100,7 +105,7 @@ test('正式主机缺失时回退预览主机；退避期间不重复启动，�
     await tick(10); assert.equal(connections(), 1);
     await tick(1000); assert.equal(connections(), 2);
     assert.deepEqual(names, ['com.workmemo.browser_bridge', 'com.workmemo.browser_bridge_test']);
-    const app = { identifier: 'com.workmemo.test.monitor', version: '0.2.0-alpha.5', protocol: 1 };
+    const app = { identifier: 'com.workmemo.test.monitor', version: '0.2.0-alpha.6', protocol: 1 };
     const config = { enabled: false, revision: 0, rules: [] };
     scenario.native.onMessage.emit({ connected: true, config, app });
     assert.equal(status().app.identifier, app.identifier);
@@ -120,5 +125,73 @@ test('超时会换候选主机，旧端口的断开和回复不清除新连接',
     scenario.native.onMessage.emit({ connected: true, config: { enabled: false, revision: 0, rules: [] } });
     old.onDisconnect.emit(); old.onMessage.emit({ connected: false });
     assert.equal(scenario.status().connected, true);
+  });
+});
+
+test('检测间隔随后端设置更新，始终仅保留一个计时器；旧版配置回退五秒', async () => {
+  await backgroundScenario(async ({ native, timers, tick }) => {
+    const cfg = { enabled: false, revision: 1, rules: [], poll_interval_seconds: 1 };
+    assert.deepEqual([...timers.values()].map(t => t.delay), [5000]);
+    native.onMessage.emit({ connected: true, config: cfg });
+    assert.deepEqual([...timers.values()].map(t => t.delay), [1000]);
+    await tick(1000);
+    native.onMessage.emit({ connected: true, config: { ...cfg, revision: 2, poll_interval_seconds: 5 } });
+    assert.deepEqual([...timers.values()].map(t => t.delay), [5000]);
+    await tick(5000);
+    native.onMessage.emit({ connected: true, config: { enabled: false, revision: 3, rules: [] } });
+    assert.deepEqual([...timers.values()].map(t => t.delay), [5000]);
+    await tick(5000);
+    native.onMessage.emit({ connected: true, config: { ...cfg, poll_interval_seconds: 0 } });
+    assert.deepEqual([...timers.values()].map(t => t.delay), [5000]);
+  });
+});
+
+test('等待原生回复时发生的多次页面事件会合并并在回复后立即查询最新页面', async () => {
+  await backgroundScenario(async ({ native, chrome, messages, tick }) => {
+    const cfg = { enabled: true, revision: 7, poll_interval_seconds: 1, rules: [
+      { id: 1, url_prefix: 'https://work.example.test/first', category: '开发' },
+      { id: 2, url_prefix: 'https://work.example.test/second', category: '开发' },
+    ] };
+    let url = 'https://work.example.test/first';
+    chrome.permissions.contains = async () => true;
+    chrome.windows.getLastFocused = async () => ({ focused: true, id: 1 });
+    chrome.tabs.query = async () => [{ url }];
+    native.onMessage.emit({ connected: true, config: cfg });
+    await tick(1000);
+    assert.equal(messages.at(-1).rule_id, 1);
+    url = 'https://work.example.test/second';
+    chrome.tabs.onActivated.emit({ tabId: 2 });
+    chrome.tabs.onUpdated.emit(2, { url }, { active: true });
+    assert.equal(messages.length, 2);
+    native.onMessage.emit({ connected: true, config: cfg });
+    await flush(); await flush();
+    assert.equal(messages.length, 3);
+    assert.equal(messages.at(-1).rule_id, 2);
+    assert.equal(messages.at(-1).sequence, 3);
+  });
+});
+
+test('页面查询期间发生切换时，过期查询结果不发送并改为读取最新页面', async () => {
+  await backgroundScenario(async ({ native, chrome, messages, tick }) => {
+    const cfg = { enabled: true, revision: 7, poll_interval_seconds: 1, rules: [
+      { id: 1, url_prefix: 'https://work.example.test/first', category: '开发' },
+      { id: 2, url_prefix: 'https://work.example.test/second', category: '开发' },
+    ] };
+    let resolveFirst;
+    let queries = 0;
+    chrome.permissions.contains = async () => true;
+    chrome.windows.getLastFocused = async () => ({ focused: true, id: 1 });
+    chrome.tabs.query = () => ++queries === 1
+      ? new Promise(resolve => { resolveFirst = resolve; })
+      : Promise.resolve([{ url: 'https://work.example.test/second' }]);
+    native.onMessage.emit({ connected: true, config: cfg });
+    await tick(1000);
+    assert.equal(queries, 1);
+    chrome.tabs.onActivated.emit({ tabId: 2 });
+    resolveFirst([{ url: 'https://work.example.test/first' }]);
+    await flush(); await flush();
+    assert.equal(messages.length, 2);
+    assert.equal(messages.at(-1).rule_id, 2);
+    assert.equal(queries, 2);
   });
 });
