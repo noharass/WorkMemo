@@ -4,7 +4,7 @@
 
 当前源码正在分阶段改造自动工作记录。第一阶段已加入持久计时区间和结束后补填工作量；第二阶段已实现 Windows 输入/系统状态、Chrome 原生通信、5/7 分钟与离页计时规则、托盘和非模态提醒的代码，**真实 Chrome 接入及原生交互尚待验收**。已确认规则见 [自动记录规范](docs/AUTO-TRACKING-SPEC.md)，当前结果见 [第二阶段进度](docs/AUTO-TRACKING-PHASE-2.md)，接入步骤见 [独立验收说明](docs/BROWSER-BRIDGE.md)。源码数据库升级到版本 3 后，旧版程序会拒绝读取；本轮未迁移真实工作数据库。下文成品信息及既有验收记录对应已发布版本，不能作为此次改造的验收结果。
 
-[下载自动记录预览版 [v0.2.0-alpha.4](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.4)：[中文 EXE](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.4/WorkMemo_0.2.0-alpha.4_x64-preview-setup-r1.exe) · [免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.4/WorkMemo_0.2.0-alpha.4_windows_x64_preview.zip)。EXE、ZIP、源码及目录迁移统一自动检查/修复本机注册，附连接诊断；需要完整更新并重新加载配套扩展。[使用说明](docs/PREVIEW-GUIDE.md) · [连接修复](docs/BROWSER-REGISTRATION-FIX.md) · [本轮交付与完整源码](docs/BROWSER-CONNECTION-DELIVERY.md)。发布不代表全部原生验收完成；稳定版仍保留 v0.1.1。
+[下载自动记录预览版 v0.2.0-alpha.5](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.5)：[中文 EXE](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.5/WorkMemo_0.2.0-alpha.5_x64-preview-setup-r1.exe) · [免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.5/WorkMemo_0.2.0-alpha.5_windows_x64_preview.zip)。本版新增状态岛首阶段与可调整的离页、空闲时间；更新前退出旧版并备份预览数据。[使用说明](docs/PREVIEW-GUIDE.md) · [交付记录](docs/RELEASE-0.2.0-alpha.5.md)。原生透明、焦点与实际浏览器关闭场景仍待验收；稳定版保留 v0.1.1。
 
 WorkMemo 0.1.1，Windows x64 本地工作记录工具。支持可靠计时、暂停恢复、历史查询、删除确认和每日/类别统计；提供原生透明窗口、Glass / Cream / Dark / Neon 四种皮肤和独立外观保存。本次更新采用用户选定的黑白 C 图标，记录与计时规则沿用已有实现。
 

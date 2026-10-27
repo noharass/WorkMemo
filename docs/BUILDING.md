@@ -111,3 +111,8 @@ $taskZip = 'E:\WorkMemo\artifacts\0.2.0-alpha.4\WorkMemo_0.2.0-alpha.4_windows_x
 ~~~
 
 注册测试只接受支持隔离开关的 debug helper，在 Software\WorkMemo\RegistrationTests\GUID 及 artifacts 测试目录运行，不修改真实 Chrome 主机或工作数据库。release helper 忽略这些测试环境变量。预览安装器消费校验过的 ZIP，禁止混入不同版本二进制。标准 package-windows.ps1 仍只接受稳定版本号，避免把预览配置当稳定版发布。
+
+
+## alpha.5 状态岛与计时参数预览
+
+当前源码版本 0.2.0-alpha.5。仍使用上方预览构建命令，ZIP 路径更新为 `E:\WorkMemo\artifacts\0.2.0-alpha.5\WorkMemo_0.2.0-alpha.5_windows_x64_preview.zip`。安装器仍由校验后的同一 ZIP 构建；发布结果与未验收项目见 RELEASE-0.2.0-alpha.5.md。预览数据库升级到 schema 4，运行前正常退出并备份旧预览数据，旧版本可能无法打开升级后的数据库。
