@@ -24,7 +24,25 @@ Windows 接受的新 TCP socket 继承监听器的非阻塞状态。服务端使
 - 新增的 Windows 真实长连接测试在旧代码上失败，在修复后通过；现有认证与重放拒绝测试继续通过。
 - 原生诊断已实际显示“第一条成功、下一条失败”的循环；更新注册路径并不能解决该服务端错误。没有把前一次注册路径更新称为已修复根因。
 
-构建、真实新版连接、Release 上传和公开下载复算在实际完成后补记。准备 ZIP 与 EXE，沿用预览发布流程，原 alpha.2 资产与标签不覆盖。完整文件清单和完整源码另存 RELEASE-0.2.0-alpha.3-SOURCE.md，长文件不使用省略号代替代码。
+- Windows release 优化构建实际成功，用时 3 分 06 秒；PE 版本为 0.2.0-alpha.3，产品名 WorkMemo Preview。NSIS EXE 实际打包成功。
+- ZIP 的 14 项清单、CRC、主程序和主机原始字节、profile、扩展版本及本地 SHA256 核对通过。NSIS 完整性测试与解包通过，15 项应用/资源字节与输入一致；默认包中没有诊断启用标记。
+- GitHub 共 7 个资产上传并核对摘要成功，公开为 prerelease。初次下载核对使用了草稿阶段的临时链接而返回 404，随后重新读取公开后的正式 URL，再无认证下载全部 7 项，大小、SHA256 均一致。
+- v0.2.0-alpha.3 标签与实际应用/打包源码 fb615040ab95448cecb3236f67e08e44cee77e66 一致；latest 稳定版仍为 v0.1.1。alpha.2 资产及标签不覆盖，只在说明顶部标记已知连接问题并指向新版。
+- 已撤销本轮临时诊断主机路径，恢复当前用户注册到用户下载的包目录，并关闭临时诊断标记；用户更新后可继续按配套脚本注册新位置。
+- 本轮没有替用户退出或替换正在运行的旧程序，没有实际安装/卸载、启动新版 GUI 或完成真实 Chrome 自动开始验收。旧进程需要用户从托盘正常退出后更新；现有记录、待补全、监测配置和外观未被清空。锁屏/休眠及完整原生验收仍未通过。
+
+## 下载与完整交付
+
+[EXE 安装包](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.3/WorkMemo_0.2.0-alpha.3_x64-preview-setup.exe) · [免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.3/WorkMemo_0.2.0-alpha.3_windows_x64_preview.zip) · [Release 页](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.3)
+
+本机产物目录 E:\WorkMemo\artifacts\0.2.0-alpha.3；EXE 与对应说明、校验位于 installer 子目录。公开元数据回执 RELEASE-RECEIPT.json 与无认证下载复算副本 download-check 保存在被忽略的产物目录，未提交凭据或运行时端点。
+
+| 文件 | 字节数 | SHA256 |
+| --- | ---: | --- |
+| WorkMemo_0.2.0-alpha.3_windows_x64_preview.zip | 3423065 | 15a6dd85dca26eb589fd7a2675f9d4cd21c67b3cbf5a2fb19563b7baa6f527a3 |
+| WorkMemo_0.2.0-alpha.3_x64-preview-setup.exe | 2440302 | 04886eac2dfd578a238bb6cbf6b585427fbbbfcdc101199b0ee7d39c1582c1e1 |
+
+完整 NEW FILE / UPDATE 绝对路径清单与全部变更文本代码见 [RELEASE-0.2.0-alpha.3-SOURCE.md](RELEASE-0.2.0-alpha.3-SOURCE.md)，构建使用各原始文件，长文件不使用省略号代替代码。
 
 ## 重现命令
 

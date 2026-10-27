@@ -47,7 +47,7 @@ npm.cmd run build
 
 自动记录开发版本增加一个独立的 workmemo-browser 原生通信程序；Cargo 默认运行目标仍为 workmemo。Chrome 接入、独立应用标识的验收构建与当前限制见 BROWSER-BRIDGE.md 和 AUTO-TRACKING-PHASE-2.md。普通源码构建会使用正式数据目录；独立验收程序应按说明单独构建和复制。
 
-当前源码版本 0.2.0-alpha.2，自动记录预览包请运行 scripts/package-preview.ps1。脚本执行许可证收集、Tauri release/no-bundle 构建，使用 src-tauri/tauri.preview.conf.json 将标识设为 com.workmemo.test.monitor，输出 artifacts/0.2.0-alpha.2 下的免安装 ZIP、说明、许可和校验文件。ZIP 包含主程序、原生通信主机、扩展及可在解压目录运行的注册脚本，不包含工作数据库、运行时端点或凭据。此脚本不会启动程序或注册主机。使用步骤见 PREVIEW-GUIDE.md；实际发布结果另见 RELEASE-0.2.0-alpha.2.md。
+当前源码版本 0.2.0-alpha.3，自动记录预览包请运行 scripts/package-preview.ps1。脚本执行许可证收集、Tauri release/no-bundle 构建，使用 src-tauri/tauri.preview.conf.json 将标识设为 com.workmemo.test.monitor，输出 artifacts/0.2.0-alpha.3 下的免安装 ZIP、说明、许可和校验文件。ZIP 包含主程序、原生通信主机、扩展及可在解压目录运行的注册脚本，不包含工作数据库、运行时端点或凭据。此脚本不会启动程序或注册主机。使用步骤见 PREVIEW-GUIDE.md；实际发布结果另见 RELEASE-0.2.0-alpha.3.md。
 
 ~~~powershell
 Set-Location 'E:\WorkMemo'
@@ -57,10 +57,10 @@ Set-Location 'E:\WorkMemo'
 用户要求补充的 EXE 安装器使用已经公开且校验一致的预览 ZIP 字节，不重新编译业务程序：
 
 ~~~powershell
-& .\scripts\package-preview-installer.ps1 -PortableZip .\artifacts\0.2.0-alpha.2\WorkMemo_0.2.0-alpha.2_windows_x64_preview.zip -ExpectedSha256 ec9e0fa7da07655eadf2515eac77ba406f686daf5fa6f7f68a34605e74e1dcc6
+& .\scripts\package-preview-installer.ps1 -PortableZip .\artifacts\0.2.0-alpha.3\WorkMemo_0.2.0-alpha.3_windows_x64_preview.zip -ExpectedSha256 15a6dd85dca26eb589fd7a2675f9d4cd21c67b3cbf5a2fb19563b7baa6f527a3
 ~~~
 
-输出到 artifacts/0.2.0-alpha.2/installer。NSIS 当前用户安装器使用 WorkMemo Preview 名称及 workmemo-preview.exe 进程，包含主机与扩展，沿用独立测试数据。安装器打包与解包字节核对已完成，实际安装/卸载仍待验收；公开下载和校验结果见 RELEASE-0.2.0-alpha.2-INSTALLER.md。
+输出到 artifacts/0.2.0-alpha.3/installer。NSIS 当前用户安装器使用 WorkMemo Preview 名称及 workmemo-preview.exe 进程，包含主机与扩展，沿用独立测试数据。安装器打包与解包字节核对已完成，实际安装/卸载仍待验收；公开下载和校验结果见 RELEASE-0.2.0-alpha.3.md。
 
 下面正式安装器打包记录对应已发布的稳定版源码；预览阶段使用上面的独立数据打包入口。
 

@@ -6,6 +6,8 @@
 
 用户随后明确要求发布 Release，已单独交付 v0.2.0-alpha.2 免安装预览包，实际结果见 RELEASE-0.2.0-alpha.2.md。下文保留本阶段实现及 debug 验收准备记录；新增下载包不代表真实界面验收通过。
 
+实际使用中发现 Windows 客户端连接继承非阻塞模式，导致首条消息后断开；该问题已在 v0.2.0-alpha.3 修复，真实长连接回归与当前交付见 RELEASE-0.2.0-alpha.3.md。原 alpha.2 的单次请求检查不能作为心跳连接可靠性的验收证据。
+
 ## 本次目标与检查
 
 阅读 AGENTS.md、PRODUCT-SPEC.md、AUTO-TRACKING-SPEC.md 和实际计时、SQLite、前后端通信、主题及窗口代码。保留第一阶段计时区间与待补全模型，新增真实 Windows 状态与浏览器输入通道，业务判定仍由 Rust 执行。

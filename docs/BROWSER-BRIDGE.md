@@ -2,7 +2,7 @@
 
 当前是开发验收版本，尚未发布到 Chrome 商店。第二阶段代码与自动测试已准备，真实浏览器、托盘、提醒窗口和锁屏/休眠交互仍待验收；不能把编译或模拟时钟测试当成这些场景已通过。
 
-用户要求后已发布独立数据的 release 优化预览 ZIP：[v0.2.0-alpha.2](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.2)。从 GitHub 下载后按 PREVIEW-GUIDE.md 接入；下文保留本机 debug 验收包路径与源码准备步骤，两种程序使用相同测试数据标识，不能同时运行。
+用户要求后已发布独立数据的 release 优化预览 ZIP：[v0.2.0-alpha.3](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.3)。从 GitHub 下载后按 PREVIEW-GUIDE.md 接入；下文保留本机 debug 验收包路径与源码准备步骤，两种程序使用相同测试数据标识，不能同时运行。
 
 ## 本机已准备的独立验收包
 
