@@ -99,3 +99,20 @@ git status --short --branch
 ~~~
 
 实际同步标识以交付回复及 Git 结果为准，不强制推送。仍等待真实接入和界面验收，不将整个目标标为完成。
+
+## 2026-10-27：离页 2 分钟暂停复核
+
+用户要求保留 2 分钟宽限，并确认实际测试“过两分钟后就停了”。此次将离页满 2 分钟自动暂停记为通过，不修改阈值或计时逻辑。
+
+只读观察同时确认：实际自动记录的来源与控制模式均为 AUTO，随后进入 AWAY 暂停，连续观察 12 秒有效时长保持不变；没有手动暂停、结束、创建或删除用户记录。之前一条在不足两分钟时被用户手动结束的记录，不能用于判定该阈值失效。
+
+本轮实际重跑并通过两个边界用例：
+
+~~~powershell
+cargo test --locked --offline --manifest-path .\src-tauri\Cargo.toml --lib other_application_input_cannot_extend_work_beyond_away_grace_or_twelve_minutes
+cargo test --locked --offline --manifest-path .\src-tauri\Cargo.toml --lib return_inside_hold_needs_new_input_and_resumes_same_record_excluding_pause
+~~~
+
+宽限期内继续计时；满 2 分钟暂停并保留记录；再保留 10 分钟未返回才结束并待补全。暂停与结束是两个事件。用户已确认的此次离页暂停行为，不代表实际保留满 10 分钟、5/7 分钟空闲、锁屏/休眠或全部原生交互均已验收。
+
+本次仅 UPDATE E:\WorkMemo\docs\AUTO-TRACKING-PHASE-2.md，补充实际验收证据；没有修改应用代码、数据库、外观设置或现有安装包。
