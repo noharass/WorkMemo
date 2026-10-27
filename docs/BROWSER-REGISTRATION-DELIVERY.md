@@ -14,6 +14,7 @@
 
 | 状态 | 完整路径 |
 | --- | --- |
+| UPDATE | E:\WorkMemo\.gitattributes |
 | NEW FILE | E:\WorkMemo\scripts\register-preview-browser.cmd |
 | NEW FILE | E:\WorkMemo\scripts\test-browser-registration.ps1 |
 | NEW FILE | E:\WorkMemo\src-tauri\installer\browser-bridge.nsh |
@@ -33,6 +34,7 @@
 - 隔离 NSIS 测试安装器在 artifacts 下的中文、空格、&、! 目录完成静默安装及卸载。注册只写随机的 HKCU\Software\WorkMemo\RegistrationTests 测试键，不修改真实 Chrome 主机键。
 - 核对主机清单字段、固定 origin、相对 EXE 路径、注册表完整路径；所属目录卸载会清除注册，旧目录卸载不会删除模拟较新目录的注册。
 - CMD 的 prepare-only 模式实际验证缺少文件会失败、正确预览包可生成清单、混用源码扩展会失败，且真实 Chrome 主机注册前后保持不变。首次测试工具的 CMD 引号传参失败，改为 ProcessStartInfo 原始参数后重跑通过。
+- CMD 使用 ASCII 内容和 CRLF 换行，Git 属性显式保留 Windows 换行，避免后续检出改变修复文件格式。
 - 不依赖客户机 PowerShell 执行策略；测试工具使用 PowerShell 只是源码环境的检查方式。没有为测试修改系统策略、停止用户任务或操作真实工作数据库。
 
 打包成品、上传和公开下载复算结果在完成后补充。本次未修改业务代码，不将先前的 106 个测试执行项称为本轮重新执行。其他用户机器的真实 Chrome 重连需要用户反馈，不以隔离测试替代。

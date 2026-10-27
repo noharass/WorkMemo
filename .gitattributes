@@ -1,4 +1,5 @@
 * text=auto eol=lf
+*.cmd text eol=crlf
 
 # Preserve third-party license text verbatim, including upstream whitespace.
 docs/THIRD-PARTY-LICENSES.txt -text -whitespace
