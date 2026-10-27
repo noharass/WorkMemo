@@ -8,9 +8,10 @@ let connected = false;
 let sending = false;
 let awaitingReply = false;
 let sentAt = 0;
+let connectionError = '';
 
 function status() {
-  return { connected, config, message: connected ? '已连接本机 WorkMemo' : '等待本机连接；请确认已注册配套主机并启动 WorkMemo' };
+  return { connected, config, message: connected ? '已连接本机 WorkMemo' : connectionError || '等待本机连接；请确认已注册配套主机并启动 WorkMemo' };
 }
 
 function connect() {
@@ -24,12 +25,21 @@ function connect() {
       awaitingReply = false;
       connected = message?.connected === true;
       config = connected && message.config && Array.isArray(message.config.rules) ? message.config : null;
+      connectionError = connected ? '' : message?.error === 'desktop_io'
+        ? '本机通信连接中断，正在重连；请确认已更新 WorkMemo'
+        : '通信主机尚未连接软件，请确认 WorkMemo 已启动且使用配套版本';
     });
     current.onDisconnect.addListener(() => {
-      void chrome.runtime.lastError;
-      if (port === current) { port = null; connected = false; config = null; awaitingReply = false; }
+      const error = chrome.runtime.lastError?.message;
+      if (port === current) {
+        port = null; connected = false; config = null; awaitingReply = false;
+        connectionError = error ? `本机主机连接失败：${error.slice(0, 300)}` : '本机通信主机已断开，正在重连';
+      }
     });
-  } catch { port = null; connected = false; config = null; }
+  } catch (error) {
+    port = null; connected = false; config = null;
+    connectionError = `无法启动本机通信：${error instanceof Error ? error.message.slice(0, 300) : '请检查主机注册'}`;
+  }
 }
 
 async function poll() {
@@ -38,6 +48,7 @@ async function poll() {
   try {
     if (awaitingReply && Date.now() - sentAt > 10_000) {
       const stale = port; port = null; connected = false; config = null; awaitingReply = false; stale?.disconnect();
+      connectionError = '本机通信响应超时，正在重连';
     }
     connect();
     if (!port || awaitingReply) return;
@@ -59,9 +70,10 @@ async function poll() {
     awaitingReply = true;
     sentAt = Date.now();
     port.postMessage(frame);
-  } catch {
+  } catch (error) {
     connected = false;
     awaitingReply = false;
+    connectionError = `页面监测暂不可用：${error instanceof Error ? error.message.slice(0, 300) : '请刷新连接状态'}`;
   } finally { sending = false; }
 }
 

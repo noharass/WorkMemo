@@ -93,6 +93,9 @@ fn serve(
     token: String,
     client: u64,
 ) -> Result<(), String> {
+    // Windows accepted sockets inherit the listener's nonblocking mode.
+    // The per-client worker must block between browser heartbeats.
+    stream.set_nonblocking(false).map_err(|e| e.to_string())?;
     stream
         .set_read_timeout(Some(Duration::from_secs(20)))
         .map_err(|e| e.to_string())?;

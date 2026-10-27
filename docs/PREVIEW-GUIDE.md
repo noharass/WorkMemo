@@ -1,4 +1,4 @@
-# WorkMemo v0.2.0-alpha.2 自动记录预览版
+# WorkMemo v0.2.0-alpha.3 自动记录预览版
 
 这是第二阶段的 Windows x64 预发布版，包含自动开始、5/7 分钟空闲规则、离页暂停、后台托盘、结束提醒及待补全工作量。实际 Chrome 接入、连续等待、锁屏/休眠、提醒焦点和四皮肤原生透明仍待验收。发布下载包不代表第二阶段全部验收通过。
 
@@ -6,7 +6,7 @@
 
 完整解压 ZIP 到一个固定目录，再双击 workmemo-preview.exe。保留旁边的 workmemo-browser.exe、profile JSON 和 extension 文件夹。需要 Windows x64 与 Microsoft Edge WebView2 Runtime；本预览 ZIP 不安装运行环境。程序没有代码签名，下载后可用随附 SHA256SUMS.txt 核对 ZIP。
 
-首次发布的 ZIP 保留原样，用户要求后另补充了 [EXE 安装器](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.2/WorkMemo_0.2.0-alpha.2_x64-preview-setup.exe)，安装版步骤见 PREVIEW-INSTALLER-GUIDE.md。两种分发方式均不替换正式 v0.1.1。工作数据使用 %LOCALAPPDATA%\com.workmemo.test.monitor，外观使用 %APPDATA%\com.workmemo.test.monitor；与正式 com.workmemo.desktop 分开。此前独立验收程序使用相同测试标识，因此已有测试记录会保留。不要将真实数据库复制到测试目录；数据库版本 3 不支持旧程序读取。
+本版修复 Windows 心跳连接断开的问题，同时提供 ZIP 和 [EXE 安装器](https://github.com/noharass/WorkMemo/releases/download/v0.2.0-alpha.3/WorkMemo_0.2.0-alpha.3_x64-preview-setup.exe)，安装版步骤见 PREVIEW-INSTALLER-GUIDE.md。更新前从托盘正常退出旧预览程序，再启动新版本；扩展使用新目录并重新加载。工作数据仍使用 %LOCALAPPDATA%\com.workmemo.test.monitor，外观使用 %APPDATA%\com.workmemo.test.monitor；与正式 com.workmemo.desktop 分开。此前独立验收和预览版记录、监测配置会保留，不要为更新删除这些目录。数据库版本仍为 3。
 
 同一测试数据目录只运行一个实例。关闭主窗口后程序继续在托盘运行；从托盘选择“退出 WorkMemo”才会保存暂停并退出。
 

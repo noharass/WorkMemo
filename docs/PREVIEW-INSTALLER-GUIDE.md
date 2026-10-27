@@ -1,6 +1,6 @@
-# WorkMemo v0.2.0-alpha.2 EXE 安装版
+# WorkMemo v0.2.0-alpha.3 EXE 安装版
 
-双击 WorkMemo_0.2.0-alpha.2_x64-preview-setup.exe，按中文安装向导完成。安装完成后从桌面或开始菜单打开 WorkMemo Preview。
+先从托盘正常退出旧预览程序，再双击 WorkMemo_0.2.0-alpha.3_x64-preview-setup.exe，按中文安装向导完成。安装完成后从桌面或开始菜单打开 WorkMemo Preview。本版修复 Windows 心跳连接断开，不需要删除已有记录、工作网址或外观设置。
 
 这是 Windows x64 预发布版，使用当前用户安装模式，无需手动解压。需要 Microsoft Edge WebView2 Runtime；缺少时安装器联网下载微软运行环境。程序尚无代码签名。真实 Chrome 接入、5/7 分钟等待、锁屏/休眠、托盘、提醒焦点和四皮肤原生透明仍待验收。
 

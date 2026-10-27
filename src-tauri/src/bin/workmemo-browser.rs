@@ -9,6 +9,34 @@ use std::{
     time::Duration,
 };
 
+// Opt-in local event codes only; never record frames, URLs, or endpoint tokens.
+fn diagnostic(event: &str) {
+    let Ok(binary) = std::env::current_exe() else {
+        return;
+    };
+    if !binary
+        .with_file_name("workmemo-browser.diagnostics")
+        .is_file()
+    {
+        return;
+    }
+    let path = binary.with_file_name("workmemo-browser.diagnostics.log");
+    if std::fs::metadata(&path).is_ok_and(|m| m.len() > 65_536) {
+        return;
+    }
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        let at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let _ = writeln!(file, "{at} {event}");
+    }
+}
+
 fn endpoint_path() -> Result<PathBuf, String> {
     let mut identifier = env!("WORKMEMO_IDENTIFIER").to_string();
     #[cfg(debug_assertions)]
@@ -71,6 +99,7 @@ fn connect(path: &PathBuf) -> Result<(TcpStream, String), String> {
 }
 
 fn run() -> Result<(), String> {
+    diagnostic("started");
     let origin = std::env::args()
         .nth(1)
         .ok_or("Only the WorkMemo Chrome extension may start this host")?;
@@ -84,12 +113,18 @@ fn run() -> Result<(), String> {
     let mut output = stdout.lock();
     let mut connection: Option<(BufReader<TcpStream>, String)> = None;
     while let Some(value) = read_native(&mut input).map_err(|e| e.to_string())? {
+        diagnostic("native_frame_received");
         let frame: BrowserFrame = serde_json::from_value(value).map_err(|_| "browser frame")?;
         if frame.version != 1 {
             return Err("protocol version".into());
         }
         if connection.is_none() {
             connection = connect(&path).ok().map(|(s, t)| (BufReader::new(s), t));
+            diagnostic(if connection.is_some() {
+                "desktop_connected"
+            } else {
+                "desktop_unavailable"
+            });
         }
         let reply = if let Some((reader, token)) = connection.as_mut() {
             let request = WireRequest {
@@ -103,28 +138,42 @@ fn run() -> Result<(), String> {
                     .get_mut()
                     .write_all(&bytes)
                     .and_then(|_| reader.get_mut().flush())
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e| format!("write {:?} {:?}", e.kind(), e.raw_os_error()))?;
                 let bytes = read_line(reader)
-                    .map_err(|e| e.to_string())?
+                    .map_err(|e| format!("read {:?} {:?}", e.kind(), e.raw_os_error()))?
                     .ok_or("closed bridge")?;
                 serde_json::from_slice(&bytes).map_err(|_| "bridge response".into())
             })();
             match result {
-                Ok(value) => value,
-                Err(_) => {
+                Ok(value) => {
+                    diagnostic("desktop_reply_received");
+                    value
+                }
+                Err(error) => {
+                    diagnostic(&format!("desktop_failure {error}"));
+                    diagnostic(if error == "closed bridge" {
+                        "desktop_closed"
+                    } else if error == "bridge response" {
+                        "desktop_invalid_response"
+                    } else {
+                        "desktop_io_failed"
+                    });
                     connection = None;
-                    serde_json::json!({"connected":false,"config":null})
+                    serde_json::json!({"connected":false,"config":null,"error":"desktop_io"})
                 }
             }
         } else {
-            serde_json::json!({"connected":false,"config":null})
+            serde_json::json!({"connected":false,"config":null,"error":"desktop_unavailable"})
         };
         write_native(&mut output, &reply).map_err(|e| e.to_string())?;
+        diagnostic("native_reply_sent");
     }
+    diagnostic("native_eof");
     Ok(())
 }
 fn main() {
     if run().is_err() {
+        diagnostic("host_failed");
         eprintln!("WorkMemo 浏览器连接已关闭；未记录网页或输入内容。");
         std::process::exit(1);
     }

@@ -659,6 +659,70 @@ fn unavailable_native_metadata_blocks_manual_start_and_resume_without_losing_wor
     assert_eq!(h.saved(id).duration_ms, 10000);
 }
 
+#[cfg(windows)]
+#[test]
+fn real_loopback_bridge_keeps_one_connection_between_heartbeats() {
+    use crate::browser_protocol::{BrowserFrame, Endpoint, WireRequest};
+    use std::{
+        io::{BufRead, BufReader, Write},
+        net::TcpStream,
+        sync::{Arc, Mutex},
+        time::Duration,
+    };
+    let directory = TestDirectory::new();
+    let h = Harness::new();
+    let revision = h.store.monitor.config.revision;
+    let shared = Arc::new(Mutex::new(Ok(h.store)));
+    let folder = directory.db().parent().unwrap().to_path_buf();
+    crate::browser_bridge::start(shared.clone(), &folder).unwrap();
+    let endpoint_path = folder.join("browser-bridge.endpoint.json");
+    let endpoint: Endpoint =
+        serde_json::from_slice(&std::fs::read(&endpoint_path).unwrap()).unwrap();
+    let mut stream = TcpStream::connect(("127.0.0.1", endpoint.port)).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .unwrap();
+    let mut reader = BufReader::new(stream.try_clone().unwrap());
+    for sequence in 1..=3 {
+        if sequence > 1 {
+            // A real browser waits between heartbeats. Windows accepted sockets
+            // inherit the listener's nonblocking mode unless explicitly reset.
+            std::thread::sleep(Duration::from_millis(120));
+        }
+        let request = WireRequest {
+            token: endpoint.token.clone(),
+            frame: BrowserFrame {
+                version: 1,
+                sequence,
+                config_revision: revision,
+                focused: false,
+                ready: true,
+                rule_id: None,
+            },
+        };
+        let mut bytes = serde_json::to_vec(&request).unwrap();
+        bytes.push(b'\n');
+        stream.write_all(&bytes).unwrap();
+        let mut reply = String::new();
+        let length = reader.read_line(&mut reply).unwrap();
+        assert!(length > 0, "connection closed before heartbeat {sequence}");
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&reply).unwrap()["connected"],
+            true
+        );
+    }
+    drop(reader);
+    drop(stream);
+    drop(shared);
+    for _ in 0..20 {
+        if !endpoint_path.exists() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(!endpoint_path.exists());
+}
+
 #[test]
 fn already_expired_record_cannot_be_resurrected_by_manual_finish_or_resume() {
     let mut h = Harness::new();
