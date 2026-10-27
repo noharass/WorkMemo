@@ -1,0 +1,26 @@
+{
+  "identifier": "com.workmemo.test.monitor",
+  "productName": "WorkMemo Preview",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "WorkMemo 自动记录预览版（独立数据）",
+        "width": 680,
+        "height": 340,
+        "minWidth": 360,
+        "minHeight": 280,
+        "center": true,
+        "backgroundColor": "#00000000",
+        "transparent": true,
+        "decorations": false,
+        "shadow": false,
+        "noRedirectionBitmap": true,
+        "resizable": true,
+        "maximizable": false,
+        "alwaysOnTop": false,
+        "skipTaskbar": false
+      }
+    ]
+  }
+}

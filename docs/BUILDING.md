@@ -45,7 +45,16 @@ npm.cmd run build
 
 ## 正式交付包
 
-自动记录开发版本增加一个独立的 workmemo-browser 原生通信程序；Cargo 默认运行目标仍为 workmemo。Chrome 接入、独立应用标识的验收构建与当前限制见 BROWSER-BRIDGE.md 和 AUTO-TRACKING-PHASE-2.md。普通源码构建会使用正式数据目录；独立验收程序应按说明单独构建和复制。当前改造没有发布新的安装包。
+自动记录开发版本增加一个独立的 workmemo-browser 原生通信程序；Cargo 默认运行目标仍为 workmemo。Chrome 接入、独立应用标识的验收构建与当前限制见 BROWSER-BRIDGE.md 和 AUTO-TRACKING-PHASE-2.md。普通源码构建会使用正式数据目录；独立验收程序应按说明单独构建和复制。
+
+当前源码版本 0.2.0-alpha.2，自动记录预览包请运行 scripts/package-preview.ps1。脚本执行许可证收集、Tauri release/no-bundle 构建，使用 src-tauri/tauri.preview.conf.json 将标识设为 com.workmemo.test.monitor，输出 artifacts/0.2.0-alpha.2 下的免安装 ZIP、说明、许可和校验文件。ZIP 包含主程序、原生通信主机、扩展及可在解压目录运行的注册脚本，不包含工作数据库、运行时端点或凭据。此脚本不会启动程序或注册主机。使用步骤见 PREVIEW-GUIDE.md；实际发布结果另见 RELEASE-0.2.0-alpha.2.md。
+
+~~~powershell
+Set-Location 'E:\WorkMemo'
+& .\scripts\package-preview.ps1
+~~~
+
+下面正式安装器打包记录对应已发布的稳定版源码；预览阶段使用上面的独立数据打包入口。
 
 先保存关闭全部 WorkMemo 窗口，然后在 Windows PowerShell 中执行：
 
