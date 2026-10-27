@@ -127,4 +127,4 @@ git status --short --branch
 
 ## 2026-10-27 浏览器连接全面修复
 
-用户要求覆盖所有安装方式，灵动岛保持搁置。本轮 alpha.4 将 EXE、ZIP、源码 dev、目录迁移统一到 Rust 注册引擎，加入启动修复、连接诊断与双主机回退。SQLite schema 3 和计时/皮肤规则不变。当前自动测试 31 项 Node + 78 项 Rust 通过；正式/预览两配置隔离 NSIS 安装、CMD 修复、目录迁移、旧卸载保护与所属卸载通过。Windows 成品构建与发布结果继续记录在 BROWSER-CONNECTION-DELIVERY.md，不能据此声称其他用户电脑连接或全部原生交互已验收。
+用户要求覆盖所有安装方式，灵动岛保持搁置。本轮 alpha.4 将 EXE、ZIP、源码 dev、目录迁移统一到 Rust 注册引擎，加入启动修复、连接诊断与双主机回退。SQLite schema 3 和计时/皮肤规则不变。当前自动测试 31 项 Node + 78 项 Rust 通过；正式/预览两配置隔离 NSIS 安装、CMD 修复、目录迁移、旧卸载保护与所属卸载通过。Windows 预览 EXE/ZIP 与默认源码 NSIS 均已构建并核对；alpha.4 已发布，全部 9 个资产经无认证下载比对。结果见 BROWSER-CONNECTION-DELIVERY.md，不能据此声称其他用户电脑连接或全部原生交互已验收。
