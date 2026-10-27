@@ -100,7 +100,7 @@ test('正式主机缺失时回退预览主机；退避期间不重复启动，�
     await tick(10); assert.equal(connections(), 1);
     await tick(1000); assert.equal(connections(), 2);
     assert.deepEqual(names, ['com.workmemo.browser_bridge', 'com.workmemo.browser_bridge_test']);
-    const app = { identifier: 'com.workmemo.test.monitor', version: '0.2.0-alpha.4', protocol: 1 };
+    const app = { identifier: 'com.workmemo.test.monitor', version: '0.2.0-alpha.5', protocol: 1 };
     const config = { enabled: false, revision: 0, rules: [] };
     scenario.native.onMessage.emit({ connected: true, config, app });
     assert.equal(status().app.identifier, app.identifier);
