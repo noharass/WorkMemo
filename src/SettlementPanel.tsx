@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { CATEGORIES, formatDuration, formatTime, type SettleInput, type WorkRecord } from "./types";
 import { validateWorkInput } from "./workInput";
 
-function SettlementForm({ record, busy, onSave }: {
+export function SettlementForm({ record, busy, onSave }: {
   record: WorkRecord; busy: boolean; onSave: (input: SettleInput) => Promise<boolean>;
 }) {
   const [category, setCategory] = useState(record.category);

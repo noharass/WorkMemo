@@ -19,7 +19,7 @@ impl TestClock {
         time.wall_ms += ms;
         time.ticks_ms += ms;
     }
-    fn jump_wall(&self, ms: i64) {
+    pub(super) fn jump_wall(&self, ms: i64) {
         self.0.lock().unwrap().wall_ms += ms;
     }
 }

@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { ConnectionPanel } from "./ConnectionPanel";
 import { DesktopWindow } from "./DesktopWindow";
 import { AppearanceSettings } from "./AppearanceSettings";
@@ -14,6 +16,7 @@ import { formatQuantity } from "./history";
 import { Icon } from "./Icon";
 import { UiDialog } from "./UiDialog";
 import { SettlementPanel } from "./SettlementPanel";
+import { MonitoringSettings } from "./MonitoringSettings";
 import "./App.css";
 
 function App() {
@@ -23,6 +26,8 @@ function App() {
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [settlementOpen, setSettlementOpen] = useState(false);
+  const [monitorOpen, setMonitorOpen] = useState(false);
+  const [navigationError, setNavigationError] = useState("");
   const [density, setDensity] = useState<"compact" | "comfortable">("compact");
   const workspace = useRef<HTMLElement>(null);
   const active = session.snapshot?.active;
@@ -35,6 +40,14 @@ function App() {
   const selected = appearance.open ? "appearance" : historyOpen ? "history" : layoutOpen ? "layout" : "home";
   const pauseLabel = session.pending === "resume_task" ? "正在继续…" : session.pending === "pause_task" ? "正在暂停…"
     : active?.is_paused ? "继续工作" : "暂停";
+  useEffect(() => {
+    if (!session.native) return;
+    let stopped = false; let unlisten: UnlistenFn | undefined;
+    void listen("workmemo:open-settlement", () => { if (!stopped) setSettlementOpen(true); })
+      .then(unsubscribe => { if (stopped) unsubscribe(); else unlisten = unsubscribe; })
+      .catch((failure: unknown) => { if (!stopped) setNavigationError(String(failure)); });
+    return () => { stopped = true; unlisten?.(); };
+  }, [session.native]);
 
   return (
     <DesktopWindow appearanceStyle={themeStyle(appearance.current)} density={density}
@@ -76,6 +89,12 @@ function App() {
       {active?.recovery_pending && <p className="notice" role="status">
         已恢复上次未结束的任务，并保持暂停。应用关闭期间不计时，请确认后继续。
       </p>}
+      {navigationError && <p className="error-banner" role="alert">托盘导航通知不可用：{navigationError}</p>}
+      {session.native && <div className="monitor-status">
+        <span role="status">{session.snapshot?.monitoring?.message || "正在读取监测状态…"}</span>
+        <button type="button" className="text-button" onClick={() => setMonitorOpen(true)}>监测设置</button>
+      </div>}
+      {session.snapshot?.monitoring?.idle_warning && <p className="notice" role="status">已连续 5 分钟没有输入，7 分钟时将自动结束。恢复操作后会取消提醒。</p>}
 
       <section className={`timer-card${view.mode === "finished" ? " finished-card" : ""}`}
         aria-label="当前工作" aria-busy={session.loading || session.busy}>
@@ -100,7 +119,7 @@ function App() {
             <Icon name="note" /><span>备注</span>
           </button>
           {active && <button type="button" className="quiet-action finish-action" disabled={unavailable} aria-label="结束并保存"
-            onClick={() => { void session.finish(active.id).then(saved => { if (saved) setSettlementOpen(true); }); }}><Icon name="check" /><span>{session.pending === "finish_task" ? "正在保存…" : "结束计时"}</span></button>}
+            onClick={() => { void session.finish(active.id); }}><Icon name="check" /><span>{session.pending === "finish_task" ? "正在保存…" : "结束计时"}</span></button>}
         </div>}
       </section>
 
@@ -121,6 +140,7 @@ function App() {
         busy={unavailable} onSave={session.settle} />
 
       <AppearanceSettings appearance={appearance} />
+      <MonitoringSettings open={monitorOpen} onClose={() => setMonitorOpen(false)} onSaved={() => { void session.refresh(); }} />
       <UiDialog open={layoutOpen} onClose={() => setLayoutOpen(false)} id="layout-title" title="布局设置">
         <fieldset className="density-settings">
           <legend>显示间距</legend>
@@ -135,6 +155,8 @@ function App() {
           <button className="secondary" type="button" disabled={!session.native || session.busy}
             onClick={() => { void session.refresh(); void categories.reload(); }}><Icon name="refresh" />刷新记录</button>
           <ConnectionPanel />
+          <button type="button" className="secondary" disabled={!session.native || session.busy}
+            onClick={() => { void invoke("exit_app").catch(failure => setNavigationError(String(failure))); }}>退出 WorkMemo</button>
         </details>
       </UiDialog>
       <UiDialog open={noteOpen && !!record} onClose={() => setNoteOpen(false)} id="note-title" title="任务详情与备注">

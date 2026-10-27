@@ -59,8 +59,8 @@ export function DesktopWindow({ children, appearanceStyle, navigation, categorie
               onClick={() => { void control("minimize"); }}>
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.5h8" /></svg>
             </button>
-            <button type="button" className="window-control window-close" aria-label="保存并关闭窗口"
-              title={native ? "保存并关闭" : "仅桌面应用可用"} disabled={!native || busy}
+            <button type="button" className="window-control window-close" aria-label="关闭到后台"
+              title={native ? "关闭到后台；可通过托盘退出" : "仅桌面应用可用"} disabled={!native || busy}
               onClick={() => { void control("close"); }}>
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7" /></svg>
             </button>

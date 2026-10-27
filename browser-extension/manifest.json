@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "WorkMemo 本地工作监测",
+  "version": "0.1.0",
+  "description": "仅将已配置工作页面的匹配状态传给本机 WorkMemo；不读取网页内容或输入文本。",
+  "minimum_chrome_version": "120",
+  "permissions": ["nativeMessaging", "alarms"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "WorkMemo 工作监测" },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtGKBoVQeI/+nL0Zq//7RFyrT35o4sVV2QMJ7kfe8vhaz471T5FxJLX1gu4WTArqWf0e+WwSHlxIiI/PfefgiWdXB/HpuamuopdfFFYuJ57D/GgzPiQvSiyifGGNtH3Tz7fDvQDVSmzhbS6/0KwHe/csgYyzrKa7OyW1R6x9+EirVYhJM1XLJ0Rvu+Y/1l6p0BApkVteGRfn7BGLK4qsUlRoow7pyG1DSlFapBUS/e9oT+ozUT2OX2fLkqtPg9M9scthII08XUATKeD3jtyUqqU0v2Pc9V4KF36J1Jnpt50PEpey/KK/TGLN9T21F8jRxHuDFFQs1mZDDvVVRWjUXCwIDAQAB"
+}

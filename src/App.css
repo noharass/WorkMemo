@@ -231,3 +231,15 @@ button.danger-button:hover:not(:disabled) { background: var(--error-background);
 .settlement-record { padding: 12px 0; border-top: 1px solid var(--line); }
 .settlement-record summary { cursor: pointer; }
 .settlement-form { display: grid; gap: 12px; margin-top: 12px; }
+.monitor-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; font-size: 10px; color: var(--text-muted); }
+.monitor-status button { flex-shrink: 0; }
+.monitor-settings { display: grid; gap: 12px; margin-top: 12px; }
+.monitor-toggle { display: flex; align-items: center; gap: 8px; }
+.monitor-toggle input { width: auto; margin: 0; }
+.monitor-rule { display: grid; gap: 8px; margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: var(--control-radius); min-width: 0; }
+.notice-titlebar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.notice-titlebar span { flex: 1; font-size: 13px; cursor: grab; }
+.notice-titlebar button { width: auto; padding: 7px 10px; }
+.notice-content { padding: 0 18px 18px; overflow: auto; min-height: 0; }
+.notice-content h1 { font-size: 18px; line-height: 1.5; }
+.notice-content > section > .secondary, .notice-content > .text-button { margin-top: 14px; }

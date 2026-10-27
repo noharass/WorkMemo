@@ -70,6 +70,11 @@ impl Store {
         }
         tx.execute("INSERT INTO record_revisions(record_id,revision,changed_at,before_json,after_json) VALUES(?1,?2,?3,?4,?5)",
             params![input.id,after.revision,changed_at,before_json,after_json]).map_err(db_error)?;
+        tx.execute(
+            "UPDATE end_reminders SET dismissed=1 WHERE record_id=?1",
+            [input.id],
+        )
+        .map_err(db_error)?;
         tx.commit().map_err(db_error)?;
         Ok(())
     }

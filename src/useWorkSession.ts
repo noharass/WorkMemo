@@ -49,14 +49,22 @@ export function useWorkSession() {
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     let stopped = false;
-    let unlisten: UnlistenFn | undefined;
+    const unlisteners: UnlistenFn[] = [];
     void listen<string>("workmemo:storage-error", ({ payload }) => {
-      if (!stopped) setCommandError(`保存失败，已阻止关闭：${payload}`);
+      if (!stopped) setCommandError(`操作未完成：${payload}`);
     }).then((unsubscribe) => {
-      if (stopped) unsubscribe(); else unlisten = unsubscribe;
+      if (stopped) unsubscribe(); else unlisteners.push(unsubscribe);
     }).catch((error: unknown) => {
       if (!stopped) setCommandError(`无法接收保存错误通知：${String(error)}`);
     });
+    void listen<string>("workmemo:runtime-error", ({ payload }) => {
+      if (!stopped) setCommandError(payload);
+    }).then(unsubscribe => { if (stopped) unsubscribe(); else unlisteners.push(unsubscribe); })
+      .catch((error: unknown) => { if (!stopped) setCommandError(`无法接收计时服务通知：${String(error)}`); });
+    void listen<string>("workmemo:runtime-recovered", ({ payload }) => {
+      if (!stopped) setCommandError(current => current === payload ? "" : current);
+    }).then(unsubscribe => { if (stopped) unsubscribe(); else unlisteners.push(unsubscribe); })
+      .catch((error: unknown) => { if (!stopped) setCommandError(`无法接收恢复通知：${String(error)}`); });
     return () => {
       stopped = true;
       mounted.current = false;
@@ -64,7 +72,7 @@ export function useWorkSession() {
       window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
-      unlisten?.();
+      unlisteners.forEach(unsubscribe => unsubscribe());
     };
   }, [native, refresh]);
 

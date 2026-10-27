@@ -20,6 +20,7 @@ export interface WorkRecord {
   end_reason: string | null;
   legacy_duration_ms: number;
   revision: number;
+  control_mode: "AUTO" | "MANUAL";
 }
 
 export interface Snapshot {
@@ -27,6 +28,7 @@ export interface Snapshot {
   recent_records: WorkRecord[];
   warning: string | null;
   pending_count: number;
+  monitoring: MonitorStatus;
 }
 
 export interface StartInput {
@@ -34,6 +36,19 @@ export interface StartInput {
   quantity: number | null;
   remark: string;
 }
+
+export interface MonitorStatus {
+  enabled: boolean;
+  browser_connected: boolean;
+  native_available: boolean;
+  work_page: boolean;
+  idle_warning: boolean;
+  message: string;
+  revision: number;
+}
+export interface WorkUrl { id: number; url_prefix: string; category: string }
+export interface MonitorConfig { enabled: boolean; revision: number; rules: WorkUrl[] }
+export interface WorkNotice { kind: "idle" | "ended"; record: WorkRecord }
 
 export interface SettleInput {
   id: number;

@@ -2,8 +2,13 @@ use serde::Serialize;
 use tauri::{Emitter, Manager};
 
 mod appearance;
+mod browser_bridge;
+mod browser_protocol;
 mod clock;
 mod database;
+mod desktop;
+mod monitor;
+mod native_activity;
 mod service;
 
 /// A real IPC round trip verifies that the desktop backend is available.
@@ -27,6 +32,7 @@ pub fn run() {
         .setup(|app| {
             app.manage(service::Backend::initialize(app));
             app.manage(appearance::AppearanceState::initialize(app));
+            desktop::setup(app)?;
             Ok(())
         })
         .on_window_event(service::handle_window_event)
@@ -43,6 +49,12 @@ pub fn run() {
             service::delete_record,
             service::get_pending_records,
             service::settle_record,
+            service::get_monitor_config,
+            service::save_monitor_config,
+            service::get_notice,
+            service::defer_notice,
+            service::show_main,
+            service::exit_app,
         ])
         .build(tauri::generate_context!())
         .expect("WorkMemo failed to start")
@@ -54,4 +66,15 @@ pub fn run() {
                 }
             }
         });
+}
+
+#[cfg(debug_assertions)]
+pub fn monitor_probe() -> String {
+    let context: tauri::Context<tauri::Wry> = tauri::generate_context!();
+    let application_id = &context.config().identifier;
+    match native_activity::sample() {
+        Ok(sample)=>serde_json::json!({"application_id":application_id,"native_available":sample.reliable,"unlocked":sample.unlocked,
+            "chrome_foreground":sample.chrome_foreground,"last_input_age_ms":sample.at.ticks_ms.saturating_sub(sample.last_input_ticks)}).to_string(),
+        Err(error)=>serde_json::json!({"application_id":application_id,"native_available":false,"error":error}).to_string(),
+    }
 }

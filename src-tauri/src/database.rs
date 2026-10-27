@@ -1,7 +1,10 @@
 use crate::clock::{Clock, TimePoint};
+use crate::monitor::{MonitorStatus, Runtime};
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::{fs::File, path::Path, time::Duration};
+static NEXT_CLOCK_SESSION: AtomicU64 = AtomicU64::new(0);
 
 pub type Result<T> = std::result::Result<T, String>;
 
@@ -27,6 +30,7 @@ pub struct WorkRecord {
     pub end_reason: Option<String>,
     pub legacy_duration_ms: i64,
     pub revision: i64,
+    pub control_mode: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -42,6 +46,7 @@ pub struct Snapshot {
     pub recent_records: Vec<WorkRecord>,
     pub warning: Option<String>,
     pub pending_count: i64,
+    pub monitoring: MonitorStatus,
 }
 
 struct Segment {
@@ -59,12 +64,14 @@ pub struct Store {
     pub warning: Option<String>,
     // Keep the Windows share-mode lock alive for the entire database session.
     _instance_lock: Option<File>,
+    clock_session: String,
+    pub(crate) monitor: Runtime,
 }
 
 const COLUMNS: &str = "id, category, quantity, remark, start_time, end_time,
     duration_seconds, duration_ms, status, is_paused, recovery_pending,
     settlement_status, source, pause_reason, confirmed_end_time, last_input_time,
-    end_reason, legacy_duration_ms, revision";
+    end_reason, legacy_duration_ms, revision, control_mode";
 
 fn db_error(error: rusqlite::Error) -> String {
     format!("本地数据读写失败：{error}")
@@ -91,6 +98,7 @@ fn read_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkRecord> {
         end_reason: row.get(16)?,
         legacy_duration_ms: row.get(17)?,
         revision: row.get(18)?,
+        control_mode: row.get(19)?,
     })
 }
 
@@ -145,13 +153,19 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1 | 2 => {}
+            1 | 2 | 3 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
             tx.execute_batch(include_str!("../migrations/002_settlement.sql"))
                 .map_err(db_error)?;
             tx.pragma_update(None, "user_version", 2)
+                .map_err(db_error)?;
+        }
+        if version < 3 {
+            tx.execute_batch(include_str!("../migrations/003_monitoring.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 3)
                 .map_err(db_error)?;
         }
         // Never infer work while the application was closed from wall-clock time.
@@ -164,13 +178,24 @@ impl Store {
         )
         .map_err(db_error)?;
         tx.commit().map_err(db_error)?;
-        Ok(Self {
+        let now = clock.now();
+        let mut store = Self {
             connection,
             clock,
             segment: None,
             warning: None,
             _instance_lock: lock,
-        })
+            clock_session: format!(
+                "{}:{}:{}:{}",
+                std::process::id(),
+                now.wall_ms,
+                now.ticks_ms,
+                NEXT_CLOCK_SESSION.fetch_add(1, Ordering::Relaxed)
+            ),
+            monitor: Runtime::default(),
+        };
+        store.monitor.config = store.monitor_config()?;
+        Ok(store)
     }
 
     pub fn active(&self) -> Result<Option<WorkRecord>> {
@@ -272,10 +297,24 @@ impl Store {
             pending_count: self.connection.query_row(
                 "SELECT COUNT(*) FROM work_records WHERE status='FINISHED' AND settlement_status='PENDING'", [], |r| r.get(0)
             ).map_err(db_error)?,
+            monitoring: self.monitor.status.clone(),
         })
     }
 
     pub fn start(&mut self, input: StartInput) -> Result<()> {
+        if self.monitor.active && !self.monitor.status.native_available {
+            return Err("当前无法确认系统活动状态，暂不能开始计时；已有记录保持保存。".into());
+        }
+        self.start_at(input, "MANUAL_START", self.clock.now(), true)
+    }
+
+    fn start_at(
+        &mut self,
+        input: StartInput,
+        source: &str,
+        now: TimePoint,
+        allow_switch: bool,
+    ) -> Result<()> {
         if !["评测", "质检", "开发", "文档"].contains(&input.category.as_str()) {
             return Err("请选择工作类别。".into());
         }
@@ -290,10 +329,12 @@ impl Store {
             return Err("备注不能超过 2000 个字符。".into());
         }
         let previous = self.active()?;
-        if previous.as_ref().is_some_and(|r| !r.is_paused) {
+        if previous
+            .as_ref()
+            .is_some_and(|r| !r.is_paused || !allow_switch)
+        {
             return Err("请先暂停或结束当前任务。".into());
         }
-        let now = self.clock.now();
         let tx = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -301,10 +342,10 @@ impl Store {
         if let Some(previous) = previous {
             finish_row(&tx, previous.id, previous.start_time, now.wall_ms, "SWITCH")?;
         }
-        tx.execute("INSERT INTO work_records(category, quantity, remark, start_time, status, is_paused,settlement_status) VALUES(?1,?2,?3,?4,'WORKING',0,'IN_PROGRESS')",
-            params![input.category, input.quantity, remark, now.wall_ms]).map_err(db_error)?;
+        tx.execute("INSERT INTO work_records(category, quantity, remark, start_time, status, is_paused,settlement_status,source,control_mode,last_input_time) VALUES(?1,?2,?3,?4,'WORKING',0,'IN_PROGRESS',?5,?6,?4)",
+            params![input.category, input.quantity, remark, now.wall_ms,source,if source=="AUTO"{"AUTO"}else{"MANUAL"}]).map_err(db_error)?;
         let id = tx.last_insert_rowid();
-        let row_id = insert_segment(&tx, id, now.wall_ms)?;
+        let row_id = insert_segment(&tx, id, now.wall_ms, &self.clock_session, now.ticks_ms)?;
         tx.commit().map_err(db_error)?;
         self.segment = Some(Segment {
             id,
@@ -314,10 +355,17 @@ impl Store {
             started_wall: now.wall_ms,
         });
         self.warning = None;
+        self.monitor.record_changed(id, now);
         Ok(())
     }
 
     pub fn pause(&mut self, id: i64) -> Result<()> {
+        let record = self.current(id)?;
+        if record.is_paused {
+            self.connection.execute("UPDATE work_records SET pause_reason='MANUAL',control_mode='MANUAL',recovery_pending=0 WHERE id=?1",[id]).map_err(db_error)?;
+            self.monitor.status.idle_warning = false;
+            return Ok(());
+        }
         self.pause_with_reason(id, "MANUAL")
     }
 
@@ -329,19 +377,25 @@ impl Store {
         self.save_running(&record, Some(reason))?;
         self.segment = None;
         self.warning = None;
+        self.monitor.status.idle_warning = false;
         Ok(())
     }
 
     pub fn resume(&mut self, id: i64) -> Result<()> {
+        if self.monitor.active && !self.monitor.status.native_available {
+            return Err("当前无法确认系统活动状态，暂不能继续计时。".into());
+        }
+        self.resume_at(id, self.clock.now(), "MANUAL")
+    }
+    fn resume_at(&mut self, id: i64, now: TimePoint, mode: &str) -> Result<()> {
         let record = self.current(id)?;
         if !record.is_paused {
             return Ok(());
         }
-        let now = self.clock.now();
         let tx = self.connection.transaction().map_err(db_error)?;
         tx.execute(
-            "UPDATE work_records SET is_paused=0, recovery_pending=0,pause_reason=NULL WHERE id=?1",
-            [id],
+            "UPDATE work_records SET is_paused=0, recovery_pending=0,pause_reason=NULL,control_mode=?2,last_input_time=?3 WHERE id=?1",
+            params![id,mode,now.wall_ms],
         )
         .map_err(db_error)?;
         // A wall-clock rollback must not make new intervals overlap old intervals.
@@ -356,7 +410,7 @@ impl Store {
             .wall_ms
             .max(record.start_time)
             .max(previous_end.unwrap_or(0));
-        let row_id = insert_segment(&tx, id, started_wall)?;
+        let row_id = insert_segment(&tx, id, started_wall, &self.clock_session, now.ticks_ms)?;
         tx.commit().map_err(db_error)?;
         self.segment = Some(Segment {
             id,
@@ -366,6 +420,7 @@ impl Store {
             started_wall,
         });
         self.warning = None;
+        self.monitor.record_changed(id, now);
         Ok(())
     }
 
@@ -389,6 +444,7 @@ impl Store {
         tx.commit().map_err(db_error)?;
         self.segment = None;
         self.warning = None;
+        self.monitor.record_ended(now);
         Ok(())
     }
 
@@ -404,8 +460,14 @@ fn valid_quantity(quantity: f64) -> bool {
     quantity.is_finite() && (0.0..=1_000_000_000.0).contains(&quantity)
 }
 
-fn insert_segment(tx: &rusqlite::Transaction<'_>, record_id: i64, start: i64) -> Result<i64> {
-    tx.execute("INSERT INTO work_segments(record_id,start_time,checkpoint_time,state) VALUES(?1,?2,?2,'OPEN')",params![record_id,start]).map_err(db_error)?;
+fn insert_segment(
+    tx: &rusqlite::Transaction<'_>,
+    record_id: i64,
+    start: i64,
+    session: &str,
+    ticks: i64,
+) -> Result<i64> {
+    tx.execute("INSERT INTO work_segments(record_id,start_time,checkpoint_time,state,clock_session,start_ticks_ms,end_ticks_ms) VALUES(?1,?2,?2,'OPEN',?3,?4,?4)",params![record_id,start,session,ticks]).map_err(db_error)?;
     Ok(tx.last_insert_rowid())
 }
 
@@ -427,9 +489,9 @@ fn write_segment(
     let changed = tx
         .execute(
             "UPDATE work_segments SET duration_ms=?1,checkpoint_time=?2,
-        end_time=CASE WHEN ?3 THEN ?2 ELSE NULL END,state=CASE WHEN ?3 THEN 'CLOSED' ELSE 'OPEN' END
+        end_time=CASE WHEN ?3 THEN ?2 ELSE NULL END,state=CASE WHEN ?3 THEN 'CLOSED' ELSE 'OPEN' END,end_ticks_ms=?6
         WHERE id=?4 AND record_id=?5 AND state='OPEN'",
-            params![duration, checkpoint, close, segment.row_id, id],
+            params![duration, checkpoint, close, segment.row_id, id,segment.started_ticks.saturating_add(duration)],
         )
         .map_err(db_error)?;
     if changed != 1 {
@@ -448,8 +510,13 @@ fn finish_row(
     let confirmed = confirmed.max(0);
     tx.execute("UPDATE work_records SET status='FINISHED',is_paused=1,recovery_pending=0,pause_reason=NULL,
         settlement_status='PENDING',confirmed_end_time=?1,end_reason=?2,
-        end_time=MAX(?3,COALESCE((SELECT MAX(checkpoint_time) FROM work_segments WHERE record_id=?4),?1)) WHERE id=?4 AND status='WORKING'",
+        end_time=MAX(?3,COALESCE((SELECT MAX(checkpoint_time) FROM work_segments WHERE record_id=?4 AND duration_ms>0),CASE WHEN legacy_duration_ms>0 THEN ?1 ELSE ?3 END)) WHERE id=?4 AND status='WORKING'",
         params![confirmed,reason,start,id]).map_err(db_error)?;
+    tx.execute(
+        "INSERT INTO end_reminders(record_id) VALUES(?1) ON CONFLICT(record_id) DO NOTHING",
+        [id],
+    )
+    .map_err(db_error)?;
     Ok(())
 }
 
@@ -468,6 +535,13 @@ pub use settlement::SettleInput;
 #[cfg(test)]
 #[path = "settlement_tests.rs"]
 mod settlement_tests;
+
+#[path = "tracking.rs"]
+mod tracking;
+pub use tracking::Notice;
+#[cfg(test)]
+#[path = "tracking_tests.rs"]
+mod tracking_tests;
 
 #[cfg(test)]
 #[path = "reliability_tests.rs"]

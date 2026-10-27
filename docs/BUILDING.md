@@ -36,6 +36,7 @@ npm.cmd run tauri dev
 ## 测试与前端构建
 
 ```powershell
+npm.cmd run build
 npm.cmd test
 cargo fmt --manifest-path .\src-tauri\Cargo.toml -- --check
 cargo test --locked --manifest-path .\src-tauri\Cargo.toml
@@ -43,6 +44,8 @@ npm.cmd run build
 ```
 
 ## 正式交付包
+
+自动记录开发版本增加一个独立的 workmemo-browser 原生通信程序；Cargo 默认运行目标仍为 workmemo。Chrome 接入、独立应用标识的验收构建与当前限制见 BROWSER-BRIDGE.md 和 AUTO-TRACKING-PHASE-2.md。普通源码构建会使用正式数据目录；独立验收程序应按说明单独构建和复制。当前改造没有发布新的安装包。
 
 先保存关闭全部 WorkMemo 窗口，然后在 Windows PowerShell 中执行：
 
