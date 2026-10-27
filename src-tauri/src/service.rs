@@ -54,6 +54,13 @@ impl Backend {
                             store.warning = Some(error);
                         }
                     }
+                } else {
+                    let handle = app.handle().clone();
+                    std::thread::spawn(move || {
+                        let _ = handle
+                            .state::<crate::connection::ConnectionState>()
+                            .refresh(true);
+                    });
                 }
             }
         }

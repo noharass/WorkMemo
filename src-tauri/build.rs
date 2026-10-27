@@ -1,4 +1,8 @@
 fn main() {
+    // Bundling fills this directory after compilation; clean source checkouts
+    // must also compile the helper before it can be staged.
+    std::fs::create_dir_all("target/browser-resources")
+        .expect("browser resource staging directory");
     println!("cargo:rerun-if-env-changed=TAURI_CONFIG");
     let base: serde_json::Value =
         serde_json::from_str(include_str!("tauri.conf.json")).expect("valid Tauri configuration");

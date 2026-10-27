@@ -139,7 +139,7 @@ fn serve(
                     ready: frame.ready,
                 },
             );
-            serde_json::json!({"connected":true,"config":config})
+            serde_json::json!({"connected":true,"config":config,"app":{"identifier":env!("WORKMEMO_IDENTIFIER"),"version":env!("CARGO_PKG_VERSION"),"protocol":1}})
         };
         let mut response = serde_json::to_vec(&reply).map_err(|e| e.to_string())?;
         response.push(b'\n');

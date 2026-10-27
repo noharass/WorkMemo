@@ -1,31 +1,36 @@
-# Chrome 提示 native messaging host not found
+# Chrome 本机连接全面修复（alpha.4）
 
-适用：Windows x64、Google Chrome、WorkMemo v0.2.0-alpha.3 预览包。报错为“Specified native messaging host not found”。
+适用 Windows x64 + Google Chrome，包含 EXE 安装、ZIP 免安装、源码运行和目录迁移。请完整更新到 v0.2.0-alpha.4，并重新加载新版本 extension。只下载新 CMD 配旧版 helper 不能升级组件。
 
-它表示 Chrome 没找到可用的本机主机注册/清单，尚未进入软件通信，更不是站点授权未生效。可能是未注册、路径已失效，或混用了源码扩展与预览包。Chrome 的[官方排查说明](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging#debug-native-messaging)要求检查主机名、注册表默认值、清单和主机文件。
+“Specified native messaging host not found”表示 Chrome 尚未找到有效主机注册，站点授权不能解决该错误。依据：https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging#debug-native-messaging 。
 
-## 推荐：使用修复安装器
+## 用户操作
 
-从同一 GitHub v0.2.0-alpha.3 Release 下载文件名以 x64-preview-setup-r2.exe 结尾的安装包。先从托盘正常退出旧 WorkMemo，再运行安装器；已安装同版本时选择重新安装。R2 会自动在当前 Windows 用户下注册 Chrome 本机主机，无需运行 PowerShell 脚本或更改执行策略。
+1. 从托盘正常退出旧 WorkMemo，完整安装 EXE 或解压 ZIP；保留配套组件。不要删除数据目录。
+2. 启动新软件。它在数据库与本机服务正常初始化后自动检查并修复注册。ZIP 移动目录后重新启动也会更新路径。
+3. 打开监测设置查看连接诊断；必要时点击“修复本机连接”，或双击同目录 Register-Browser.cmd。无需管理员权限、PowerShell 或执行策略修改。
+4. 点击“打开配套扩展文件夹”，在 Chrome 加载该文件夹的 extension（源码 dev 的配套目录在 src-tauri/target/debug/extension）。已有扩展须重新加载新版本。
+5. 扩展显示“已连接本机 WorkMemo”及版本、数据配置后，再同步工作站点授权。
 
-打开 WorkMemo，并在 Chrome 扩展管理页重新加载包内 extension。连接成功后再同步工作站点授权。原有记录、待补全、工作网址与外观保持在原数据目录；不要删除这些目录。
+## 情况区分
 
-## 已有完整预览包的一键修复
+| 情况 | 处理 |
+| --- | --- |
+| host not found / 路径失效 | 启动完整新版软件自动修复，或使用监测设置修复 |
+| 缺少 workmemo-browser.exe | 重新完整安装或解压，不能只复制主 EXE |
+| 组件版本或数据配置不匹配 | 使用同一包的主程序、helper、profile；不要拼接不同版本 |
+| 主机可运行但软件未启动 | 启动软件；扩展会在两个已知主机间有间隔重试 |
+| 已连接但未授权工作站点 | 保存工作 URL 后在扩展同步站点授权 |
+| 组织策略阻止本机通信 | 软件报告注册失败；由该电脑管理者处理策略，不自动绕过 |
+| 正式版与预览版同时存在 | 各注册自己的主机；扩展优先使用配套配置，连通后保持该主机，并显示实际数据标识 |
+| 移动/删除已加载扩展目录 | 重新加载新目录；移动程序不能让 Chrome 自动改变扩展目录 |
 
-将随修复版提供的 Register-Browser.cmd 放到 workmemo-browser.exe 所在的文件夹，再双击运行。它会验证配套 extension、预览数据标识及主机文件，生成本机清单并写入当前用户的 Chrome 主机注册。成功后启动 WorkMemo，重新加载 Chrome 的 WorkMemo 扩展。
+## 实现边界
 
-该文件不能放在任意下载目录直接运行，必须与 workmemo-browser.exe、workmemo-browser.profile.json 和 extension 文件夹放在一起。若提示缺文件，重新完整安装或解压；若提示配置不匹配，使用安装包内的 extension，不要使用 GitHub 源码目录 browser-extension 来连接预览版。
+所有入口调用同一 Rust 注册逻辑。清单保存在 %LOCALAPPDATA%\应用标识\browser-host.json，使用 UTF-8 与 helper 的绝对路径；安装目录不需可写。注册仅为 HKCU\Software\Google\Chrome\NativeMessagingHosts 下的 WorkMemo 主机，兼顾 32/64 注册视图，不改变 HKLM、浏览器站点权限或工作数据。
 
-一键修复不依赖 PowerShell，不修改脚本执行策略或 Chrome 站点权限，不清空数据库。若组织策略禁止注册，修复程序会报告失败；不把失败当作连接成功。
+正式配置 com.workmemo.desktop 对应 com.workmemo.browser_bridge；com.workmemo.test.* 对应 com.workmemo.browser_bridge_test。清单只允许固定扩展 origin chrome-extension://oljcealhccdhaddceacnokihjefloaih/。新扩展尝试这两个已知名称，退避避免循环启动；健康连接不会跳转。
 
-## 范围与核对
+启动时先探测组件版本、协议和 profile，不匹配就不改注册。数据库被另一实例占用或本机服务未就绪时，不进行启动自动注册。手动修复可重新接管当前用户的对应 WorkMemo 主机；同一主机只能指向一个目录。不同 Windows 用户需分别启动软件完成该用户注册。
 
-- 主机名：com.workmemo.browser_bridge_test。
-- 注册位置：HKCU\Software\Google\Chrome\NativeMessagingHosts\com.workmemo.browser_bridge_test；默认值为本机清单的完整路径。
-- 清单只允许 chrome-extension://oljcealhccdhaddceacnokihjefloaih/。
-- 清单 path 使用 Windows 支持的相对路径 workmemo-browser.exe，以清单所在目录解析，兼容空格与中文安装目录。
-- 主机 profile 为 com.workmemo.test.monitor，与当前预览程序一致。
-
-安装器卸载时只清除仍指向本安装目录的注册；旧目录的卸载器不得删除较新目录的注册。工作数据仍按已有卸载选项处理，默认保留。
-
-仍报错时，提供扩展面板错误文字、所用浏览器名称、下载的包文件名及修复窗口报错即可；不要发送工作数据库、网页内容或认证值。alpha.2 还有已修复的心跳问题，应升级到 alpha.3 R2。
+安装器卸载、CLI --unregister 只移除仍属于自己的注册；旧目录不能清掉较新目录的注册。工作数据库、外观、待补全和工作 URL 不参与修复。本轮无数据库迁移、无计时规则更改、无灵动岛开发。完整检查和源码见 BROWSER-CONNECTION-DELIVERY.md。

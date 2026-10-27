@@ -19,7 +19,7 @@ async function refresh() {
     permissionStatus.textContent = !state?.connected ? '先恢复本机连接，再同步工作站点授权'
       : origins.length === 0 ? '请先在 WorkMemo 配置 URL，再同步站点授权'
       : allowed ? '工作站点已授权' : '工作站点尚未授权，请点击下方按钮';
-  } catch { status.textContent = '无法读取连接状态，请确认扩展主机已注册'; }
+  } catch { status.textContent = '无法读取连接状态，请启动 WorkMemo，并在监测设置中检查本机连接'; }
 }
 grant.addEventListener('click', async () => {
   error.textContent = '';

@@ -5,10 +5,13 @@ mod appearance;
 mod browser_bridge;
 mod browser_protocol;
 mod clock;
+mod connection;
 mod database;
 mod desktop;
 mod monitor;
 mod native_activity;
+#[allow(dead_code)] // Shared with the separately built native host CLI.
+mod registration;
 mod service;
 
 /// A real IPC round trip verifies that the desktop backend is available.
@@ -30,6 +33,7 @@ fn app_info() -> AppInfo {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            app.manage(connection::ConnectionState::initialize(app));
             app.manage(service::Backend::initialize(app));
             app.manage(appearance::AppearanceState::initialize(app));
             desktop::setup(app)?;
@@ -38,6 +42,9 @@ pub fn run() {
         .on_window_event(service::handle_window_event)
         .invoke_handler(tauri::generate_handler![
             app_info,
+            connection::get_connection_status,
+            connection::repair_browser_connection,
+            connection::open_browser_extension,
             appearance::get_appearance,
             appearance::save_appearance,
             service::get_snapshot,

@@ -3,7 +3,11 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { CATEGORIES, type MonitorConfig } from "./types";
 import { UiDialog } from "./UiDialog";
 
+type ConnectionStatus = { state: string; message: string; identifier: string; version: string; host_name: string; manifest_path: string | null; extension_path: string | null };
+
 export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+  const [connection, setConnection] = useState<ConnectionStatus | null>(null);
+  const [repairing, setRepairing] = useState(false);
   const [config, setConfig] = useState<MonitorConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -12,6 +16,8 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
   useEffect(() => {
     if (!open || !isTauri()) return;
     let stale = false;
+    setConnection(null);
+    void invoke<ConnectionStatus>("get_connection_status").then(value => { if (!stale) setConnection(value); }).catch((failure: unknown) => { if (!stale) setError(String(failure)); });
     setConfig(null); setError(""); setNotice("");
     void invoke<MonitorConfig>("get_monitor_config").then(value => { if (!stale) setConfig(value); })
       .catch((failure: unknown) => { if (!stale) setError(String(failure)); });
@@ -35,6 +41,16 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
     {error && <p className="error-banner" role="alert">{error}</p>}
     {notice && <p className="notice" role="status">{notice}</p>}
     {!config && isTauri() && <button className="secondary" type="button" onClick={() => setRetry(value => value + 1)}>读取监测配置</button>}
+    {isTauri() && <section className="monitor-rule" aria-label="浏览器连接诊断">
+      <p role="status">{connection?.message ?? "正在检查本机连接…"}</p>
+      {connection && <details><summary>连接详情</summary><p className="hint">版本 {connection.version} · {connection.identifier}<br />主机 {connection.host_name}<br />清单 {connection.manifest_path ?? "尚未就绪"}</p></details>}
+      <button type="button" className="secondary" disabled={repairing} onClick={() => {
+        setRepairing(true); setError("");
+        void invoke<ConnectionStatus>("repair_browser_connection").then(setConnection).catch((failure: unknown) => setError(String(failure))).finally(() => setRepairing(false));
+      }}>{repairing ? "正在修复…" : "修复本机连接"}</button>
+      <button type="button" className="text-button" onClick={() => { void invoke("open_browser_extension").catch((failure: unknown) => setError(String(failure))); }}>打开配套扩展文件夹</button>
+      <p className="hint">Chrome 扩展需加载一次本目录。EXE、ZIP 和源码版启动时均会检查并修复当前用户的本机主机注册。</p>
+    </section>}
     {config && <form className="monitor-settings" onSubmit={(event) => { void save(event); }}>
       <label className="monitor-toggle"><input type="checkbox" checked={config.enabled} disabled={busy}
         onChange={event => setConfig({ ...config, enabled: event.target.checked })} />启用工作页面自动识别</label>

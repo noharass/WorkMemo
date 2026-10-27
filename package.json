@@ -1,13 +1,14 @@
 {
   "name": "workmemo",
   "private": true,
-  "version": "0.2.0-alpha.3",
+  "version": "0.2.0-alpha.4",
   "type": "module",
   "engines": {
     "node": ">=24 <25"
   },
   "scripts": {
     "dev": "vite",
+    "bridge:dev": "cargo build --locked --manifest-path src-tauri/Cargo.toml --bin workmemo-browser && node scripts/stage-browser-resources.mjs --debug",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test:themes": "node --test tests/themes.test.mjs",

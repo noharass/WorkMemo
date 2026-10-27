@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$PortableZip,
     [Parameter(Mandatory=$true)][ValidatePattern('^[0-9a-fA-F]{64}$')][string]$ExpectedSha256,
-    [ValidatePattern('^[a-z0-9-]+$')][string]$InstallerRevision = 'r2'
+    [ValidatePattern('^[a-z0-9-]+$')][string]$InstallerRevision = 'r1'
 )
 
 Set-StrictMode -Version Latest
@@ -17,8 +17,8 @@ $taskOutput = Join-Path $taskRoot ('artifacts\' + $taskVersion + '\installer-' +
 $taskStaging = Join-Path $taskOutput 'staging'
 [IO.Directory]::CreateDirectory((Join-Path $taskStaging 'extension')) | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$taskNames = @('workmemo-preview.exe','workmemo-browser.exe','Register-Browser.ps1','使用说明.md','THIRD-PARTY-LICENSES.txt','workmemo-browser.profile.json','BUILD-INFO.json')
-foreach ($taskName in @('manifest.json','background.js','matching.js','popup.html','popup.js','popup.css','bridge-config.js')) { $taskNames += 'extension/' + $taskName }
+$taskNames = @('workmemo-preview.exe','workmemo-browser.exe','Register-Browser.ps1','Register-Browser.cmd','使用说明.md','THIRD-PARTY-LICENSES.txt','workmemo-browser.profile.json','BUILD-INFO.json')
+foreach ($taskName in (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $PSScriptRoot 'browser-resource-files.json') | ConvertFrom-Json)) { $taskNames += 'extension/' + $taskName }
 $taskZip = [IO.Compression.ZipFile]::OpenRead($taskZipPath)
 try {
     if ($taskZip.Entries.Count -ne $taskNames.Count) { throw 'Unexpected portable ZIP entry count.' }
@@ -44,15 +44,15 @@ $taskBinary = Join-Path $taskRoot 'src-tauri\target\release\workmemo-preview.exe
 [IO.Directory]::CreateDirectory((Split-Path -Parent $taskBinary)) | Out-Null
 Copy-Item -LiteralPath (Join-Path $taskStaging 'workmemo-preview.exe') -Destination $taskBinary -Force
 $taskResources = @{}
+# Suppress the base resource map: all files come from the verified ZIP.
+$taskResources['target/browser-resources/'] = $null
 foreach ($taskName in $taskNames) {
     if ($taskName -in @('workmemo-preview.exe','THIRD-PARTY-LICENSES.txt','使用说明.md')) { continue }
     $taskResources[(Join-Path $taskStaging $taskName)] = $taskName
 }
 $taskResources[(Join-Path $taskRoot 'docs\PREVIEW-INSTALLER-GUIDE.md')] = '使用说明.md'
-$taskResources[(Join-Path $taskRoot 'scripts\register-preview-browser.cmd')] = 'Register-Browser.cmd'
-$taskResources[(Join-Path $taskRoot 'src-tauri\installer\com.workmemo.browser_bridge_test.json')] = 'com.workmemo.browser_bridge_test.json'
 $taskResources[(Join-Path $taskStaging 'INSTALLER-BUILD-INFO.json')] = 'INSTALLER-BUILD-INFO.json'
-$taskOverlay = @{mainBinaryName='workmemo-preview';bundle=@{resources=$taskResources;windows=@{nsis=@{startMenuFolder='WorkMemo Preview';installerHooks=(Join-Path $taskRoot 'src-tauri\installer\browser-bridge.nsh')}}}}
+$taskOverlay = @{mainBinaryName='workmemo-preview';build=@{beforeBundleCommand=''};bundle=@{resources=$taskResources;windows=@{nsis=@{startMenuFolder='WorkMemo Preview';installerHooks=(Join-Path $taskRoot 'src-tauri\installer\browser-bridge.nsh')}}}}
 $taskOverlayPath = Join-Path $taskOutput 'installer.conf.json'
 [IO.File]::WriteAllText($taskOverlayPath, ($taskOverlay | ConvertTo-Json -Depth 10), $taskUtf8)
 Push-Location $taskRoot

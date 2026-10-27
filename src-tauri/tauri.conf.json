@@ -1,12 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "WorkMemo",
-  "version": "0.2.0-alpha.3",
+  "version": "0.2.0-alpha.4",
   "identifier": "com.workmemo.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run bridge:dev && npm run dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
+    "beforeBundleCommand": "node scripts/stage-browser-resources.mjs",
     "frontendDist": "../dist"
   },
   "app": {
@@ -41,7 +42,8 @@
     "shortDescription": "本地工作记录与有效时长工具",
     "category": "Productivity",
     "resources": {
-      "../docs/THIRD-PARTY-LICENSES.txt": "THIRD-PARTY-LICENSES.txt"
+      "../docs/THIRD-PARTY-LICENSES.txt": "THIRD-PARTY-LICENSES.txt",
+      "target/browser-resources/": ""
     },
     "windows": {
       "webviewInstallMode": {
@@ -52,6 +54,7 @@
         "installMode": "currentUser",
         "languages": ["SimpChinese", "English"],
         "displayLanguageSelector": false,
+        "installerHooks": "installer/browser-bridge.nsh",
         "installerIcon": "icons/icon.ico",
         "uninstallerIcon": "icons/icon.ico"
       }

@@ -11,15 +11,20 @@ const flush = async () => { for (let index = 0; index < 4; index++) await Promis
 async function backgroundScenario(run) {
   const previousChrome = globalThis.chrome;
   const previousInterval = globalThis.setInterval;
+  const previousNow = Date.now;
+  let now = previousNow();
+  Date.now = () => now;
   const messages = [];
   let tick;
   let connections = 0;
-  const native = { onMessage: event(), onDisconnect: event(), postMessage: frame => messages.push(frame), disconnect() {} };
+  const ports = [];
+  const names = [];
+  const makePort = () => ({ onMessage: event(), onDisconnect: event(), postMessage: frame => messages.push(frame), disconnect() {} });
   const chrome = {
     runtime: {
       id: 'oljcealhccdhaddceacnokihjefloaih',
       getURL: path => `chrome-extension://oljcealhccdhaddceacnokihjefloaih/${path}`,
-      connectNative: () => { connections++; return native; },
+      connectNative: name => { connections++; names.push(name); const native = makePort(); ports.push(native); return native; },
       onStartup: event(), onInstalled: event(), onMessage: event(),
     },
     permissions: { contains: async () => false, onAdded: event(), onRemoved: event() },
@@ -37,8 +42,9 @@ async function backgroundScenario(run) {
       chrome.runtime.onMessage.emit({ type: 'status' }, { id: chrome.runtime.id, url: chrome.runtime.getURL('popup.html') }, reply => { value = reply; });
       return value;
     };
-    await run({ native, chrome, messages, status, connections: () => connections, tick: async () => { tick(); await flush(); } });
+    await run({ get native() { return ports.at(-1); }, ports, names, chrome, messages, status, connections: () => connections, tick: async (advance = 5000) => { now += advance; tick(); await flush(); } });
   } finally {
+    Date.now = previousNow;
     globalThis.chrome = previousChrome;
     globalThis.setInterval = previousInterval;
   }
@@ -75,12 +81,44 @@ test('Chrome 原生主机错误显示具体原因，断开后的旧回复不能�
 });
 
 test('本机通信中断与站点授权分开提示，重新连通后清除旧错误', async () => {
-  await backgroundScenario(async ({ native, status, tick }) => {
+  await backgroundScenario(async (scenario) => {
+    const { native, status, tick } = scenario;
     native.onMessage.emit({ connected: false, config: null, error: 'desktop_io' });
     assert.match(status().message, /通信连接中断/);
     await tick();
-    native.onMessage.emit({ connected: true, config: { enabled: false, revision: 0, rules: [] } });
+    scenario.native.onMessage.emit({ connected: true, config: { enabled: false, revision: 0, rules: [] } });
     assert.equal(status().connected, true);
     assert.equal(status().message, '已连接本机 WorkMemo');
+  });
+});
+
+test('正式主机缺失时回退预览主机；退避期间不重复启动，健康端口保持稳定', async () => {
+  await backgroundScenario(async scenario => {
+    const { native, chrome, status, tick, names, connections } = scenario;
+    chrome.runtime.lastError = { message: 'Specified native messaging host not found.' };
+    native.onDisconnect.emit(); delete chrome.runtime.lastError;
+    await tick(10); assert.equal(connections(), 1);
+    await tick(1000); assert.equal(connections(), 2);
+    assert.deepEqual(names, ['com.workmemo.browser_bridge', 'com.workmemo.browser_bridge_test']);
+    const app = { identifier: 'com.workmemo.test.monitor', version: '0.2.0-alpha.4', protocol: 1 };
+    const config = { enabled: false, revision: 0, rules: [] };
+    scenario.native.onMessage.emit({ connected: true, config, app });
+    assert.equal(status().app.identifier, app.identifier);
+    native.onMessage.emit({ connected: true, config });
+    assert.equal(status().app.identifier, app.identifier);
+    await tick(); scenario.native.onMessage.emit({ connected: true, config, app });
+    await tick(); assert.equal(connections(), 2);
+  });
+});
+
+test('超时会换候选主机，旧端口的断开和回复不清除新连接', async () => {
+  await backgroundScenario(async scenario => {
+    const old = scenario.native;
+    await scenario.tick(11000);
+    await scenario.tick(1000);
+    assert.equal(scenario.connections(), 2);
+    scenario.native.onMessage.emit({ connected: true, config: { enabled: false, revision: 0, rules: [] } });
+    old.onDisconnect.emit(); old.onMessage.emit({ connected: false });
+    assert.equal(scenario.status().connected, true);
   });
 });

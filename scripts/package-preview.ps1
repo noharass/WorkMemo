@@ -19,27 +19,22 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Preview release build failed.' }
     $taskStaging = Join-Path $taskOutput 'portable\WorkMemo-Preview'
     [IO.Directory]::CreateDirectory((Join-Path $taskStaging 'extension')) | Out-Null
+    & node scripts/stage-browser-resources.mjs --output $taskStaging --identifier com.workmemo.test.monitor
+    if ($LASTEXITCODE -ne 0) { throw 'Browser component staging failed.' }
     $taskCopies = @(
         @{Source='src-tauri\target\release\workmemo.exe';Name='workmemo-preview.exe'},
-        @{Source='src-tauri\target\release\workmemo-browser.exe';Name='workmemo-browser.exe'},
-        @{Source='scripts\register-preview-browser.ps1';Name='Register-Browser.ps1'},
         @{Source='docs\PREVIEW-GUIDE.md';Name='使用说明.md'},
         @{Source='docs\THIRD-PARTY-LICENSES.txt';Name='THIRD-PARTY-LICENSES.txt'}
     )
-    foreach ($taskFile in @('manifest.json','background.js','matching.js','popup.html','popup.js','popup.css','bridge-config.js')) {
-        $taskCopies += @{Source=('browser-extension\' + $taskFile);Name=('extension\' + $taskFile)}
-    }
     foreach ($taskEntry in $taskCopies) {
         Copy-Item -LiteralPath (Join-Path $taskRoot $taskEntry.Source) -Destination (Join-Path $taskStaging $taskEntry.Name) -Force
     }
     $taskUtf8 = New-Object Text.UTF8Encoding($false)
-    [IO.File]::WriteAllText((Join-Path $taskStaging 'extension\bridge-config.js'), 'export const HOST_NAME = "com.workmemo.browser_bridge_test";' + [Environment]::NewLine, $taskUtf8)
-    $taskProfileName = 'workmemo-browser.profile.json'
-    [IO.File]::WriteAllText((Join-Path $taskStaging $taskProfileName), '{"identifier":"com.workmemo.test.monitor"}', $taskUtf8)
     $taskCommit = & git rev-parse HEAD
     if ($LASTEXITCODE -ne 0) { throw 'Unable to identify source commit.' }
     [IO.File]::WriteAllText((Join-Path $taskStaging 'BUILD-INFO.json'), (@{version=$taskVersion;identifier='com.workmemo.test.monitor';source_commit=$taskCommit;configuration='release';prerelease=$true;runtime_acceptance='pending'} | ConvertTo-Json), $taskUtf8)
-    $taskNames = @($taskCopies | ForEach-Object { $_.Name }) + @($taskProfileName,'BUILD-INFO.json')
+    $taskNames = @('workmemo-preview.exe','workmemo-browser.exe','Register-Browser.cmd','Register-Browser.ps1','workmemo-browser.profile.json','BUILD-INFO.json','使用说明.md','THIRD-PARTY-LICENSES.txt')
+    foreach ($taskName in (Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $PSScriptRoot 'browser-resource-files.json') | ConvertFrom-Json)) { $taskNames += 'extension/' + $taskName }
     $taskZipName = 'WorkMemo_' + $taskVersion + '_windows_x64_preview.zip'
     $taskZipPath = Join-Path $taskOutput $taskZipName
     Add-Type -AssemblyName System.IO.Compression.FileSystem

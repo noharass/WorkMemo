@@ -48,3 +48,6 @@ Windows 本地工作记录与有效时长工具。项目地址：https://github.
 - 反馈问题时提供应用版本、Windows 版本、错误文字和复现步骤；无需公开真实工作数据库、备注或个人记录。
 
 第三方依赖声明见随附 THIRD-PARTY-LICENSES.txt。
+
+
+自动记录预览版 alpha.4 的 EXE/ZIP/源码接入已统一为启动自动检查与修复。监测设置提供连接诊断、修复及配套扩展目录入口。需要完整更新应用及 Chrome 扩展；具体步骤见 PREVIEW-GUIDE.md 和 BROWSER-REGISTRATION-FIX.md。正式版与预览版的数据目录继续独立。

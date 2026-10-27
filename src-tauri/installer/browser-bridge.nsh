@@ -1,40 +1,79 @@
 !include "LogicLib.nsh"
-
-; Tests override only this key at compile time, never the shipped host identity.
-!ifndef WM_BRIDGE_REGISTRY_KEY
-  !define WM_BRIDGE_REGISTRY_KEY "Software\Google\Chrome\NativeMessagingHosts\com.workmemo.browser_bridge_test"
+!ifndef WM_BRIDGE_REGISTRY_ROOT
+  !define WM_BRIDGE_REGISTRY_ROOT "Software\Google\Chrome\NativeMessagingHosts"
 !endif
-!define WM_BRIDGE_MANIFEST "com.workmemo.browser_bridge_test.json"
+!ifndef WM_BRIDGE_DATA_ROOT
+  !define WM_BRIDGE_DATA_ROOT "$LOCALAPPDATA"
+!endif
+!macro WM_BRIDGE_CONSTANTS
+!ifndef WM_BRIDGE_KEY
+!if "${BUNDLEID}" == "com.workmemo.desktop"
+  !define WM_BRIDGE_HOST "com.workmemo.browser_bridge"
+!else
+  !define WM_BRIDGE_HOST "com.workmemo.browser_bridge_test"
+!endif
+!define WM_BRIDGE_KEY "${WM_BRIDGE_REGISTRY_ROOT}\${WM_BRIDGE_HOST}"
+!define WM_BRIDGE_MANIFEST "${WM_BRIDGE_DATA_ROOT}\${BUNDLEID}\browser-host.json"
+
+!endif
+!macroend
 
 !macro NSIS_HOOK_POSTINSTALL
+  !insertmacro WM_BRIDGE_CONSTANTS
   Push $R0
-  ${IfNot} ${FileExists} "$INSTDIR\${WM_BRIDGE_MANIFEST}"
-    SetErrorLevel 1
-    Abort "The WorkMemo browser host manifest is missing."
-  ${EndIf}
-  ${IfNot} ${FileExists} "$INSTDIR\workmemo-browser.exe"
-    SetErrorLevel 1
-    Abort "The WorkMemo browser host executable is missing."
-  ${EndIf}
+  SetRegView 64
   ClearErrors
-  WriteRegStr HKCU "${WM_BRIDGE_REGISTRY_KEY}" "" "$INSTDIR\${WM_BRIDGE_MANIFEST}"
+  ExecWait '"$INSTDIR\workmemo-browser.exe" --register' $R0
   ${If} ${Errors}
-    SetErrorLevel 1
-    Abort "Cannot register the WorkMemo browser host for the current user."
+  ${OrIf} $R0 != 0
+    DetailPrint "WorkMemo browser registration needs repair in monitoring settings."
+    MessageBox MB_ICONEXCLAMATION|MB_OK "Browser connection setup failed. Start WorkMemo and open monitoring settings to repair the connection." /SD IDOK
+  ${Else}
+    DetailPrint "WorkMemo browser connection registered for the current user."
   ${EndIf}
-  DetailPrint "WorkMemo Chrome bridge registered for the current user."
   Pop $R0
 !macroend
 
-; Run only after Tauri's running-app/cancel check and resource removal.
-; The manifest is a normal bundled resource, so cancellation preserves it.
-!macro NSIS_HOOK_POSTUNINSTALL
-  Push $R0
-  ReadRegStr $R0 HKCU "${WM_BRIDGE_REGISTRY_KEY}" ""
-  ${If} $R0 == "$INSTDIR\${WM_BRIDGE_MANIFEST}"
-    DeleteRegValue HKCU "${WM_BRIDGE_REGISTRY_KEY}" ""
-    DeleteRegKey /ifempty HKCU "${WM_BRIDGE_REGISTRY_KEY}"
+; After Tauri's running-app/cancel check and resource removal.
+; Never remove the registration of a newer install or portable directory.
+!macro WM_BRIDGE_REMOVE_VIEW VIEW
+  SetRegView ${VIEW}
+  ReadRegStr $R0 HKCU "${WM_BRIDGE_KEY}" "WorkMemoExecutable"
+  ReadRegStr $R1 HKCU "${WM_BRIDGE_KEY}" ""
+  ReadRegStr $R2 HKCU "${WM_BRIDGE_KEY}" "WorkMemoProfile"
+  ${If} $R0 == "$INSTDIR\workmemo-browser.exe"
+  ${AndIf} $R1 == "${WM_BRIDGE_MANIFEST}"
+  ${AndIf} $R2 == "${BUNDLEID}"
+    StrCpy $R4 1
+    DeleteRegValue HKCU "${WM_BRIDGE_KEY}" ""
+    DeleteRegValue HKCU "${WM_BRIDGE_KEY}" "WorkMemoExecutable"
+    DeleteRegValue HKCU "${WM_BRIDGE_KEY}" "WorkMemoProfile"
+    DeleteRegKey /ifempty HKCU "${WM_BRIDGE_KEY}"
+  ${ElseIf} $R0 != ""
+    StrCpy $R3 0
+  ${ElseIf} $R1 != ""
+    StrCpy $R3 0
   ${EndIf}
-  ; An old uninstaller must not remove a newer directory's registration.
+!macroend
+!macro NSIS_HOOK_POSTUNINSTALL
+  !insertmacro WM_BRIDGE_CONSTANTS
+  Push $R0
+  Push $R1
+  Push $R2
+  Push $R3
+  Push $R4
+  StrCpy $R3 1
+  StrCpy $R4 0
+  !insertmacro WM_BRIDGE_REMOVE_VIEW 32
+  !insertmacro WM_BRIDGE_REMOVE_VIEW 64
+  ${If} $R3 == 1
+  ${AndIf} $R4 == 1
+    Delete "${WM_BRIDGE_MANIFEST}"
+  ${EndIf}
+  SetRegView 64
+  Pop $R4
+  Pop $R3
+  Pop $R2
+  Pop $R1
   Pop $R0
 !macroend

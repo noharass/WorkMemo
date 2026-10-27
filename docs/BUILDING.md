@@ -93,3 +93,21 @@ npm.cmd run tauri -- build --ci --no-binary-patching
 本项目未启用自动更新插件。打包时使用 --no-binary-patching，保留安装版与免安装版相同的程序字节，便于核对 SHA256；不写入仅自动更新分发需要的 bundle 类型标记。依赖许可文本不变时不重复改写，避免无意义的重新编译。
 
 版本在 package.json、package-lock.json、src-tauri/Cargo.toml、src-tauri/Cargo.lock、src-tauri/tauri.conf.json 中保持一致。用户选定的原始 C 图标为 src/assets/workmemo-icon.png；需要重新生成图标时执行 npm.cmd run icons。脚本保持原图标记，在后方添加黑色圆角底板，使用现有 Tauri CLI 生成原生尺寸及 public/workmemo.png；没有新增构建依赖。临时画布和额外平台产物保留在被忽略的 target 目录。完整源码与阶段记录保存在 docs 中。
+
+
+## alpha.4 统一浏览器组件
+
+npm.cmd run tauri -- dev 会先构建 helper，再用 scripts/stage-browser-resources.mjs 准备 target/debug 的配套文件；preview config 自动使用预览标识。bundle 前同一脚本校验版本/标识并准备 target/browser-resources，标准 NSIS 与标准 ZIP 也包含完整组件。scripts/browser-resource-files.json 是扩展文件清单。
+
+~~~powershell
+Set-Location 'E:\WorkMemo'
+npm.cmd test
+npm.cmd run build
+cargo test --locked --offline --manifest-path src-tauri/Cargo.toml
+& .\scripts\test-browser-registration.ps1
+& .\scripts\package-preview.ps1
+$taskZip = 'E:\WorkMemo\artifacts\0.2.0-alpha.4\WorkMemo_0.2.0-alpha.4_windows_x64_preview.zip'
+& .\scripts\package-preview-installer.ps1 -PortableZip $taskZip -ExpectedSha256 (Get-FileHash -LiteralPath $taskZip -Algorithm SHA256).Hash
+~~~
+
+注册测试只接受支持隔离开关的 debug helper，在 Software\WorkMemo\RegistrationTests\GUID 及 artifacts 测试目录运行，不修改真实 Chrome 主机或工作数据库。release helper 忽略这些测试环境变量。预览安装器消费校验过的 ZIP，禁止混入不同版本二进制。标准 package-windows.ps1 仍只接受稳定版本号，避免把预览配置当稳定版发布。

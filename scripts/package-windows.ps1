@@ -50,6 +50,11 @@ try {
             )) {
                 [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $entry.Source, $entry.Name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
             }
+            $browserResources = Join-Path $taskRoot 'src-tauri/target/browser-resources'
+            foreach ($resource in (Get-ChildItem -LiteralPath $browserResources -Recurse -File)) {
+                $relative = $resource.FullName.Substring($browserResources.Length + 1).Replace('\','/')
+                [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $resource.FullName, ('WorkMemo/' + $relative), [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+            }
         } finally { $archive.Dispose() }
     } finally { $stream.Dispose() }
     $checksums = foreach ($name in @($setupName, $zipName, 'THIRD-PARTY-LICENSES.txt')) {

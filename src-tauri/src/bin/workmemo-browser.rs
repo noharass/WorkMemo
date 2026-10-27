@@ -2,6 +2,8 @@
 #[path = "../browser_protocol.rs"]
 mod browser_protocol;
 use browser_protocol::*;
+#[path = "../registration.rs"]
+mod registration;
 use std::{
     io::{self, BufReader, Write},
     net::{Ipv4Addr, SocketAddrV4, TcpStream},
@@ -38,43 +40,11 @@ fn diagnostic(event: &str) {
 }
 
 fn endpoint_path() -> Result<PathBuf, String> {
-    let mut identifier = env!("WORKMEMO_IDENTIFIER").to_string();
-    #[cfg(debug_assertions)]
-    if let Ok(test_profile) = std::env::var("WORKMEMO_TEST_PROFILE") {
-        if !test_profile.starts_with("com.workmemo.test.") {
-            return Err("test profile".into());
-        }
-        identifier = test_profile;
-    }
-    let profile = std::env::current_exe()
-        .map_err(|e| e.to_string())?
-        .with_file_name("workmemo-browser.profile.json");
-    if let Ok(bytes) = std::fs::read(profile) {
-        if bytes.len() > 4096 {
-            return Err("profile size".into());
-        }
-        let value: serde_json::Value =
-            serde_json::from_slice(&bytes).map_err(|_| "profile JSON")?;
-        identifier = value["identifier"]
-            .as_str()
-            .ok_or("profile identifier")?
-            .to_string();
-    }
-    if !identifier.starts_with("com.workmemo.")
-        || identifier.split('.').any(|part| part.is_empty())
-        || identifier.is_empty()
-        || identifier.len() > 128
-        || !identifier
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-' || b == b'_')
-    {
-        return Err("profile identifier".into());
-    }
-    Ok(
-        PathBuf::from(std::env::var_os("LOCALAPPDATA").ok_or("local data directory")?)
-            .join(identifier)
-            .join("browser-bridge.endpoint.json"),
-    )
+    let binary = std::env::current_exe().map_err(|e| e.to_string())?;
+    let identifier = registration::profile_for(&binary, env!("WORKMEMO_IDENTIFIER"))?;
+    Ok(registration::data_root()?
+        .join(identifier)
+        .join("browser-bridge.endpoint.json"))
 }
 
 fn connect(path: &PathBuf) -> Result<(TcpStream, String), String> {
@@ -171,7 +141,47 @@ fn run() -> Result<(), String> {
     diagnostic("native_eof");
     Ok(())
 }
+fn cli() -> Option<Result<(), String>> {
+    let argument = std::env::args().nth(1)?;
+    if !["--bridge-info", "--register", "--check", "--unregister"].contains(&argument.as_str()) {
+        return None;
+    }
+    Some((|| {
+        let binary = std::env::current_exe().map_err(|e| e.to_string())?;
+        let identifier = registration::profile_for(&binary, env!("WORKMEMO_IDENTIFIER"))?;
+        let value = if argument == "--bridge-info" {
+            serde_json::to_value(registration::BridgeInfo {
+                identifier,
+                version: env!("CARGO_PKG_VERSION").into(),
+                protocol: 1,
+                test_overrides: cfg!(debug_assertions),
+            })
+            .map_err(|e| e.to_string())?
+        } else if argument == "--unregister" {
+            serde_json::json!({"removed":registration::unregister_at(&binary,&identifier,&registration::data_root()?,&registration::registry_root())?})
+        } else {
+            serde_json::to_value(registration::registration_at(
+                &binary,
+                &identifier,
+                &registration::data_root()?,
+                &registration::registry_root(),
+                argument == "--register",
+            )?)
+            .map_err(|e| e.to_string())?
+        };
+        // GUI-subsystem callers may have no stdout; registration still succeeded.
+        let _ = writeln!(io::stdout(), "{}", value);
+        Ok(())
+    })())
+}
 fn main() {
+    if let Some(result) = cli() {
+        if let Err(error) = result {
+            let _ = writeln!(io::stderr(), "{error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if run().is_err() {
         diagnostic("host_failed");
         eprintln!("WorkMemo 浏览器连接已关闭；未记录网页或输入内容。");
