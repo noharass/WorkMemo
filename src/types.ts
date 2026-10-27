@@ -45,10 +45,14 @@ export interface MonitorStatus {
   idle_warning: boolean;
   message: string;
   revision: number;
+  idle_warning_seconds: number;
+  idle_end_seconds: number;
+  away_pause_remaining_seconds: number | null;
 }
 export interface WorkUrl { id: number; url_prefix: string; category: string }
-export interface MonitorConfig { enabled: boolean; revision: number; rules: WorkUrl[] }
-export interface WorkNotice { kind: "idle" | "ended"; record: WorkRecord }
+export interface TrackingTimes { idle_warning_seconds: number; idle_end_seconds: number; away_pause_seconds: number; hold_seconds: number }
+export interface MonitorConfig { enabled: boolean; revision: number; rules: WorkUrl[]; times: TrackingTimes }
+export interface WorkNotice { kind: "idle" | "ended"; record: WorkRecord; idle_warning_seconds: number; idle_end_seconds: number }
 
 export interface SettleInput {
   id: number;

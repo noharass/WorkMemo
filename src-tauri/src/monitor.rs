@@ -3,10 +3,6 @@ use serde::{Deserialize, Serialize};
 
 pub const INPUT_POLL_MS: i64 = 5_000;
 pub const RECENT_INPUT_MS: i64 = 5_000;
-pub const IDLE_WARNING_MS: i64 = 300_000;
-pub const IDLE_END_MS: i64 = 420_000;
-pub const AWAY_PAUSE_MS: i64 = 120_000;
-pub const HOLD_MS: i64 = 600_000;
 pub const BROWSER_TIMEOUT_MS: i64 = 15_000;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -15,12 +11,50 @@ pub struct WorkUrl {
     pub url_prefix: String,
     pub category: String,
 }
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct TrackingTimes {
+    pub idle_warning_seconds: i64,
+    pub idle_end_seconds: i64,
+    pub away_pause_seconds: i64,
+    pub hold_seconds: i64,
+}
+impl Default for TrackingTimes {
+    fn default() -> Self {
+        Self {
+            idle_warning_seconds: 300,
+            idle_end_seconds: 420,
+            away_pause_seconds: 120,
+            hold_seconds: 600,
+        }
+    }
+}
+impl TrackingTimes {
+    pub fn validate(&self) -> Result<(), String> {
+        if [
+            self.idle_warning_seconds,
+            self.idle_end_seconds,
+            self.away_pause_seconds,
+            self.hold_seconds,
+        ]
+        .iter()
+        .any(|v| !(1..=86400).contains(v))
+        {
+            return Err("计时参数必须为 1 到 86400 秒的整数。".into());
+        }
+        if self.idle_warning_seconds >= self.idle_end_seconds {
+            return Err("空闲提醒时间必须早于空闲结束时间。".into());
+        }
+        Ok(())
+    }
+}
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MonitorConfig {
     pub enabled: bool,
     pub revision: i64,
     pub rules: Vec<WorkUrl>,
+    pub times: TrackingTimes,
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -34,6 +68,7 @@ pub struct ConfigInput {
     pub enabled: bool,
     pub expected_revision: i64,
     pub rules: Vec<RuleInput>,
+    pub times: TrackingTimes,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -63,6 +98,9 @@ pub struct MonitorStatus {
     pub idle_warning: bool,
     pub message: String,
     pub revision: i64,
+    pub idle_warning_seconds: i64,
+    pub idle_end_seconds: i64,
+    pub away_pause_remaining_seconds: Option<i64>,
 }
 
 #[derive(Default)]

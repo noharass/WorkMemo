@@ -7,16 +7,18 @@ use std::collections::HashSet;
 pub struct Notice {
     pub kind: String,
     pub record: WorkRecord,
+    pub idle_warning_seconds: i64,
+    pub idle_end_seconds: i64,
 }
 
 impl Store {
     pub fn monitor_config(&self) -> Result<MonitorConfig> {
-        let (enabled, revision) = self
+        let (enabled, revision, times) = self
             .connection
             .query_row(
-                "SELECT enabled,revision FROM monitoring_settings WHERE id=1",
+                "SELECT enabled,revision,idle_warning_seconds,idle_end_seconds,away_pause_seconds,hold_seconds FROM monitoring_settings WHERE id=1",
                 [],
-                |r| Ok((r.get(0)?, r.get(1)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, TrackingTimes { idle_warning_seconds: r.get(2)?, idle_end_seconds: r.get(3)?, away_pause_seconds: r.get(4)?, hold_seconds: r.get(5)? })),
             )
             .map_err(db_error)?;
         let mut statement = self
@@ -34,7 +36,9 @@ impl Store {
             .map_err(db_error)?
             .collect::<rusqlite::Result<Vec<_>>>()
             .map_err(db_error)?;
+        times.validate()?;
         Ok(MonitorConfig {
+            times,
             enabled,
             revision,
             rules,
@@ -42,6 +46,7 @@ impl Store {
     }
 
     pub fn save_monitor_config(&mut self, input: ConfigInput) -> Result<MonitorConfig> {
+        input.times.validate()?;
         if input.rules.len() > 50 || (input.enabled && input.rules.is_empty()) {
             return Err("请配置 1 到 50 条工作 URL 后启用自动识别。".into());
         }
@@ -85,8 +90,8 @@ impl Store {
             .map_err(db_error)?;
         }
         tx.execute(
-            "UPDATE monitoring_settings SET enabled=?1,revision=revision+1 WHERE id=1",
-            [input.enabled],
+            "UPDATE monitoring_settings SET enabled=?1,revision=revision+1,idle_warning_seconds=?2,idle_end_seconds=?3,away_pause_seconds=?4,hold_seconds=?5 WHERE id=1",
+            params![input.enabled,input.times.idle_warning_seconds,input.times.idle_end_seconds,input.times.away_pause_seconds,input.times.hold_seconds],
         )
         .map_err(db_error)?;
         tx.commit().map_err(db_error)?;
@@ -95,9 +100,13 @@ impl Store {
             self.monitor.monitor_pause_since = Some(now.ticks_ms);
         }
         self.monitor.config = self.monitor_config()?;
+        self.monitor.status.idle_warning_seconds = self.monitor.config.times.idle_warning_seconds;
+        self.monitor.status.idle_end_seconds = self.monitor.config.times.idle_end_seconds;
         self.monitor.page = None;
         self.monitor.entered_at = None;
         self.monitor.page_was_matched = false;
+        self.monitor.away_since = None;
+        self.monitor.status.away_pause_remaining_seconds = None;
         self.monitor.input_floor = now.ticks_ms;
         Ok(self.monitor.config.clone())
     }
@@ -106,6 +115,8 @@ impl Store {
         self.monitor.active = true;
         self.monitor.input_floor = self.clock.now().ticks_ms;
         self.monitor.status.enabled = self.monitor.config.enabled;
+        self.monitor.status.idle_warning_seconds = self.monitor.config.times.idle_warning_seconds;
+        self.monitor.status.idle_end_seconds = self.monitor.config.times.idle_end_seconds;
     }
 
     pub fn observe_page(&mut self, page: PageSample) {
@@ -120,7 +131,12 @@ impl Store {
             .native
             .is_none_or(|sample| now.saturating_sub(sample.at.ticks_ms) >= INPUT_POLL_MS)
             || self.monitor.last_input.is_some_and(|last| {
-                [IDLE_WARNING_MS, IDLE_END_MS].iter().any(|threshold| {
+                [
+                    self.monitor.config.times.idle_warning_seconds * 1000,
+                    self.monitor.config.times.idle_end_seconds * 1000,
+                ]
+                .iter()
+                .any(|threshold| {
                     now >= last + threshold
                         && self
                             .monitor
@@ -233,11 +249,13 @@ impl Store {
         // record; it must not silently extend the old one.
         if let (Some(old), Some(new)) = (old_input, new_input) {
             if new > old
-                && new >= old.saturating_add(IDLE_END_MS)
+                && new >= old.saturating_add(self.monitor.config.times.idle_end_seconds * 1000)
                 && self.active()?.is_some_and(|r| !protected(&r))
             {
                 self.close_at(old, "IDLE", true, now)?;
-                self.monitor.input_floor = old.saturating_add(IDLE_END_MS).saturating_sub(1);
+                self.monitor.input_floor = old
+                    .saturating_add(self.monitor.config.times.idle_end_seconds * 1000)
+                    .saturating_sub(1);
             }
         }
         self.monitor.last_input = new_input;
@@ -294,18 +312,31 @@ impl Store {
             }
             let mut deadlines = Vec::new();
             if let Some(last) = new_input {
-                deadlines.push((last.saturating_add(IDLE_END_MS), 0, "IDLE", last));
+                deadlines.push((
+                    last.saturating_add(self.monitor.config.times.idle_end_seconds * 1000),
+                    0,
+                    "IDLE",
+                    last,
+                ));
             }
             if let Some(away) = self.monitor.away_since {
                 deadlines.push((
-                    away.saturating_add(AWAY_PAUSE_MS + HOLD_MS),
+                    away.saturating_add(
+                        self.monitor.config.times.away_pause_seconds * 1000
+                            + self.monitor.config.times.hold_seconds * 1000,
+                    ),
                     1,
                     "AWAY",
-                    away.saturating_add(AWAY_PAUSE_MS),
+                    away.saturating_add(self.monitor.config.times.away_pause_seconds * 1000),
                 ));
             }
             if let Some(pause) = self.monitor.monitor_pause_since {
-                deadlines.push((pause.saturating_add(HOLD_MS), 2, "RECOVERY", pause));
+                deadlines.push((
+                    pause.saturating_add(self.monitor.config.times.hold_seconds * 1000),
+                    2,
+                    "RECOVERY",
+                    pause,
+                ));
             }
             deadlines.sort_by_key(|d| (d.0, d.1));
             if let Some((deadline, _, reason, cutoff)) =
@@ -340,8 +371,18 @@ impl Store {
                     }
                 } else {
                     let away = *self.monitor.away_since.get_or_insert(now.ticks_ms);
-                    if now.ticks_ms >= away.saturating_add(AWAY_PAUSE_MS) && !record.is_paused {
-                        self.close_at(away.saturating_add(AWAY_PAUSE_MS), "AWAY", false, now)?;
+                    if now.ticks_ms
+                        >= away.saturating_add(self.monitor.config.times.away_pause_seconds * 1000)
+                        && !record.is_paused
+                    {
+                        self.close_at(
+                            away.saturating_add(
+                                self.monitor.config.times.away_pause_seconds * 1000,
+                            ),
+                            "AWAY",
+                            false,
+                            now,
+                        )?;
                     }
                 }
             }
@@ -386,13 +427,32 @@ impl Store {
                         .map_err(db_error)?;
                 }
                 self.monitor.status.idle_warning = native_ok
-                    && now.ticks_ms.saturating_sub(last) >= IDLE_WARNING_MS
-                    && now.ticks_ms.saturating_sub(last) < IDLE_END_MS
+                    && now.ticks_ms.saturating_sub(last)
+                        >= self.monitor.config.times.idle_warning_seconds * 1000
+                    && now.ticks_ms.saturating_sub(last)
+                        < self.monitor.config.times.idle_end_seconds * 1000
                     && self.monitor.warning_dismissed_for != Some(last);
             }
         } else {
             self.monitor.status.idle_warning = false;
         }
+        self.monitor.status.away_pause_remaining_seconds = if native_ok
+            && page_known
+            && !matched
+            && self
+                .active()?
+                .is_some_and(|r| r.control_mode == "AUTO" && !r.is_paused && !r.recovery_pending)
+        {
+            self.monitor.away_since.map(|away| {
+                let remaining = away
+                    .saturating_add(self.monitor.config.times.away_pause_seconds * 1000)
+                    .saturating_sub(now.ticks_ms)
+                    .max(0);
+                (remaining + 999) / 1000
+            })
+        } else {
+            None
+        };
         self.monitor.status.enabled = self.monitor.config.enabled;
         self.monitor.status.revision = self.monitor.config.revision;
         self.monitor.status.native_available = native_ok;
@@ -429,6 +489,8 @@ impl Store {
         if let Some(id) = id {
             return Ok(Some(Notice {
                 kind: "ended".into(),
+                idle_warning_seconds: self.monitor.config.times.idle_warning_seconds,
+                idle_end_seconds: self.monitor.config.times.idle_end_seconds,
                 record: self.record(id)?,
             }));
         }
@@ -436,6 +498,8 @@ impl Store {
             if let Some(record) = self.active()? {
                 return Ok(Some(Notice {
                     kind: "idle".into(),
+                    idle_warning_seconds: self.monitor.config.times.idle_warning_seconds,
+                    idle_end_seconds: self.monitor.config.times.idle_end_seconds,
                     record,
                 }));
             }

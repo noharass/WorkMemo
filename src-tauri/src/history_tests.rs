@@ -276,7 +276,7 @@ fn deletion_persists_when_reopened_and_existing_schema_stays_compatible() {
             .connection
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 3);
+        assert_eq!(version, 4);
     }
     // Exact temporary test directory, created above; never a user database path.
     assert_eq!(directory.parent(), Some(std::env::temp_dir().as_path()));

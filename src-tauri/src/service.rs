@@ -77,7 +77,20 @@ impl Backend {
                     break;
                 };
                 let mut notice = None;
+                let mut active_id = None;
                 let mut runtime_failure: Option<String> = None;
+                // Sample after the preceding loop has finished creating and positioning the window.
+                // Creation emits transient move events, so those events must not overwrite saved coordinates.
+                if let Some(window) = app_handle.get_webview_window("notice") {
+                    if let Ok(position) = window.outer_position() {
+                        app_handle
+                            .state::<crate::desktop::IslandState>()
+                            .moved(position);
+                    }
+                }
+                if let Err(error) = app_handle.state::<crate::desktop::IslandState>().flush() {
+                    runtime_failure = Some(format!("状态岛设置未能保存：{error}"));
+                }
                 if let Ok(mut guard) = shared.lock() {
                     if let Ok(store) = guard.as_mut() {
                         let now = SystemClock::new().now();
@@ -134,13 +147,29 @@ impl Backend {
                                 runtime_failure = Some(error);
                             }
                         }
+                        match store.snapshot() {
+                            Ok(snapshot) => active_id = snapshot.active.map(|record| record.id),
+                            Err(error) => runtime_failure = Some(error),
+                        }
                     }
                 }
                 let key = notice
                     .as_ref()
-                    .map(|n| format!("{}:{}", n.kind, n.record.id));
+                    .map(|n| format!("{}:{}", n.kind, n.record.id))
+                    .or_else(|| {
+                        app_handle
+                            .state::<crate::desktop::IslandState>()
+                            .enabled()
+                            .then_some(active_id)
+                            .flatten()
+                            .map(|id| format!("active:{id}"))
+                    });
                 if key != presented {
-                    match crate::desktop::present_notice(&app_handle, notice.is_some()) {
+                    match crate::desktop::present_notice(
+                        &app_handle,
+                        key.is_some(),
+                        notice.is_some(),
+                    ) {
                         Ok(()) => presented = key,
                         Err(error) => {
                             let message =
@@ -317,20 +346,11 @@ pub async fn get_notice(state: State<'_, Backend>) -> Result<Option<Notice>> {
     access(state.inner.clone(), |store| store.current_notice()).await
 }
 #[tauri::command]
-pub async fn defer_notice(
-    app: tauri::AppHandle,
-    state: State<'_, Backend>,
-    id: i64,
-    kind: String,
-) -> Result<()> {
+pub async fn defer_notice(state: State<'_, Backend>, id: i64, kind: String) -> Result<()> {
     access(state.inner.clone(), move |store| {
         store.defer_notice(id, &kind)
     })
-    .await?;
-    if let Some(window) = app.get_webview_window("notice") {
-        crate::desktop::set_visibility(&window.as_ref().window(), false, false)?;
-    }
-    Ok(())
+    .await
 }
 #[tauri::command]
 pub fn show_main(app: tauri::AppHandle, settlement: bool) -> Result<()> {
@@ -338,6 +358,12 @@ pub fn show_main(app: tauri::AppHandle, settlement: bool) -> Result<()> {
 }
 #[tauri::command]
 pub fn exit_app(app: tauri::AppHandle, state: State<'_, Backend>) -> Result<()> {
+    if let Err(error) = crate::desktop::save_island_position(&app) {
+        let _ = app.emit(
+            "workmemo:runtime-error",
+            format!("状态岛设置未能保存：{error}"),
+        );
+    }
     state.save_on_exit()?;
     state.exiting.store(true, Ordering::Relaxed);
     app.exit(0);
@@ -354,8 +380,10 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
                 let store = guard.as_mut().map_err(|e| e.clone())?;
                 if let Some(notice) = store.current_notice()? {
                     store.defer_notice(notice.record.id, &notice.kind)?;
+                } else {
+                    window.state::<crate::desktop::IslandState>().disable()?;
                 }
-                crate::desktop::set_visibility(window, false, false)
+                Ok(())
             })();
             if let Err(error) = result {
                 let _ = window.emit("workmemo:storage-error", error);

@@ -153,7 +153,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1 | 2 | 3 => {}
+            1 | 2 | 3 | 4 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -166,6 +166,12 @@ impl Store {
             tx.execute_batch(include_str!("../migrations/003_monitoring.sql"))
                 .map_err(db_error)?;
             tx.pragma_update(None, "user_version", 3)
+                .map_err(db_error)?;
+        }
+        if version < 4 {
+            tx.execute_batch(include_str!("../migrations/004_tracking_times.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 4)
                 .map_err(db_error)?;
         }
         // Never infer work while the application was closed from wall-clock time.

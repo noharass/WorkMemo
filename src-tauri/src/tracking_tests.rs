@@ -21,6 +21,7 @@ impl Harness {
         .unwrap();
         store
             .save_monitor_config(ConfigInput {
+                times: TrackingTimes::default(),
                 enabled: true,
                 expected_revision: 0,
                 rules: vec![RuleInput {
@@ -350,6 +351,7 @@ fn config_validation_conflict_and_storage_failure_keep_previous_rules() {
         assert!(
             h.store
                 .save_monitor_config(ConfigInput {
+                    times: TrackingTimes::default(),
                     enabled: true,
                     expected_revision: original.revision,
                     rules: vec![RuleInput {
@@ -364,6 +366,7 @@ fn config_validation_conflict_and_storage_failure_keep_previous_rules() {
     assert!(
         h.store
             .save_monitor_config(ConfigInput {
+                times: TrackingTimes::default(),
                 enabled: true,
                 expected_revision: original.revision,
                 rules: vec![RuleInput {
@@ -733,4 +736,181 @@ fn already_expired_record_cannot_be_resurrected_by_manual_finish_or_resume() {
     assert!(h.store.resume(id).is_err());
     assert_eq!(h.saved(id).duration_ms, 5000);
     assert_eq!(h.saved(id).end_reason.as_deref(), Some("IDLE"));
+}
+
+#[test]
+fn configured_deadlines_control_work_and_status() {
+    let mut h = Harness::new();
+    let mut cfg = h.store.monitor_config().unwrap();
+    cfg.times = TrackingTimes {
+        idle_warning_seconds: 20,
+        idle_end_seconds: 30,
+        away_pause_seconds: 4,
+        hold_seconds: 6,
+    };
+    h.store
+        .save_monitor_config(ConfigInput {
+            enabled: true,
+            expected_revision: cfg.revision,
+            times: cfg.times.clone(),
+            rules: cfg
+                .rules
+                .into_iter()
+                .map(|r| RuleInput {
+                    url_prefix: r.url_prefix,
+                    category: r.category,
+                })
+                .collect(),
+        })
+        .unwrap();
+    h.tick();
+    let id = h.start();
+    h.matched = false;
+    h.tick();
+    assert_eq!(h.store.monitor.status.away_pause_remaining_seconds, Some(4));
+    h.advance(3_999, true);
+    assert!(!h.saved(id).is_paused);
+    assert_eq!(h.store.monitor.status.away_pause_remaining_seconds, Some(1));
+    h.step(1, true);
+    assert_eq!(h.saved(id).pause_reason.as_deref(), Some("AWAY"));
+    assert_eq!(h.store.monitor.status.away_pause_remaining_seconds, None);
+    h.advance(5_999, true);
+    assert_eq!(h.saved(id).status, "WORKING");
+    h.step(1, true);
+    assert_eq!(h.saved(id).end_reason.as_deref(), Some("AWAY"));
+    assert_eq!(h.saved(id).duration_ms, 4_000);
+}
+
+#[test]
+fn configured_idle_deadline_and_notice_are_consistent() {
+    let mut h = Harness::new();
+    let cfg = h.store.monitor_config().unwrap();
+    h.store
+        .save_monitor_config(ConfigInput {
+            enabled: true,
+            expected_revision: cfg.revision,
+            times: TrackingTimes {
+                idle_warning_seconds: 2,
+                idle_end_seconds: 4,
+                ..TrackingTimes::default()
+            },
+            rules: cfg
+                .rules
+                .into_iter()
+                .map(|r| RuleInput {
+                    url_prefix: r.url_prefix,
+                    category: r.category,
+                })
+                .collect(),
+        })
+        .unwrap();
+    h.tick();
+    let id = h.start();
+    h.advance(1_999, false);
+    assert!(h.store.current_notice().unwrap().is_none());
+    h.step(1, false);
+    let notice = h.store.current_notice().unwrap().unwrap();
+    assert_eq!(
+        (notice.idle_warning_seconds, notice.idle_end_seconds),
+        (2, 4)
+    );
+    h.advance(2_000, false);
+    assert_eq!(h.saved(id).end_reason.as_deref(), Some("IDLE"));
+    assert_eq!(h.saved(id).duration_ms, 0);
+}
+
+#[test]
+fn schema_three_migrates_defaults_and_settings_persist_with_validation() {
+    let directory = TestDirectory::new();
+    let path = directory.db();
+    let clock = TestClock::new();
+    {
+        let c = Connection::open(&path).unwrap();
+        c.execute_batch(include_str!("../migrations/001_initial.sql"))
+            .unwrap();
+        c.execute_batch(include_str!("../migrations/002_settlement.sql"))
+            .unwrap();
+        c.execute_batch(include_str!("../migrations/003_monitoring.sql"))
+            .unwrap();
+        c.execute_batch("PRAGMA user_version=3; INSERT INTO work_urls(url_prefix,category) VALUES('https://work.example/','开发'); UPDATE monitoring_settings SET enabled=1,revision=8 WHERE id=1;").unwrap();
+    }
+    let chosen = TrackingTimes {
+        idle_warning_seconds: 12,
+        idle_end_seconds: 23,
+        away_pause_seconds: 34,
+        hold_seconds: 45,
+    };
+    {
+        let mut store = Store::open(&path, Box::new(clock.clone())).unwrap();
+        let old = store.monitor_config().unwrap();
+        assert_eq!(old.times, TrackingTimes::default());
+        assert_eq!(old.revision, 8);
+        let rule = || {
+            vec![RuleInput {
+                url_prefix: "https://work.example/".into(),
+                category: "开发".into(),
+            }]
+        };
+        let invalid = TrackingTimes {
+            idle_warning_seconds: 24,
+            idle_end_seconds: 23,
+            ..chosen.clone()
+        };
+        assert!(
+            store
+                .save_monitor_config(ConfigInput {
+                    enabled: true,
+                    expected_revision: 8,
+                    times: invalid,
+                    rules: rule()
+                })
+                .is_err()
+        );
+        assert_eq!(store.monitor_config().unwrap().revision, 8);
+        store
+            .save_monitor_config(ConfigInput {
+                enabled: true,
+                expected_revision: 8,
+                times: chosen.clone(),
+                rules: rule(),
+            })
+            .unwrap();
+    }
+    let store = Store::open(&path, Box::new(clock)).unwrap();
+    assert_eq!(store.monitor_config().unwrap().times, chosen);
+    assert_eq!(store.monitor_config().unwrap().rules.len(), 1);
+}
+
+#[test]
+fn saving_settings_clears_old_away_deadline_and_requires_fresh_input() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.matched = false;
+    h.tick();
+    h.advance(5_000, true);
+    assert!(h.store.monitor.away_since.is_some());
+    let cfg = h.store.monitor_config().unwrap();
+    h.store
+        .save_monitor_config(ConfigInput {
+            enabled: true,
+            expected_revision: cfg.revision,
+            times: cfg.times,
+            rules: cfg
+                .rules
+                .into_iter()
+                .map(|r| RuleInput {
+                    url_prefix: r.url_prefix,
+                    category: r.category,
+                })
+                .collect(),
+        })
+        .unwrap();
+    assert!(h.store.monitor.away_since.is_none());
+    assert_eq!(h.saved(id).pause_reason.as_deref(), Some("MONITOR"));
+    h.matched = true;
+    h.tick();
+    assert!(h.saved(id).is_paused);
+    h.step(1_000, true);
+    assert!(!h.saved(id).is_paused);
+    assert_eq!(h.store.active().unwrap().unwrap().id, id);
 }

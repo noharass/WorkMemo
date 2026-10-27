@@ -8,7 +8,7 @@ use std::{
         atomic::{AtomicU64, Ordering},
     },
 };
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 const VERSION: u32 = 1;
 const MAX_BYTES: u64 = 65_536;
@@ -183,7 +183,8 @@ pub async fn get_appearance(app: tauri::AppHandle) -> Result<Appearance> {
 
 #[tauri::command]
 pub async fn save_appearance(app: tauri::AppHandle, settings: Appearance) -> Result<Appearance> {
-    tauri::async_runtime::spawn_blocking(move || {
+    let handle = app.clone();
+    let saved = tauri::async_runtime::spawn_blocking(move || {
         let state: State<'_, AppearanceState> = app.state();
         let _guard = state
             .gate
@@ -192,7 +193,9 @@ pub async fn save_appearance(app: tauri::AppHandle, settings: Appearance) -> Res
         save(state.path.as_ref().map_err(|e| e.clone())?, settings)
     })
     .await
-    .map_err(|e| format!("无法保存外观设置：{e}"))?
+    .map_err(|e| format!("无法保存外观设置：{e}"))??;
+    let _ = handle.emit("workmemo:appearance-changed", ());
+    Ok(saved)
 }
 
 #[cfg(test)]

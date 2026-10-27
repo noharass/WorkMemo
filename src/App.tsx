@@ -94,7 +94,7 @@ function App() {
         <span role="status">{session.snapshot?.monitoring?.message || "正在读取监测状态…"}</span>
         <button type="button" className="text-button" onClick={() => setMonitorOpen(true)}>监测设置</button>
       </div>}
-      {session.snapshot?.monitoring?.idle_warning && <p className="notice" role="status">已连续 5 分钟没有输入，7 分钟时将自动结束。恢复操作后会取消提醒。</p>}
+      {session.snapshot?.monitoring?.idle_warning && <p className="notice" role="status">已连续 {session.snapshot.monitoring.idle_warning_seconds} 秒没有输入，{session.snapshot.monitoring.idle_end_seconds} 秒时将自动结束。恢复操作后会取消提醒。</p>}
 
       <section className={`timer-card${view.mode === "finished" ? " finished-card" : ""}`}
         aria-label="当前工作" aria-busy={session.loading || session.busy}>

@@ -33,6 +33,7 @@ fn app_info() -> AppInfo {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            app.manage(desktop::IslandState::initialize(app));
             app.manage(connection::ConnectionState::initialize(app));
             app.manage(service::Backend::initialize(app));
             app.manage(appearance::AppearanceState::initialize(app));
@@ -67,6 +68,12 @@ pub fn run() {
         .expect("WorkMemo failed to start")
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                if let Err(error) = desktop::save_island_position(app) {
+                    let _ = app.emit(
+                        "workmemo:runtime-error",
+                        format!("状态岛设置未能保存：{error}"),
+                    );
+                }
                 if let Err(error) = app.state::<service::Backend>().save_on_exit() {
                     api.prevent_exit();
                     let _ = app.emit("workmemo:storage-error", error);
