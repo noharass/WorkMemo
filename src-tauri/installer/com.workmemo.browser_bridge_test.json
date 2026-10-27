@@ -1,0 +1,7 @@
+{
+  "name": "com.workmemo.browser_bridge_test",
+  "description": "WorkMemo Preview local browser bridge",
+  "path": "workmemo-browser.exe",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://oljcealhccdhaddceacnokihjefloaih/"]
+}

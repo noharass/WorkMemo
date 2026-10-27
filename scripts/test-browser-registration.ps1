@@ -37,19 +37,21 @@ Section
   SetRegView 64
   SetOutPath "$INSTDIR"
   File /oname=workmemo-browser.exe "@HOST@"
+  File /oname=com.workmemo.browser_bridge_test.json "@MANIFEST@"
   !insertmacro NSIS_HOOK_POSTINSTALL
   WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
 Section Uninstall
   SetRegView 64
-  !insertmacro NSIS_HOOK_PREUNINSTALL
   Delete "$INSTDIR\workmemo-browser.exe"
+  Delete "$INSTDIR\com.workmemo.browser_bridge_test.json"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
+  !insertmacro NSIS_HOOK_POSTUNINSTALL
 SectionEnd
 '@
 $taskSetup = Join-Path $taskDirectory 'registration-test.exe'
-$taskSource = $taskTemplate.Replace('@SETUP@',$taskSetup).Replace('@INSTALL@',$taskInstall).Replace('@KEY@',$taskTestKey).Replace('@HOOK@',(Join-Path $taskRoot 'src-tauri\installer\browser-bridge.nsh')).Replace('@HOST@',$taskHost)
+$taskSource = $taskTemplate.Replace('@SETUP@',$taskSetup).Replace('@INSTALL@',$taskInstall).Replace('@KEY@',$taskTestKey).Replace('@HOOK@',(Join-Path $taskRoot 'src-tauri\installer\browser-bridge.nsh')).Replace('@HOST@',$taskHost).Replace('@MANIFEST@',(Join-Path $taskRoot 'src-tauri\installer\com.workmemo.browser_bridge_test.json'))
 $taskNsi = Join-Path $taskDirectory 'registration-test.nsi'
 [IO.File]::WriteAllText($taskNsi,$taskSource,(New-Object Text.UTF8Encoding($true)))
 & $taskNsis /V2 /INPUTCHARSET UTF8 $taskNsi

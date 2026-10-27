@@ -50,6 +50,7 @@ foreach ($taskName in $taskNames) {
 }
 $taskResources[(Join-Path $taskRoot 'docs\PREVIEW-INSTALLER-GUIDE.md')] = '使用说明.md'
 $taskResources[(Join-Path $taskRoot 'scripts\register-preview-browser.cmd')] = 'Register-Browser.cmd'
+$taskResources[(Join-Path $taskRoot 'src-tauri\installer\com.workmemo.browser_bridge_test.json')] = 'com.workmemo.browser_bridge_test.json'
 $taskResources[(Join-Path $taskStaging 'INSTALLER-BUILD-INFO.json')] = 'INSTALLER-BUILD-INFO.json'
 $taskOverlay = @{mainBinaryName='workmemo-preview';bundle=@{resources=$taskResources;windows=@{nsis=@{startMenuFolder='WorkMemo Preview';installerHooks=(Join-Path $taskRoot 'src-tauri\installer\browser-bridge.nsh')}}}}
 $taskOverlayPath = Join-Path $taskOutput 'installer.conf.json'

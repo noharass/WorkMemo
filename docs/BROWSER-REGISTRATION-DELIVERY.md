@@ -18,6 +18,7 @@
 | NEW FILE | E:\WorkMemo\scripts\register-preview-browser.cmd |
 | NEW FILE | E:\WorkMemo\scripts\test-browser-registration.ps1 |
 | NEW FILE | E:\WorkMemo\src-tauri\installer\browser-bridge.nsh |
+| NEW FILE | E:\WorkMemo\src-tauri\installer\com.workmemo.browser_bridge_test.json |
 | UPDATE | E:\WorkMemo\scripts\package-preview-installer.ps1 |
 | NEW FILE | E:\WorkMemo\docs\BROWSER-REGISTRATION-FIX.md |
 | NEW FILE | E:\WorkMemo\docs\BROWSER-REGISTRATION-DELIVERY.md |
@@ -33,6 +34,7 @@
 
 - 隔离 NSIS 测试安装器在 artifacts 下的中文、空格、&、! 目录完成静默安装及卸载。注册只写随机的 HKCU\Software\WorkMemo\RegistrationTests 测试键，不修改真实 Chrome 主机键。
 - 核对主机清单字段、固定 origin、相对 EXE 路径、注册表完整路径；所属目录卸载会清除注册，旧目录卸载不会删除模拟较新目录的注册。
+- 核对 Tauri 实际卸载模板顺序后，将注册清理放到 POSTUNINSTALL；清单作为普通资源打包，取消运行中程序的卸载不会在检查前删掉注册或清单。
 - CMD 的 prepare-only 模式实际验证缺少文件会失败、正确预览包可生成清单、混用源码扩展会失败，且真实 Chrome 主机注册前后保持不变。首次测试工具的 CMD 引号传参失败，改为 ProcessStartInfo 原始参数后重跑通过。
 - CMD 使用 ASCII 内容和 CRLF 换行，Git 属性显式保留 Windows 换行，避免后续检出改变修复文件格式。
 - 不依赖客户机 PowerShell 执行策略；测试工具使用 PowerShell 只是源码环境的检查方式。没有为测试修改系统策略、停止用户任务或操作真实工作数据库。

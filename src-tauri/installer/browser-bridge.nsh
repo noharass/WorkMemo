@@ -8,19 +8,13 @@
 
 !macro NSIS_HOOK_POSTINSTALL
   Push $R0
-  ClearErrors
-  FileOpen $R0 "$INSTDIR\${WM_BRIDGE_MANIFEST}" w
-  ${If} ${Errors}
+  ${IfNot} ${FileExists} "$INSTDIR\${WM_BRIDGE_MANIFEST}"
     SetErrorLevel 1
-    Abort "Cannot create the WorkMemo browser host manifest."
+    Abort "The WorkMemo browser host manifest is missing."
   ${EndIf}
-  ; Relative host paths are supported on Windows. ASCII JSON avoids encoding
-  ; problems when the installation directory contains Chinese characters.
-  FileWrite $R0 '{"name":"com.workmemo.browser_bridge_test","description":"WorkMemo Preview local browser bridge","path":"workmemo-browser.exe","type":"stdio","allowed_origins":["chrome-extension://oljcealhccdhaddceacnokihjefloaih/"]}$\r$\n'
-  FileClose $R0
-  ${If} ${Errors}
+  ${IfNot} ${FileExists} "$INSTDIR\workmemo-browser.exe"
     SetErrorLevel 1
-    Abort "Cannot save the WorkMemo browser host manifest."
+    Abort "The WorkMemo browser host executable is missing."
   ${EndIf}
   ClearErrors
   WriteRegStr HKCU "${WM_BRIDGE_REGISTRY_KEY}" "" "$INSTDIR\${WM_BRIDGE_MANIFEST}"
@@ -32,7 +26,9 @@
   Pop $R0
 !macroend
 
-!macro NSIS_HOOK_PREUNINSTALL
+; Run only after Tauri's running-app/cancel check and resource removal.
+; The manifest is a normal bundled resource, so cancellation preserves it.
+!macro NSIS_HOOK_POSTUNINSTALL
   Push $R0
   ReadRegStr $R0 HKCU "${WM_BRIDGE_REGISTRY_KEY}" ""
   ${If} $R0 == "$INSTDIR\${WM_BRIDGE_MANIFEST}"
@@ -40,6 +36,5 @@
     DeleteRegKey /ifempty HKCU "${WM_BRIDGE_REGISTRY_KEY}"
   ${EndIf}
   ; An old uninstaller must not remove a newer directory's registration.
-  Delete "$INSTDIR\${WM_BRIDGE_MANIFEST}"
   Pop $R0
 !macroend
