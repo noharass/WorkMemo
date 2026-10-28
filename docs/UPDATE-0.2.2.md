@@ -1,5 +1,7 @@
 # WorkMemo v0.2.2 本地交付记录
 
+最新总览网格排版及当前成品摘要见 [UPDATE-0.2.2-LAYOUT.md](UPDATE-0.2.2-LAYOUT.md)。
+
 最新多 URL 分组设置与当前成品摘要见 [UPDATE-0.2.2-MULTI-URL.md](UPDATE-0.2.2-MULTI-URL.md)。
 
 后续紧凑布局修订及当前成品摘要见 [UPDATE-0.2.2-COMPACT.md](UPDATE-0.2.2-COMPACT.md)。本文末尾摘要是 0ddb32e 的原始交付记录；当前 artifacts/0.2.2 已更新。

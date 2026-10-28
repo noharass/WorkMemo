@@ -212,10 +212,20 @@ function Chart({
     instance.on("click", (p) => {
       if (typeof p.name === "string") click.current?.(p.name);
     });
-    const observer = new ResizeObserver(() => instance.resize());
+    let resizeFrame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        const host = node.current;
+        if (host && (instance.getWidth() !== host.clientWidth || instance.getHeight() !== host.clientHeight)) {
+          instance.resize();
+        }
+      });
+    });
     observer.observe(node.current);
     return () => {
       observer.disconnect();
+      cancelAnimationFrame(resizeFrame);
       instance.dispose();
       chart.current = null;
     };
@@ -577,7 +587,7 @@ export default function Dashboard() {
       calendar: {
         range: [localDate(start), end],
         cellSize: [16, 16],
-        left: 38,
+        left: "center",
         top: 32,
         yearLabel: { show: false },
         monthLabel: { nameMap: "cn", color: "#64748b" },
@@ -648,29 +658,10 @@ export default function Dashboard() {
         <main className="dc-main">
           <div className="dc-heading">
             <div>
-              <p className="dc-eyebrow">YOUR WORK, IN PERSPECTIVE</p>
-              <h1>把忙过的时间，看清楚。</h1>
+              <h1>工作总览</h1>
               <p>工作量、有效工时和每一段记录，都在这里。</p>
             </div>
-            <label className="dc-scope">
-              数据范围
-              <select
-                value={filters.scope}
-                onChange={(e) => {
-                  const updated = {
-                    ...filters,
-                    scope: e.target.value as Query["scope"],
-                    page: 1,
-                  };
-                  setFilters(updated);
-                  setQuery(updated);
-                }}
-              >
-                <option value="real">真实数据</option>
-                <option value="demo">演示数据</option>
-                <option value="all">全部数据</option>
-              </select>
-            </label>
+
           </div>
           {query.scope !== "real" && (
             <div className="dc-demo-banner">
@@ -784,6 +775,25 @@ export default function Dashboard() {
                   <option value="working">进行中</option>
                 </select>
               </label>
+            <label className="dc-scope">
+              数据范围
+              <select
+                value={filters.scope}
+                onChange={(e) => {
+                  const updated = {
+                    ...filters,
+                    scope: e.target.value as Query["scope"],
+                    page: 1,
+                  };
+                  setFilters(updated);
+                  setQuery(updated);
+                }}
+              >
+                <option value="real">真实数据</option>
+                <option value="demo">演示数据</option>
+                <option value="all">全部数据</option>
+              </select>
+            </label>
               <button type="submit" className="dc-button">
                 <Icon name="search" />
                 应用筛选
@@ -861,7 +871,7 @@ export default function Dashboard() {
               </div>
               <Chart option={trend} label="工作量与有效工时趋势" />
             </article>
-            <article className="dc-card">
+            <article className="dc-card dc-category">
               <div className="dc-card-title">
                 <div>
                   <h2>类别分布</h2>
@@ -888,8 +898,7 @@ export default function Dashboard() {
                 }}
               />
             </article>
-          </section>
-          <article className="dc-card dc-calendar">
+            <article className="dc-card dc-calendar">
             <div className="dc-card-title">
               <div>
                 <h2>工作的节奏</h2>
@@ -898,7 +907,8 @@ export default function Dashboard() {
             </div>
             <Chart option={calendarOption} label="近90天有效工时工作日历" />
             <div className="dc-heat-legend" aria-label="工时由少到多">少 {["#ebedf0","#9be9a8","#40c463","#30a14e","#216e39"].map(color=><i key={color} style={{background:color}}/>)} 多</div>
-          </article>
+            </article>
+          </section>
           <section className="dc-card dc-records" id="records">
             <div className="dc-card-title">
               <div>

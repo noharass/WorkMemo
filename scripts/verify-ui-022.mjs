@@ -10,6 +10,7 @@ const browser = await chromium.launch({channel:'msedge',headless:true});
 const page = await browser.newPage({viewport:{width:1280,height:900}});
 const errors=[];
 page.on('pageerror',error=>errors.push(error.message));
+await page.addInitScript(()=>{window.qaWindowErrors=[];window.addEventListener('error',event=>window.qaWindowErrors.push(event.message));});
 const today = new Date().toLocaleDateString('sv-SE');
 const record={id:1,category:'开发',quantity:2,remark:'UI regression fixture',start_time:Date.now()-3600000,end_time:Date.now()-1000,duration_ms:3599000,duration_seconds:3599,status:'FINISHED',is_paused:true,recovery_pending:false,settlement_status:'COMPLETE',revision:1,is_demo:false,demo_batch:null};
 const graphDays=Array.from({length:90},(_,i)=>{
@@ -55,19 +56,31 @@ await page.getByRole('button',{name:'保存工作量',exact:true}).click();
 await page.locator('#dc-editor').waitFor({state:'detached'});
 assert.equal(record.quantity,0);
 await page.getByRole('button',{name:'关闭工作详情'}).click();
-for(const width of [1024,1280,1440,1600]){
+const layoutCases=[];
+for(const width of [390,800,1024,1280,1440,1600,1920]){
   await page.setViewportSize({width,height:1000});
   await page.waitForTimeout(400);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`page overflow ${width}`);
-  const compact=await page.evaluate(()=>{
-    const status=document.querySelector('.dc-filters label:last-of-type select').getBoundingClientRect();
-    const button=document.querySelector('.dc-filters .dc-button').getBoundingClientRect();
-    const calendar=document.querySelector('.dc-calendar').getBoundingClientRect();
-    const legend=document.querySelector('.dc-heat-legend').getBoundingClientRect();
-    return {filterGap:button.left-status.right,calendarWidth:calendar.width,legendLeft:legend.left-calendar.left};
+  const layout=await page.evaluate(()=>{
+    const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,right:r.right,bottom:r.bottom};};
+    return {filters:rect('.dc-filters'),kpis:rect('.dc-kpis'),grid:rect('.dc-chart-grid'),trend:rect('.dc-trend'),category:rect('.dc-category'),calendar:rect('.dc-calendar'),records:rect('.dc-records')};
   });
-  assert.ok(compact.filterGap>=0 && compact.filterGap<=14,JSON.stringify(compact));
-  assert.ok(compact.calendarWidth<500 && compact.legendLeft<40,JSON.stringify(compact));
+  assert.ok(Math.abs(layout.filters.width-layout.grid.width)<2,JSON.stringify(layout));
+  assert.ok(Math.abs(layout.kpis.width-layout.grid.width)<2,JSON.stringify(layout));
+  if(width>=1000){
+    assert.ok(Math.abs(layout.category.x-layout.calendar.x)<2,JSON.stringify(layout));
+    assert.ok(Math.abs(layout.trend.y-layout.category.y)<2,JSON.stringify(layout));
+    assert.ok(Math.abs(layout.trend.bottom-layout.calendar.bottom)<2,JSON.stringify(layout));
+    assert.ok(Math.abs(layout.category.x-layout.trend.right-12)<2,JSON.stringify(layout));
+  } else if(width>640){
+    assert.ok(Math.abs(layout.category.y-layout.calendar.y)<2,JSON.stringify(layout));
+    assert.ok(Math.abs(layout.trend.width-layout.grid.width)<2,JSON.stringify(layout));
+  } else {
+    for(const name of ['trend','category','calendar'])assert.ok(Math.abs(layout[name].width-layout.grid.width)<2,JSON.stringify(layout));
+    assert.ok(layout.calendar.y>=layout.category.bottom,JSON.stringify(layout));
+  }
+  assert.ok(Math.abs(layout.records.y-layout.grid.bottom-14)<2,JSON.stringify(layout));
+  layoutCases.push({width,...layout});
   await page.screenshot({path:new URL(`dashboard-${width}.png`,output).pathname.replace(/^\/(\w:)/,'$1'),fullPage:true});
 }
 // Browser zoom equivalence for CSS layout (not native Windows DPI verification).
@@ -76,7 +89,10 @@ await page.waitForTimeout(400);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 await page.evaluate(()=>document.documentElement.style.zoom='1');
 assert.deepEqual(errors,[]);
-await writeFile(new URL('browser-result.json',output),JSON.stringify({enterEditNoSubmit:true,focus:true,zeroSave:true,failurePreservesInput:true,revisionConflictPreservesInput:true,compactFilterAndCalendar:true,widths:[1024,1280,1440,1600],cssZoom:1.25,pageErrors:errors},null,2));
+assert.deepEqual(await page.evaluate(()=>window.qaWindowErrors),[]);
+await writeFile(new URL('browser-result.json',output),JSON.stringify({enterEditNoSubmit:true,focus:true,zeroSave:true,failurePreservesInput:true,revisionConflictPreservesInput:true,completeGridLayout:true,widths:[390,800,1024,1280,1440,1600,1920],cssZoom:1.25,pageErrors:errors},null,2));
+await writeFile(new URL('overview-layout-result.json',output),JSON.stringify(layoutCases,null,2));
+if(process.argv.includes('--dashboard-only')) { await browser.close();console.log('Overview layout and editor regressions passed; HTTP fixtures only.');process.exit(0); }
 // Mock IPC only in a fresh browser page. No native work commands are sent.
 const island=await browser.newPage({viewport:{width:320,height:56}});
 await island.addInitScript(({record})=>{
