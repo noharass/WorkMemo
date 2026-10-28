@@ -1,6 +1,6 @@
 # alpha.6 自动恢复、检测与界面更新
 
-日期：2026-10-28（Asia/Shanghai）。按用户确认方案实施，并根据后续许可增加授权工作页面活动信号。版本 0.2.0-alpha.6，Windows x64。本轮提供本地 EXE 与 ZIP，没有创建公开 Release；README 中已公开的 alpha.5 资产保持原样。
+日期：2026-10-28（Asia/Shanghai）。按用户确认方案实施，并根据后续许可增加授权工作页面活动信号。版本 0.2.0-alpha.6，Windows x64。本轮提供 EXE 与 ZIP；用户随后明确要求发布，现已公开 alpha.6 预发布 Release，旧版资产保持原样。
 
 ## 业务行为
 
@@ -58,3 +58,10 @@ git status --short --branch
 - E:\WorkMemo\artifacts\0.2.0-alpha.6\installer-r1\WorkMemo_0.2.0-alpha.6_x64-preview-setup-r1.exe，2501168 字节；SHA256 `a2f55aade14a9c3707b9379c01d3edeba7cb6fd8e0898423fde77d247d64aa67`。
 
 校验文件：E:\WorkMemo\artifacts\0.2.0-alpha.6\DELIVERY-SHA256SUMS.txt。
+
+
+## 2026-10-28 公开发布
+
+[WorkMemo v0.2.0-alpha.6](https://github.com/noharass/WorkMemo/releases/tag/v0.2.0-alpha.6) 已发布，tag 指向构建源码 b40179522cc6b48c6557c1cb3c75a002fb9ff727。六个资产（EXE、ZIP、两类使用说明、许可和 ALL-SHA256SUMS.txt）经上传摘要及无认证公开下载复算通过。稳定 Latest 仍为 v0.1.1。发布不改变以上未验收项目。发布回执只包含公开元数据，保存在忽略目录 artifacts/0.2.0-alpha.6/RELEASE-RECEIPT.json。
+
+本次发布文档的 NEW FILE / UPDATE 完整路径和完整文本见 ALPHA6-RELEASE-SOURCE.md；原始开发汇编 UPDATE-ALPHA6-SOURCE.md 保留当时快照。

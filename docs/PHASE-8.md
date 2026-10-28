@@ -138,3 +138,8 @@ git status --short --branch
 ## 2026-10-28 自动恢复与界面更新
 
 按用户确认方案实现 alpha.6，并按后续明确许可增加已授权页面活动信号。源码、测试及本地 EXE/ZIP 结果见 UPDATE-ALPHA6.md，完整源码见 UPDATE-ALPHA6-SOURCE.md。原生 GUI 验收遇到工具误启动已安装版的限制，不能声称通过；未操作或结束真实任务。
+
+
+## 2026-10-28 alpha.6 公开预发布
+
+按用户明确要求已发布 alpha.6 EXE 与 ZIP，六个资产均经无认证公开下载复算验证；稳定 Latest 保持 v0.1.1。详情见 UPDATE-ALPHA6.md；原生验收限制继续保留。
