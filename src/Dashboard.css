@@ -293,6 +293,8 @@ body:has(.data-center) {
   overflow-wrap: anywhere;
 }
 .dc-filters {
+  width: fit-content;
+  max-width: 100%;
   background: #fff;
   border: 1px solid #e5eaf2;
   border-radius: 12px;
@@ -357,7 +359,7 @@ body:has(.data-center) {
   background: #f7f9fd;
 }
 .dc-filters .dc-button {
-  margin-left: auto;
+  margin-left: 0;
 }
 .dc-kpis {
   display: grid;
@@ -447,10 +449,14 @@ body:has(.data-center) {
   height: 260px;
 }
 .dc-calendar {
+  width: fit-content;
+  max-width: 100%;
   margin-bottom: 14px;
 }
 .dc-calendar .dc-chart {
-  height: 185px;
+  width: 300px;
+  max-width: 100%;
+  height: 156px;
 }
 .dc-table-scroll {
   overflow: auto;
@@ -910,7 +916,7 @@ body:has(.data-center) {
 .dc-heading h1 { font-size:24px; }
 .dc-kpi > strong { line-height:1.5; }
 .dc-kpi p,.dc-card-title p { color:#64748b; }
-.dc-heat-legend { display:flex; align-items:center; justify-content:flex-end; gap:4px; padding:0 18px; font-size:10px; color:#64748b; }
+.dc-heat-legend { display:flex; align-items:center; justify-content:flex-start; gap:4px; padding:0 16px 14px 38px; font-size:10px; color:#64748b; }
 .dc-heat-legend i { display:block; width:11px; height:11px; border-radius:2px; border:1px solid #1f23281a; }
 .data-center button { transition:background-color .14s,border-color .14s,color .14s; }
 .data-center button.dc-icon-button:hover:not(:disabled) { background:#eef2f6; color:#334155; }

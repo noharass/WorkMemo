@@ -55,10 +55,19 @@ await page.getByRole('button',{name:'保存工作量',exact:true}).click();
 await page.locator('#dc-editor').waitFor({state:'detached'});
 assert.equal(record.quantity,0);
 await page.getByRole('button',{name:'关闭工作详情'}).click();
-for(const width of [1024,1280,1440]){
+for(const width of [1024,1280,1440,1600]){
   await page.setViewportSize({width,height:1000});
   await page.waitForTimeout(400);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`page overflow ${width}`);
+  const compact=await page.evaluate(()=>{
+    const status=document.querySelector('.dc-filters label:last-of-type select').getBoundingClientRect();
+    const button=document.querySelector('.dc-filters .dc-button').getBoundingClientRect();
+    const calendar=document.querySelector('.dc-calendar').getBoundingClientRect();
+    const legend=document.querySelector('.dc-heat-legend').getBoundingClientRect();
+    return {filterGap:button.left-status.right,calendarWidth:calendar.width,legendLeft:legend.left-calendar.left};
+  });
+  assert.ok(compact.filterGap>=0 && compact.filterGap<=14,JSON.stringify(compact));
+  assert.ok(compact.calendarWidth<500 && compact.legendLeft<40,JSON.stringify(compact));
   await page.screenshot({path:new URL(`dashboard-${width}.png`,output).pathname.replace(/^\/(\w:)/,'$1'),fullPage:true});
 }
 // Browser zoom equivalence for CSS layout (not native Windows DPI verification).
@@ -67,7 +76,7 @@ await page.waitForTimeout(400);
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 await page.evaluate(()=>document.documentElement.style.zoom='1');
 assert.deepEqual(errors,[]);
-await writeFile(new URL('browser-result.json',output),JSON.stringify({enterEditNoSubmit:true,focus:true,zeroSave:true,failurePreservesInput:true,revisionConflictPreservesInput:true,widths:[1024,1280,1440],cssZoom:1.25,pageErrors:errors},null,2));
+await writeFile(new URL('browser-result.json',output),JSON.stringify({enterEditNoSubmit:true,focus:true,zeroSave:true,failurePreservesInput:true,revisionConflictPreservesInput:true,compactFilterAndCalendar:true,widths:[1024,1280,1440,1600],cssZoom:1.25,pageErrors:errors},null,2));
 // Mock IPC only in a fresh browser page. No native work commands are sent.
 const island=await browser.newPage({viewport:{width:320,height:56}});
 await island.addInitScript(({record})=>{

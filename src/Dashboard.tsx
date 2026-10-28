@@ -5,7 +5,6 @@ import {
   GridComponent,
   TooltipComponent,
   LegendComponent,
-  DataZoomComponent,
   CalendarComponent,
   VisualMapComponent,
 } from "echarts/components";
@@ -67,7 +66,6 @@ registerCharts([
   GridComponent,
   TooltipComponent,
   LegendComponent,
-  DataZoomComponent,
   CalendarComponent,
   VisualMapComponent,
   CanvasRenderer,
@@ -476,7 +474,7 @@ export default function Dashboard() {
       animationDuration: 300,
       tooltip: { ...tooltip, trigger: "axis" },
       legend: { top: 0, right: 12, data: ["工作量", "有效工时"] },
-      grid: { left: 52, right: 52, top: 40, bottom: 76, containLabel: true },
+      grid: { left: 52, right: 52, top: 40, bottom: 28, containLabel: true },
       xAxis: {
         type: "category",
         data: data?.trend.map((x) => x.date) ?? [],
@@ -496,10 +494,6 @@ export default function Dashboard() {
           splitLine: { show: false },
           axisLabel: { color: "#64748b" },
         },
-      ],
-      dataZoom: [
-        { type: "inside" },
-        { type: "slider", height: 14, bottom: 24, showDetail: false, borderColor: "transparent" },
       ],
       series: [
         {
@@ -901,10 +895,9 @@ export default function Dashboard() {
                 <h2>工作的节奏</h2>
                 <p>所选结束日之前的90天 · 颜色深浅表示有效工时</p>
               </div>
-              <span className="dc-chip">WORK CALENDAR</span>
             </div>
-            <div className="dc-heat-legend" aria-label="工时由少到多">少 {["#ebedf0","#9be9a8","#40c463","#30a14e","#216e39"].map(color=><i key={color} style={{background:color}}/>)} 多</div>
             <Chart option={calendarOption} label="近90天有效工时工作日历" />
+            <div className="dc-heat-legend" aria-label="工时由少到多">少 {["#ebedf0","#9be9a8","#40c463","#30a14e","#216e39"].map(color=><i key={color} style={{background:color}}/>)} 多</div>
           </article>
           <section className="dc-card dc-records" id="records">
             <div className="dc-card-title">

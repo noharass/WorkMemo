@@ -15,8 +15,13 @@ $configuration = Get-Content -LiteralPath (Join-Path $taskRoot 'src-tauri/tauri.
 $package = Get-Content -LiteralPath (Join-Path $taskRoot 'package.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $version = [string]$configuration.version
 if ($version -notmatch '^\d+\.\d+\.\d+$' -or $version -ne $package.version) { throw 'Invalid or mismatched release version.' }
-$running = Get-Process -Name workmemo -ErrorAction SilentlyContinue
-if ($running) { throw 'Save and close WorkMemo before packaging. The paused task remains in its existing database.' }
+# Only the executable being overwritten must be stopped. Installed/ZIP copies
+# may keep running: packaging reads source resources, never their work database.
+$releaseExecutable = [IO.Path]::GetFullPath((Join-Path $taskRoot 'src-tauri/target/release/workmemo.exe'))
+$running = Get-Process -Name workmemo -ErrorAction SilentlyContinue | Where-Object {
+    -not $_.Path -or [IO.Path]::GetFullPath($_.Path) -eq $releaseExecutable
+}
+if ($running) { throw 'The build output is running or cannot be identified. Close that copy before packaging.' }
 
 Push-Location $taskRoot
 try {
