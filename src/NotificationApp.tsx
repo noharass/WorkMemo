@@ -3,10 +3,9 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { SettlementForm } from "./SettlementPanel";
 import { useAppearance } from "./useAppearance";
 import { themeStyle } from "./themes";
-import { formatDuration, type Snapshot, type WorkNotice, type SettleInput } from "./types";
+import { formatDuration, type Snapshot, type WorkNotice } from "./types";
 import "./App.css";
 
 export function NotificationApp() {
@@ -46,14 +45,14 @@ export function NotificationApp() {
     catch (failure: unknown) { setError(String(failure)); }
     finally { setBusy(false); }
   }
-  async function save(input: SettleInput) {
+  async function openSettlement() {
     if (busy) return false;
     setBusy(true); setError("");
     try {
-      await invoke<Snapshot>("settle_record", { input });
-      await invoke("defer_notice", { id: input.id, kind: "ended" });
-      setNotice(null); return true;
-    } catch (failure: unknown) { setError(String(failure)); return false; }
+      await invoke("open_panel", { panel: "settlement" });
+      if (notice) await invoke("defer_notice", { id: notice.record.id, kind: "ended" });
+      setNotice(null);
+    } catch (failure: unknown) { setError(String(failure)); }
     finally { setBusy(false); }
   }
   const active = snapshot?.active;
@@ -88,7 +87,7 @@ export function NotificationApp() {
       {notice?.kind === "ended" && <section aria-label="工作结束提醒">
         <h1>本次工作已结束，请填写工作量</h1>
         <p className="hint">结果已保存。稍后填写不会影响下一段工作。</p>
-        <SettlementForm key={`${notice.record.id}:${notice.record.revision}`} record={notice.record} busy={busy} onSave={save} />
+        <button type="button" disabled={busy} onClick={() => { void openSettlement(); }}>打开待补全窗口填写</button>
         <button type="button" className="secondary" disabled={busy} onClick={() => { void later(); }}>稍后填写</button>
       </section>}
       {!notice && <p role="status">提醒已处理，正在更新。</p>}

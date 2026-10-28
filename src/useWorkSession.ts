@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { emit,listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { Snapshot, StartInput, SettleInput } from "./types";
 import { confirmedFinish, reconcileDeleted } from "./workView";
 
@@ -84,6 +84,7 @@ export function useWorkSession() {
     const request = ++revision.current;
     try {
       const data = await invoke<Snapshot>(command, args);
+      void emit("workmemo:data-changed");
       if (mounted.current && request === revision.current) {
         const current = reconcileDeleted(data, deletedIds.current);
         setSnapshot(current);

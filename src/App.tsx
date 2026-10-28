@@ -1,35 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { ConnectionPanel } from "./ConnectionPanel";
+import { listen } from "@tauri-apps/api/event";
 import { DesktopWindow } from "./DesktopWindow";
-import { AppearanceSettings } from "./AppearanceSettings";
 import { useAppearance } from "./useAppearance";
 import { themeStyle } from "./themes";
 import { WorkForm } from "./WorkForm";
 import { useWorkSession } from "./useWorkSession";
-import { CATEGORIES, formatDuration, formatTime, type StartInput } from "./types";
+import { CATEGORIES, formatTime, type StartInput } from "./types";
 import { workView } from "./workView";
-import { HistoryPanel } from "./HistoryPanel";
 import { useHistory } from "./useHistory";
 import { formatQuantity } from "./history";
 import { Icon } from "./Icon";
 import { UiDialog } from "./UiDialog";
-import { SettlementPanel } from "./SettlementPanel";
-import { MonitoringSettings } from "./MonitoringSettings";
 import "./App.css";
 
 function App() {
   const session = useWorkSession();
   const appearance = useAppearance();
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [layoutOpen, setLayoutOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
-  const [settlementOpen, setSettlementOpen] = useState(false);
-  const [monitorOpen, setMonitorOpen] = useState(false);
   const [switchRequest, setSwitchRequest] = useState<{ input: StartInput; id: number; category: string } | null>(null);
   const [navigationError, setNavigationError] = useState("");
-  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
+  const [density, setDensity] = useState<"compact" | "comfortable">("comfortable");
   const workspace = useRef<HTMLElement>(null);
   const active = session.snapshot?.active;
   const view = workView(session);
@@ -38,29 +29,25 @@ function App() {
   const refreshKey = `${session.dataVersion}:${session.snapshot?.pending_count ?? 0}:` + (session.snapshot?.recent_records.map((item) => `${item.id}:${item.end_time}:${item.revision}`).join(",") ?? "");
   // Reuse the existing read-only history query and its complete category aggregates.
   const categories = useHistory(session.native, refreshKey, session.recordDeleted);
-  const selected = appearance.open ? "appearance" : historyOpen ? "history" : layoutOpen ? "layout" : "home";
+  const selected = "home";
+  function panel(panel:string,section?:string){void invoke("open_panel",{panel,section}).catch(e=>setNavigationError(String(e)));}
   const pauseLabel = session.pending === "resume_task" ? "正在继续…" : session.pending === "pause_task" ? "正在暂停…"
     : active?.is_paused ? "继续工作" : "暂停";
-  useEffect(() => {
-    if (!session.native) return;
-    let stopped = false; let unlisten: UnlistenFn | undefined;
-    void listen("workmemo:open-settlement", () => { if (!stopped) setSettlementOpen(true); })
-      .then(unsubscribe => { if (stopped) unsubscribe(); else unlisten = unsubscribe; })
-      .catch((failure: unknown) => { if (!stopped) setNavigationError(String(failure)); });
-    return () => { stopped = true; unlisten?.(); };
-  }, [session.native]);
+  useEffect(()=>{if(!session.native)return;const refreshLayout=()=>{void invoke<{density:"compact"|"comfortable"}>("get_layout_settings").then(v=>setDensity(v.density)).catch(e=>setNavigationError(String(e)));};refreshLayout();const ps=[listen("workmemo:layout-changed",refreshLayout),listen("workmemo:appearance-changed",()=>{void appearance.reload();}),listen("workmemo:data-changed",()=>{void session.refresh();void categories.reload();})];return()=>{ps.forEach(p=>{void p.then(f=>f());});};},[session.native]);
+  useEffect(()=>{if(!session.native)return;void invoke<boolean>("detect_preview_data").then(v=>{if(v)setMigrationFound(true);}).catch(()=>{});},[session.native]);
+  const [migrationFound,setMigrationFound]=useState(false);
 
   return (
     <DesktopWindow appearanceStyle={themeStyle(appearance.current)} density={density}
       navigation={<nav className="main-nav flex items-center gap-1" aria-label="主导航">
         <button type="button" className="nav-button" aria-label="首页" title="首页" aria-pressed={selected === "home"}
           onClick={() => { workspace.current?.focus(); workspace.current?.scrollIntoView({ block: "start" }); }}><Icon name="home" /></button>
-        <button type="button" className="nav-button" aria-label="历史记录" title="历史记录" aria-pressed={selected === "history"}
-          onClick={() => setHistoryOpen(true)}><Icon name="history" /></button>
-        <button type="button" className="nav-button" aria-label="皮肤设置" title="皮肤设置" aria-pressed={selected === "appearance"}
-          disabled={appearance.loading} onClick={appearance.begin}><Icon name="palette" /></button>
-        <button type="button" className="nav-button" aria-label="布局设置" title="布局设置" aria-pressed={selected === "layout"}
-          onClick={() => setLayoutOpen(true)}><Icon name="layout" /></button>
+        <button type="button" className="nav-button" aria-label="历史记录" title="历史记录" aria-pressed={false}
+          onClick={() => panel("history")}><Icon name="history" /></button>
+        <button type="button" className="nav-button" aria-label="皮肤设置" title="皮肤设置" aria-pressed={false}
+          disabled={appearance.loading} onClick={()=>panel("settings","appearance")}><Icon name="palette" /></button>
+        <button type="button" className="nav-button" aria-label="布局设置" title="布局设置" aria-pressed={false}
+          onClick={() => panel("settings","layout")}><Icon name="layout" /></button>
       </nav>}
       categories={<div className="category-strip" tabIndex={0} role="region" aria-label="最近30天已结束记录，横向滚动"
         onWheel={(event) => { if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY; }}
@@ -71,6 +58,7 @@ function App() {
         </span>)}
       </div>}>
     <main ref={workspace} tabIndex={-1} className={`workspace${active ? " is-active" : ""}`}>
+      {migrationFound&&<p className="notice">发现预览版数据。<button onClick={()=>panel("settings","data")}>查看并迁移</button></p>}
       {appearance.notice && <p className="hint appearance-feedback" role="status">{appearance.notice}</p>}
       {appearance.loadError && <div className="notice" role="alert">
         <p>外观设置读取失败，暂时使用默认外观。工作记录不受影响。</p>
@@ -93,7 +81,7 @@ function App() {
       {navigationError && <p className="error-banner" role="alert">托盘导航通知不可用：{navigationError}</p>}
       {session.native && <div className="monitor-status">
         <span role="status">{session.snapshot?.monitoring?.message || "正在读取监测状态…"}</span>
-        <button type="button" className="text-button" onClick={() => setMonitorOpen(true)}>监测设置</button>
+        <button type="button" className="text-button" onClick={() => panel("settings","monitor")}>监测设置</button>
       </div>}
       {session.snapshot?.monitoring?.idle_warning && <p className="notice" role="status">已连续 {session.snapshot.monitoring.idle_warning_seconds} 秒没有输入，{session.snapshot.monitoring.idle_end_seconds} 秒时将自动结束。恢复操作后会取消提醒。</p>}
 
@@ -140,12 +128,9 @@ function App() {
       </details>}
 
       {session.native && session.snapshot && <div className="settlement-entry">
-        <button type="button" className="secondary" onClick={() => setSettlementOpen(open => !open)}>
+        <button type="button" className="secondary" onClick={() => panel("settlement")}>
           待补全工作量（{session.snapshot.pending_count}）</button>
       </div>}
-      <SettlementPanel open={settlementOpen} onClose={() => setSettlementOpen(false)} refreshKey={refreshKey}
-        busy={unavailable} onSave={session.settle} />
-
       <UiDialog open={switchRequest !== null} onClose={() => { if (!session.busy) setSwitchRequest(null); }} id="switch-title" title="确认切换工作">
         {switchRequest && <div className="switch-confirm grid gap-3">
           <p>将结束并保存当前暂停的“{switchRequest.category}”，然后开始手动工作“{switchRequest.input.category}”。</p>
@@ -155,26 +140,6 @@ function App() {
             <button type="button" disabled={session.busy} onClick={() => { void session.start(switchRequest.input, switchRequest.id).then(saved => { if (saved) setSwitchRequest(null); }); }}>确认保存并开始</button></div>
         </div>}
       </UiDialog>
-      <AppearanceSettings appearance={appearance} />
-      <MonitoringSettings open={monitorOpen} onClose={() => setMonitorOpen(false)} onSaved={() => { void session.refresh(); }} />
-      <UiDialog open={layoutOpen} onClose={() => setLayoutOpen(false)} id="layout-title" title="布局设置">
-        <fieldset className="density-settings">
-          <legend>显示间距</legend>
-          <div className="density-options">
-            <button type="button" className="secondary" aria-pressed={density === "compact"} onClick={() => setDensity("compact")}>紧凑</button>
-            <button type="button" className="secondary" aria-pressed={density === "comfortable"} onClick={() => setDensity("comfortable")}>舒展</button>
-          </div>
-          <p className="hint">调整当前窗口的显示间距。</p>
-        </fieldset>
-        <details className="utilities-panel">
-          <summary>连接与刷新</summary>
-          <button className="secondary" type="button" disabled={!session.native || session.busy}
-            onClick={() => { void session.refresh(); void categories.reload(); }}><Icon name="refresh" />刷新记录</button>
-          <ConnectionPanel />
-          <button type="button" className="secondary" disabled={!session.native || session.busy}
-            onClick={() => { void invoke("exit_app").catch(failure => setNavigationError(String(failure))); }}>退出 WorkMemo</button>
-        </details>
-      </UiDialog>
       <UiDialog open={noteOpen && !!record} onClose={() => setNoteOpen(false)} id="note-title" title="任务详情与备注">
         {record && <>
           <p className="note-heading">{record.category} · 数量 {formatQuantity(record.quantity)}</p>
@@ -183,20 +148,7 @@ function App() {
           <p className="task-remark">{record.remark || "这项工作未填写备注。"}</p>
         </>}
       </UiDialog>
-      <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} onDeleted={session.recordDeleted} refreshKey={refreshKey}>
-        <details className="recent-panel">
-          <summary>最近保存的记录</summary>
-          {session.snapshot?.recent_records.length ? <ul className="record-list">
-            {session.snapshot.recent_records.map((record) => <li key={record.id}>
-              <div className="record-heading"><strong>{record.category} · {formatQuantity(record.quantity)} · {record.settlement_status === "PENDING" ? "待补全" : "已结算"}</strong>
-                <span>{formatDuration(record.duration_seconds)}</span></div>
-              <p className="hint">{formatTime(record.start_time)}<br />至 {record.end_time !== null ? formatTime(record.end_time) : "—"}</p>
-              {record.remark && <p className="record-remark">{record.remark}</p>}
-            </li>)}
-          </ul> : <p className="hint">{session.snapshot ? "还没有已结束的记录。结束计时后会保存在这台电脑上。" : "连接本地数据后可查看真实记录。"}</p>}
-          <p className="hint">此处显示最近 5 条计时已结束的记录。</p>
-        </details>
-      </HistoryPanel>
+
     </main>
     </DesktopWindow>
   );

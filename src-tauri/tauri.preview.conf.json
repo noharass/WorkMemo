@@ -6,8 +6,8 @@
       {
         "label": "main",
         "title": "WorkMemo 自动记录预览版（独立数据）",
-        "width": 680,
-        "height": 340,
+        "width": 780,
+        "height": 560,
         "minWidth": 360,
         "minHeight": 280,
         "center": true,

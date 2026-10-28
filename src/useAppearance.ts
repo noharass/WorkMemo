@@ -67,7 +67,7 @@ export function useAppearance() {
   }
 
   async function save() {
-    if (!native || savingRef.current || !isAppearance(current)) return;
+    if (!native || savingRef.current || !isAppearance(current)) return false;
     savingRef.current = true; setSaving(true); setSaveError("");
     ++revision.current;
     try {
@@ -76,9 +76,10 @@ export function useAppearance() {
       if (mounted.current) {
         setSaved(settings); setCurrent(settings); setLoadError(""); setOpen(false);
         setNotice("外观已保存，下次打开自动沿用。");
+        return true;
       }
     } catch (error: unknown) {
-      if (mounted.current) setSaveError(String(error));
+      if (mounted.current) setSaveError(String(error));return false;
     } finally {
       savingRef.current = false;
       if (mounted.current) setSaving(false);
@@ -86,7 +87,7 @@ export function useAppearance() {
   }
 
   return {
-    native, current, loading, saving, open, loadError, saveError, notice,
+    native, current, saved, loading, saving, open, loadError, saveError, notice,
     begin, cancel, selectTheme, changeOpacity, reload, save,
     resetOpacity: () => changeOpacity(THEMES[current.theme].defaultOpacity),
   };

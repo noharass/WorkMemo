@@ -1,25 +1,10 @@
-import { Icon } from "./Icon";
-import { useEffect, useRef } from "react";
+import { Surface,useDraft } from "./Drafts";
 import { MAX_OPACITY, MIN_OPACITY, THEME_IDS, THEMES, themeStyle } from "./themes";
 import type { AppearanceController } from "./useAppearance";
 
-export function AppearanceSettings({ appearance }: { appearance: AppearanceController }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const element = dialog.current;
-    if (!element) return;
-    if (appearance.open && !element.open) element.showModal();
-    if (!appearance.open && element.open) element.close();
-  }, [appearance.open]);
-
-  return (
-    <dialog ref={dialog} className="appearance-dialog" aria-labelledby="appearance-title"
-      onCancel={(event) => { event.preventDefault(); appearance.cancel(); }}>
-      <div className="settings-heading">
-        <h2 id="appearance-title">外观设置</h2>
-        <button type="button" className="window-control" aria-label="取消预览并关闭外观设置"
-          disabled={appearance.saving} onClick={appearance.cancel}><Icon name="close" /></button>
-      </div>
+export function AppearanceSettings({ appearance,onClose=appearance.cancel }: { appearance: AppearanceController;onClose?:()=>void }) {
+  useDraft("appearance",JSON.stringify(appearance.current)!==JSON.stringify(appearance.saved),appearance.saving,async()=>Boolean(await appearance.save()),appearance.cancel);
+  return <Surface title="外观设置" onClose={onClose} actions={<><button type="button" className="secondary" disabled={appearance.saving} onClick={appearance.cancel}>取消预览</button><button type="button" disabled={!appearance.native||appearance.saving} onClick={()=>{void appearance.save();}}>{appearance.saving?"正在保存…":"保存外观"}</button></>}>
       <p className="hint">即时预览，保存后下次沿用。</p>
       <fieldset disabled={appearance.saving} className="theme-fieldset">
         <legend>选择皮肤</legend>
@@ -48,11 +33,5 @@ export function AppearanceSettings({ appearance }: { appearance: AppearanceContr
       {!appearance.native && <p className="notice">浏览器仅预览，不能保存桌面设置。</p>}
       {appearance.loadError && <p className="notice">原外观设置读取失败，当前为临时预览。</p>}
       {appearance.saveError && <p className="error-banner" role="alert">{appearance.saveError}</p>}
-      <div className="settings-actions grid grid-cols-2 gap-3">
-        <button type="button" className="secondary" disabled={appearance.saving} onClick={appearance.cancel}>取消</button>
-        <button type="button" disabled={!appearance.native || appearance.saving}
-          onClick={() => { void appearance.save(); }}>{appearance.saving ? "正在保存…" : "保存外观"}</button>
-      </div>
-    </dialog>
-  );
+    </Surface>;
 }

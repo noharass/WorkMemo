@@ -1,3 +1,4 @@
+import { Surface } from "./Drafts";
 import { Icon } from "./Icon";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { CATEGORIES, formatDuration, formatTime } from "./types";
@@ -29,17 +30,12 @@ function StatsTable({ label, rows }: { label: string; rows: { name: string; tota
 export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }: Props) {
   const history = useHistory(open, refreshKey, onDeleted);
   const { query, result, target } = history;
-  const dialog = useRef<HTMLDialogElement>(null);
   const confirmation = useRef<HTMLDialogElement>(null);
   const cancelDelete = useRef<HTMLButtonElement>(null);
   const [tab, setTab] = useState<"records" | "stats">("records");
   const [draft, setDraft] = useState(query);
   const [filterError, setFilterError] = useState("");
 
-  useEffect(() => {
-    if (open && !dialog.current?.open) dialog.current?.showModal();
-    if (!open && dialog.current?.open) dialog.current?.close();
-  }, [open]);
   useEffect(() => {
     if (target && !confirmation.current?.open) {
       confirmation.current?.showModal();
@@ -57,13 +53,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
   }
   const pages = result ? Math.max(1, Math.ceil(result.filtered.records / result.page_size)) : 1;
 
-  return <dialog ref={dialog} className="history-dialog" aria-labelledby="history-title"
-    onCancel={(event) => { event.preventDefault(); if (!history.deleting) onClose(); }}>
-    <div className="settings-heading">
-      <h2 id="history-title">历史与统计</h2>
-      <button type="button" className="window-control" aria-label="关闭历史与统计"
-        disabled={history.deleting} onClick={onClose}><Icon name="close" /></button>
-    </div>
+  return <Surface title="历史与统计" onClose={onClose} actions={result&&<nav className="history-pagination"><button disabled={history.loading||result.page<=1} onClick={()=>history.apply({...query,page:result.page-1})}>上一页</button><span>第 {result.page} / {pages} 页</span><button disabled={history.loading||result.page>=pages} onClick={()=>history.apply({...query,page:result.page+1})}>下一页</button></nav>}>
     {children}
     <p className="hint">按本机时间的任务开始日期查询。工时包含待补全记录，数量仅汇总已结算记录。跨午夜归入开始日。</p>
     <form className="history-filters" onSubmit={submit} noValidate>
@@ -118,13 +108,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
                 aria-label={`删除 ${record.category} 记录 ${record.id}`} onClick={() => history.chooseDelete(record)}><Icon name="delete" />删除记录</button>
             </li>)}
           </ol>
-          <nav className="history-pagination" aria-label="历史记录分页">
-            <button type="button" className="secondary" disabled={history.loading || result.page <= 1}
-              onClick={() => history.apply({ ...query, page: result.page - 1 })}><Icon name="left" />上一页</button>
-            <span>第 {result.page} / {pages} 页</span>
-            <button type="button" className="secondary" disabled={history.loading || result.page >= pages}
-              onClick={() => history.apply({ ...query, page: result.page + 1 })}>下一页<Icon name="right" /></button>
-          </nav>
+
         </> : <>
           <StatsTable label="按类别汇总" rows={result.categories.map((row) => ({ name: row.category, totals: row.totals }))} />
           <StatsTable label="每日汇总" rows={result.daily.map((row) => ({ name: row.date, totals: row.totals }))} />
@@ -149,5 +133,5 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
           {history.deleting ? "正在删除…" : "确认删除"}</button>
       </div>
     </dialog>
-  </dialog>;
+  </Surface>;
 }

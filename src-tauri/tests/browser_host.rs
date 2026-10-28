@@ -85,7 +85,10 @@ fn actual_native_host_round_trip_authenticates_and_forwards_only_metadata() {
     let mut response = vec![0; length];
     output.read_exact(&mut response).unwrap();
     let response: serde_json::Value = serde_json::from_slice(&response).unwrap();
-    assert_eq!(response["connected"], true);
+    assert_eq!(
+        response["connected"], true,
+        "native host response: {response}"
+    );
     drop(input);
     assert!(child.wait().unwrap().success());
     server.join().unwrap();

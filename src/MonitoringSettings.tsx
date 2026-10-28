@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
+import {emit} from "@tauri-apps/api/event";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { CATEGORIES, type MonitorConfig } from "./types";
-import { UiDialog } from "./UiDialog";
+import { Surface, useDraft } from "./Drafts";
 
 type ConnectionStatus = { state: string; message: string; identifier: string; version: string; host_name: string; manifest_path: string | null; extension_path: string | null };
 
@@ -12,6 +13,7 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [baseline,setBaseline]=useState("");
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!open || !isTauri()) return;
@@ -19,13 +21,13 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
     setConnection(null);
     void invoke<ConnectionStatus>("get_connection_status").then(value => { if (!stale) setConnection(value); }).catch((failure: unknown) => { if (!stale) setError(String(failure)); });
     setConfig(null); setError(""); setNotice("");
-    void invoke<MonitorConfig>("get_monitor_config").then(value => { if (!stale) setConfig(value); })
+    void invoke<MonitorConfig>("get_monitor_config").then(value => { if (!stale) {setConfig(value);setBaseline(JSON.stringify(value));} })
       .catch((failure: unknown) => { if (!stale) setError(String(failure)); });
     return () => { stale = true; };
   }, [open, retry]);
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (!config || busy) return;
+  async function save(event?: FormEvent) {
+    event?.preventDefault();
+    if (!config || busy) return false;
     setBusy(true); setError(""); setNotice("");
     try {
       const saved = await invoke<MonitorConfig>("save_monitor_config", { input: {
@@ -33,11 +35,12 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
         poll_interval_seconds: config.poll_interval_seconds, auto_resume_manual: config.auto_resume_manual,
         rules: config.rules.map(({ url_prefix, category }) => ({ url_prefix, category })),
       } });
-      setConfig(saved); setNotice("配置已保存。请在 Chrome 扩展中同步工作站点授权。"); onSaved();
-    } catch (failure: unknown) { setError(String(failure)); }
+      setConfig(saved); setBaseline(JSON.stringify(saved));setNotice("配置已保存。请在 Chrome 扩展中同步工作站点授权。"); onSaved();void emit("workmemo:data-changed");return true;
+    } catch (failure: unknown) { setError(String(failure));return false; }
     finally { setBusy(false); }
   }
-  return <UiDialog open={open} onClose={() => { if (!busy) onClose(); }} id="monitor-settings-title" title="自动工作监测">
+  useDraft("monitor",!!config&&JSON.stringify(config)!==baseline,busy,()=>save(),()=>{if(baseline)setConfig(JSON.parse(baseline));});
+  return <Surface onClose={onClose} title="自动工作监测" actions={<button form="monitor-form" type="submit" disabled={busy||!config}>{busy?"正在保存…":"保存监测配置"}</button>}>
     {!isTauri() && <p className="notice">请在 Windows 桌面程序中配置监测。</p>}
     {error && <p className="error-banner" role="alert">{error}</p>}
     {notice && <p className="notice" role="status">{notice}</p>}
@@ -52,7 +55,7 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
       <button type="button" className="text-button" onClick={() => { void invoke("open_browser_extension").catch((failure: unknown) => setError(String(failure))); }}>打开配套扩展文件夹</button>
       <p className="hint">Chrome 扩展需加载一次本目录。EXE、ZIP 和源码版启动时均会检查并修复当前用户的本机主机注册。</p>
     </section>}
-    {config && <form className="monitor-settings grid gap-4" onSubmit={(event) => { void save(event); }}>
+    {config && <form id="monitor-form" className="monitor-settings grid gap-4" onSubmit={(event) => { void save(event); }}>
       <label className="monitor-toggle"><input type="checkbox" checked={config.enabled} disabled={busy}
         onChange={event => setConfig({ ...config, enabled: event.target.checked })} />启用工作页面自动识别</label>
       <p className="hint">浏览器前台工作页面匹配，并有新的输入活动时开始。仅打开页面不会开始。手动计时也受空闲保护。</p>
@@ -86,11 +89,11 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
       </fieldset>)}
       <button type="button" className="secondary" disabled={busy || config.rules.length >= 50} onClick={() => setConfig({ ...config, rules: [...config.rules, { id: -Date.now(), url_prefix: "", category: "评测" }] })}>添加工作 URL</button>
       <p className="hint">匹配精确站点及路径边界；查询参数和片段不参与匹配。保存监测配置会暂停当前自动记录；重新确认工作页面并产生新的输入后才会恢复。</p>
-      <button type="submit" disabled={busy}>{busy ? "正在保存…" : "保存监测配置"}</button>
+
       <details><summary>连接与隐私说明</summary>
         <p className="hint">第一版配套 Chrome 扩展。安装扩展和本机通信主机后，在扩展面板同步已配置站点授权。只传规则标识、前台匹配状态、连接状态和页面活动信号；不传 URL、网页内容或输入文本。连接断开时暂停自动累计。</p>
         <p className="hint">离开工作页面后按设置暂停并保留记录。空闲结束时扣除最后输入后的尾段，阅读或思考可能少计，可稍后人工修正。</p>
       </details>
     </form>}
-  </UiDialog>;
+  </Surface>;
 }

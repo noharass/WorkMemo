@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import {emit} from "@tauri-apps/api/event";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { defaultHistoryQuery, historyQueryError, type HistoryPage, type HistoryQuery } from "./history";
 import type { WorkRecord } from "./types";
@@ -70,7 +71,7 @@ export function useHistory(open: boolean, refreshKey: string, onDeleted: (id: nu
     let deleted = false;
     try {
       await invoke<void>("delete_record", { id });
-      deleted = true;
+      deleted = true;void emit("workmemo:data-changed");
       if (mounted.current) {
         setTarget(null);
         setNotice("记录已删除。");

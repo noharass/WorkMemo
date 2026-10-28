@@ -13,6 +13,7 @@ mod native_activity;
 #[allow(dead_code)] // Shared with the separately built native host CLI.
 mod registration;
 mod service;
+mod windows;
 
 /// A real IPC round trip verifies that the desktop backend is available.
 #[derive(Serialize)]
@@ -33,9 +34,13 @@ fn app_info() -> AppInfo {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            app.manage(desktop::IslandState::initialize(app));
+            app.manage(database::data_tools::ArchiveSelection(
+                std::sync::Mutex::new(None),
+            ));
             app.manage(connection::ConnectionState::initialize(app));
             app.manage(service::Backend::initialize(app));
+            app.manage(desktop::IslandState::initialize(app));
+            windows::initialize(app)?;
             app.manage(appearance::AppearanceState::initialize(app));
             desktop::setup(app)?;
             Ok(())
@@ -43,6 +48,18 @@ pub fn run() {
         .on_window_event(service::handle_window_event)
         .invoke_handler(tauri::generate_handler![
             app_info,
+            database::data_tools::detect_preview_data,
+            database::data_tools::inspect_backup,
+            database::data_tools::create_backup,
+            database::data_tools::restore_backup,
+            database::data_tools::preview_migration,
+            database::data_tools::import_preview,
+            windows::open_panel,
+            windows::get_layout_settings,
+            windows::set_layout_density,
+            windows::reset_window_layout,
+            windows::set_window_dirty,
+            windows::close_panel,
             connection::get_connection_status,
             connection::repair_browser_connection,
             connection::open_browser_extension,
@@ -68,6 +85,14 @@ pub fn run() {
         .expect("WorkMemo failed to start")
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                if windows::has_drafts(app) {
+                    api.prevent_exit();
+                    let _ = app.emit("workmemo:request-close", ());
+                    return;
+                }
+                for (_, w) in app.webview_windows() {
+                    let _ = windows::capture(&w.as_ref().window());
+                }
                 if let Err(error) = desktop::save_island_position(app) {
                     let _ = app.emit(
                         "workmemo:runtime-error",

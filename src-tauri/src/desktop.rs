@@ -16,6 +16,13 @@ struct IslandSettings {
     enabled: bool,
     position: Option<(i32, i32)>,
 }
+pub fn validate_island(bytes: &[u8]) -> Result<(), String> {
+    let value: IslandSettings = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+    if value.version != 1 {
+        return Err("状态岛配置版本不受支持".into());
+    }
+    Ok(())
+}
 impl Default for IslandSettings {
     fn default() -> Self {
         Self {
@@ -115,6 +122,16 @@ impl IslandState {
 }
 
 pub fn show_main(app: &tauri::AppHandle, settlement: bool) -> Result<(), String> {
+    if settlement {
+        let handle = app.clone();
+        // Tray callbacks run on the UI thread; WebView creation must not block it.
+        tauri::async_runtime::spawn_blocking(move || {
+            if let Err(error) = crate::windows::show_panel(&handle, "settlement", None) {
+                let _ = handle.emit("workmemo:runtime-error", error);
+            }
+        });
+        return Ok(());
+    }
     let window = app.get_webview_window("main").ok_or("主窗口不可用。")?;
     set_visibility(&window.as_ref().window(), true, true)?;
     window
@@ -122,11 +139,6 @@ pub fn show_main(app: &tauri::AppHandle, settlement: bool) -> Result<(), String>
         .and_then(|_| window.unminimize())
         .and_then(|_| window.set_focus())
         .map_err(|e| e.to_string())?;
-    if settlement {
-        window
-            .emit("workmemo:open-settlement", ())
-            .map_err(|e| e.to_string())?;
-    }
     Ok(())
 }
 
@@ -161,6 +173,10 @@ pub fn setup(app: &tauri::App) -> tauri::Result<()> {
                         "workmemo:runtime-error",
                         format!("状态岛设置未能保存：{error}"),
                     );
+                }
+                if crate::windows::has_drafts(app) {
+                    let _ = app.emit("workmemo:request-close", ());
+                    return;
                 }
                 let backend = app.state::<crate::service::Backend>();
                 match backend.save_on_exit() {
@@ -327,4 +343,20 @@ pub fn set_visibility(window: &tauri::Window, visible: bool, activate: bool) -> 
         }
         .map_err(|e| e.to_string())
     }
+}
+
+pub fn reload_island(app: &tauri::AppHandle) -> Result<(), String> {
+    let state = app.state::<IslandState>();
+    let p = state.path.as_ref().map_err(|e| e.clone())?;
+    let settings = if p.exists() {
+        serde_json::from_slice::<IslandSettings>(&std::fs::read(p).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?
+    } else {
+        IslandSettings::default()
+    };
+    if settings.version != 1 {
+        return Err("状态岛版本无效".into());
+    }
+    *state.data.lock().map_err(|_| "状态岛设置锁异常")? = (settings, false);
+    Ok(())
 }

@@ -13,8 +13,14 @@ impl Directory {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path =
-            std::env::temp_dir().join(format!("workmemo-phase7-{}-{nonce}", std::process::id()));
+        let path = std::env::temp_dir().join(format!(
+            "workmemo-phase7-{}-{nonce}-{}",
+            std::process::id(),
+            {
+                static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+                NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            }
+        ));
         std::fs::create_dir(&path).unwrap();
         Self(path)
     }

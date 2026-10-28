@@ -21,7 +21,7 @@ use tauri::{Emitter, Manager, State};
 
 pub(crate) type SharedStore = Arc<Mutex<Result<Store>>>;
 pub struct Backend {
-    inner: SharedStore,
+    pub(crate) inner: SharedStore,
     pub tray_ready: AtomicBool,
     pub exiting: AtomicBool,
 }
@@ -42,7 +42,14 @@ impl Backend {
         let inner = Arc::new(Mutex::new(opened));
         if let Ok(mut guard) = inner.lock() {
             if let Ok(store) = guard.as_mut() {
-                store.activate_monitoring();
+                if let Ok(dir) = app.path().app_config_dir() {
+                    if let Err(e) = crate::database::data_tools::recover_pending(store, &dir) {
+                        *guard = Err(e);
+                    }
+                }
+                if let Ok(store) = guard.as_mut() {
+                    store.activate_monitoring();
+                }
             }
         }
         if let Ok(directory) = directory {
@@ -69,6 +76,7 @@ impl Backend {
         let signals = native_activity::listen();
         std::thread::spawn(move || {
             let mut presented = None;
+            let mut last_pending = None;
             let mut listener_ok = true;
             let mut reported_error: Option<String> = None;
             loop {
@@ -148,7 +156,13 @@ impl Backend {
                             }
                         }
                         match store.snapshot() {
-                            Ok(snapshot) => active_id = snapshot.active.map(|record| record.id),
+                            Ok(snapshot) => {
+                                if last_pending != Some(snapshot.pending_count) {
+                                    let _ = app_handle.emit("workmemo:data-changed", ());
+                                    last_pending = Some(snapshot.pending_count);
+                                }
+                                active_id = snapshot.active.map(|record| record.id);
+                            }
                             Err(error) => runtime_failure = Some(error),
                         }
                     }
@@ -235,7 +249,7 @@ impl Backend {
     }
 }
 
-async fn access<T: Send + 'static>(
+pub(crate) async fn access<T: Send + 'static>(
     shared: SharedStore,
     action: impl FnOnce(&mut Store) -> Result<T> + Send + 'static,
 ) -> Result<T> {
@@ -371,6 +385,10 @@ pub fn exit_app(app: tauri::AppHandle, state: State<'_, Backend>) -> Result<()> 
             format!("状态岛设置未能保存：{error}"),
         );
     }
+    if crate::windows::has_drafts(&app) {
+        let _ = app.emit("workmemo:request-close", ());
+        return Err("请先保存或放弃二级窗口中的修改，再退出。".into());
+    }
     state.save_on_exit()?;
     state.exiting.store(true, Ordering::Relaxed);
     app.exit(0);
@@ -380,6 +398,12 @@ pub fn exit_app(app: tauri::AppHandle, state: State<'_, Backend>) -> Result<()> 
 pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         let backend = window.state::<Backend>();
+        let _ = crate::windows::capture(window);
+        if matches!(window.label(), "settings" | "history" | "settlement") {
+            api.prevent_close();
+            let _ = window.emit("workmemo:request-close", ());
+            return;
+        }
         if window.label() == "notice" {
             api.prevent_close();
             let result = (|| -> Result<()> {
