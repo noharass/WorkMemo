@@ -9,7 +9,7 @@ WorkMemo 是 Windows 本地工作记录工具。可以手动计时，也可以�
 - **安装版**：运行 `WorkMemo_0.2.2_x64-setup.exe`，按向导安装。缺少 WebView2 时需要联网安装 Microsoft 官方运行环境。
 - **免安装版**：完整解压 `WorkMemo_0.2.2_windows_x64.zip`，打开 `WorkMemo/workmemo.exe`。主程序旁边的浏览器组件、`extension` 文件夹和修复脚本都请保留。缺少 WebView2 时，从 [Microsoft 官网](https://developer.microsoft.com/microsoft-edge/webview2/)安装。
 - 不需要开发工具或数据库服务。免安装表示程序不用安装；记录仍存放在当前 Windows 用户的数据目录，不会随解压文件夹移动。
-- 本轮 0.2.2 成品从本地交付目录 `E:\WorkMemo\artifacts\0.2.2` 获取，尚未公开发布 Release。程序暂未签名，可用随附 `SHA256SUMS.txt` 核对下载文件。
+- 从 [WorkMemo v0.2.2 正式版](https://github.com/noharass/WorkMemo/releases/tag/v0.2.2)下载安装版或完整 ZIP。程序暂未签名，可用随附 `SHA256SUMS.txt` 核对下载文件。
 
 ## 手动记录一段工作
 

@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.1/WorkMemo_0.2.1_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.2/WorkMemo_0.2.2_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.1/WorkMemo_0.2.1_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.2/WorkMemo_0.2.2_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.1">v0.2.1 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.2">v0.2.2 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -38,19 +38,15 @@
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## 本地交付 v0.2.2
+## 这次更新：多个工作网站，一份连续记录
 
-本轮完成灵动岛紧凑布局、网址匹配模式、提示音、总览界面和详情编辑修复。成品位于 `E:\WorkMemo\artifacts\0.2.2`，尚未公开发布；上方下载链接仍指向已发布的 v0.2.1。检查结果与验收限制见 [v0.2.2 交付记录](docs/UPDATE-0.2.2.md)。
+**v0.2.2** 可以为同一工作添加多个 URL，分别使用路径前缀、整个站点或域名后缀。匹配站点之间切换时保留同一条计时记录；开工仍由你确认，想先看看就选「仅浏览」。
 
-## 这次更新：开工由你决定，回顾也更清楚
+状态岛缩为约 320×56，暂停、继续和开始入口更顺手。新增轻提示音，可在布局设置关闭或试听；四种主题的按钮悬浮反馈也统一调整。
 
-**v0.2.1** 不再因为打开了工作网页就直接开表。出现开工提示时，选「开始记录」才开始计时；选「仅浏览」后会一直保持安静，直到你主动开始或继续。
+工作总览重新排成响应式网格：桌面左侧趋势、右侧类别与工作节奏；平板和手机自动换排，明细紧接图表。热力图色阶更清楚，趋势底部灰条移除，详情中的「编辑工作量」入口也已修复。
 
-首页轮播展示当天真正完成的**工作量**，没填的数量单独标记。点一下，就能在 Chrome 查看当天全部明细。历史和待补全也搬到了数据中心：趋势、类别分布、工作日历与记录列表放在一起，数量、类别和备注可以直接修改。
-
-桌面也重新收拾了一遍：四类工作各有自己的图标与颜色，状态岛与网页同步对应；背景可以换成自己的图片，字号、字重和行距都能调整。紧凑模式只留下计时、状态和常用操作，把桌面空出来。
-
-想先看看图表长什么样，可以在「设置 → 数据管理」生成带明确标记的演示记录。它们与真实记录分开查看，不进入日常统计，也能单独清理。
+[查看 v0.2.2 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.2) · [发布校验与实测范围](docs/RELEASE-0.2.2.md)
 
 ## 从旧版本过来
 

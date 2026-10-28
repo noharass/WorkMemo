@@ -1,5 +1,7 @@
 # WorkMemo v0.2.2 本地交付记录
 
+用户随后授权版本收尾，v0.2.2 已正式发布并设为 Latest，当前公开资产摘要及结束记录见 [RELEASE-0.2.2.md](RELEASE-0.2.2.md)。下文保留本地开发阶段历史。
+
 最新总览网格排版及当前成品摘要见 [UPDATE-0.2.2-LAYOUT.md](UPDATE-0.2.2-LAYOUT.md)。
 
 最新多 URL 分组设置与当前成品摘要见 [UPDATE-0.2.2-MULTI-URL.md](UPDATE-0.2.2-MULTI-URL.md)。
