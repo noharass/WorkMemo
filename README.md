@@ -143,3 +143,6 @@ Tauri 窗口配置 transparent=true、decorations=false、backgroundColor=#00000
 背景不透明度范围 80%–100%，仅影响面板背景，文字和可用按钮不整体变淡。可恢复当前皮肤的默认值：Glass 82%、Cream 88%、Dark 94%、Neon 90%。
 外观保存到 `%APPDATA%\com.workmemo.desktop\appearance.json`，与本地工作 SQLite 分开。临时文件写入并同步后再替换原配置；损坏配置在明确保存修复前会备份，较新版本配置不会覆盖。
 浏览器只支持预览，不能保存桌面配置，也不能证明原生透明效果。重开恢复的实际验收状态见阶段报告。
+
+
+源码开发更新：alpha.6 增加自动恢复、1–5 秒检测、页面活动信号，并使用 Ant Design 图标和 Tailwind 重做界面。本地构建与验收边界见 [更新记录](docs/UPDATE-ALPHA6.md)；上面的公开下载仍是 alpha.5。

@@ -116,3 +116,10 @@ $taskZip = 'E:\WorkMemo\artifacts\0.2.0-alpha.4\WorkMemo_0.2.0-alpha.4_windows_x
 ## alpha.5 状态岛与计时参数预览
 
 当前源码版本 0.2.0-alpha.5。仍使用上方预览构建命令，ZIP 路径更新为 `E:\WorkMemo\artifacts\0.2.0-alpha.5\WorkMemo_0.2.0-alpha.5_windows_x64_preview.zip`。安装器仍由校验后的同一 ZIP 构建；发布结果与未验收项目见 RELEASE-0.2.0-alpha.5.md。预览数据库升级到 schema 4，运行前正常退出并备份旧预览数据，旧版本可能无法打开升级后的数据库。
+
+
+## alpha.6 自动恢复、检测与界面
+
+当前源码为 0.2.0-alpha.6，schema 5。`npm.cmd run bridge:dev` 会构建本机 helper，并通过 Vite/Tailwind 编译扩展弹窗到 target 后准备配套 extension。源码使用者请加载程序“打开配套扩展文件夹”定位的已构建目录；不要直接加载 browser-extension 原始目录，其 popup.js 包含需要打包的依赖。新增 scripting 权限用于在已授权工作站点观察可信活动，不采集具体按键或内容。需要重新加载扩展并同步授权。
+
+预览打包沿用 package-preview.ps1 和 package-preview-installer.ps1，输出目录为 artifacts/0.2.0-alpha.6。GUI 验收与限制见 UPDATE-ALPHA6.md；不能把构建成功视为 Windows 原生验收通过。
