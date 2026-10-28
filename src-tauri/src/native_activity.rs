@@ -229,3 +229,22 @@ mod tests {
         assert_eq!(expand_input_tick(100, 200), None);
     }
 }
+
+pub fn own_process_foreground() -> bool {
+    #[cfg(windows)]
+    {
+        unsafe {
+            use windows_sys::Win32::{
+                System::Threading::GetCurrentProcessId,
+                UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId},
+            };
+            let mut pid = 0;
+            GetWindowThreadProcessId(GetForegroundWindow(), &mut pid);
+            return pid == GetCurrentProcessId();
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}

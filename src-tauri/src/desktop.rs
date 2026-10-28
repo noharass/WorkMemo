@@ -127,6 +127,7 @@ pub fn show_main(app: &tauri::AppHandle, settlement: bool) -> Result<(), String>
         // Tray callbacks run on the UI thread; WebView creation must not block it.
         tauri::async_runtime::spawn_blocking(move || {
             if let Err(error) = crate::windows::show_panel(&handle, "settlement", None) {
+                let _ = show_main(&handle, false);
                 let _ = handle.emit("workmemo:runtime-error", error);
             }
         });
@@ -222,7 +223,12 @@ pub fn save_island_position(app: &tauri::AppHandle) -> Result<(), String> {
     state.flush()
 }
 
-pub fn present_notice(app: &tauri::AppHandle, visible: bool, expanded: bool) -> Result<(), String> {
+pub fn present_notice(
+    app: &tauri::AppHandle,
+    visible: bool,
+    expanded: bool,
+    confirming: bool,
+) -> Result<(), String> {
     if !visible {
         if let Some(window) = app.get_webview_window("notice") {
             set_visibility(&window.as_ref().window(), false, false)?;
@@ -275,8 +281,10 @@ pub fn present_notice(app: &tauri::AppHandle, visible: bool, expanded: bool) -> 
     // command consistently for both showing and hiding this auxiliary window.
     let (width, height) = if expanded {
         (420.0, 460.0)
+    } else if confirming {
+        (420.0, 140.0)
     } else {
-        (360.0, 80.0)
+        (420.0, 92.0)
     };
     window
         .set_size(tauri::LogicalSize::new(width, height))

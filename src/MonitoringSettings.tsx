@@ -2,11 +2,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import {emit} from "@tauri-apps/api/event";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { CATEGORIES, type MonitorConfig } from "./types";
+import {useLayout} from "./desktopPreferences";
 import { Surface, useDraft } from "./Drafts";
 
 type ConnectionStatus = { state: string; message: string; identifier: string; version: string; host_name: string; manifest_path: string | null; extension_path: string | null };
 
 export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+  const compact=useLayout().current.density==="compact";
   const [connection, setConnection] = useState<ConnectionStatus | null>(null);
   const [repairing, setRepairing] = useState(false);
   const [config, setConfig] = useState<MonitorConfig | null>(null);
@@ -45,7 +47,7 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
     {error && <p className="error-banner" role="alert">{error}</p>}
     {notice && <p className="notice" role="status">{notice}</p>}
     {!config && isTauri() && <button className="secondary" type="button" onClick={() => setRetry(value => value + 1)}>读取监测配置</button>}
-    {isTauri() && <section className="monitor-rule" aria-label="浏览器连接诊断">
+    {isTauri() && <details className="monitor-diagnostics" open={!compact}><summary>浏览器连接与诊断</summary>
       <p role="status">{connection?.message ?? "正在检查本机连接…"}</p>
       {connection && <details><summary>连接详情</summary><p className="hint">版本 {connection.version} · {connection.identifier}<br />主机 {connection.host_name}<br />清单 {connection.manifest_path ?? "尚未就绪"}</p></details>}
       <button type="button" className="secondary" disabled={repairing} onClick={() => {
@@ -54,11 +56,11 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
       }}>{repairing ? "正在修复…" : "修复本机连接"}</button>
       <button type="button" className="text-button" onClick={() => { void invoke("open_browser_extension").catch((failure: unknown) => setError(String(failure))); }}>打开配套扩展文件夹</button>
       <p className="hint">Chrome 扩展需加载一次本目录。EXE、ZIP 和源码版启动时均会检查并修复当前用户的本机主机注册。</p>
-    </section>}
+    </details>}
     {config && <form id="monitor-form" className="monitor-settings grid gap-4" onSubmit={(event) => { void save(event); }}>
       <label className="monitor-toggle"><input type="checkbox" checked={config.enabled} disabled={busy}
         onChange={event => setConfig({ ...config, enabled: event.target.checked })} />启用工作页面自动识别</label>
-      <p className="hint">浏览器前台工作页面匹配，并有新的输入活动时开始。仅打开页面不会开始。手动计时也受空闲保护。</p>
+      <p className="hint">浏览器前台工作页面匹配且有新操作时提示开工，确认后才计时；仅浏览不计时。手动计时也受空闲保护。</p>
       <fieldset className="monitor-rule"><legend>识别与恢复</legend>
         <label>浏览器状态检查间隔（秒）<select value={config.poll_interval_seconds} disabled={busy}
           onChange={event => setConfig({ ...config, poll_interval_seconds: Number(event.target.value) })}>
@@ -69,7 +71,7 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
           onChange={event => setConfig({ ...config, auto_resume_manual: event.target.checked })} />返回工作页面并产生新操作后，自动恢复手动暂停的任务</label>
         <p className="hint">恢复原任务，不创建新记录；需要可信的页面连接和新的输入。关闭后需手动继续。</p>
       </fieldset>
-      <fieldset className="monitor-rule"><legend>计时参数（秒）</legend>
+      <details className="advanced-settings" open={!compact}><summary>计时参数（秒）</summary><fieldset className="monitor-rule"><legend className="sr-only">计时参数</legend>
         {([
           ["away_pause_seconds", "离开工作页面后继续计时"],
           ["hold_seconds", "暂停后保留记录"],
@@ -79,6 +81,7 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
           value={config.times[key]} onChange={event => setConfig({ ...config, times: { ...config.times, [key]: event.target.valueAsNumber } })} /></label>)}
         <p className="hint">每项 1 至 86400 秒；空闲提醒须早于空闲结束。离页宽限后暂停，再等待保留期结束记录。连接中断时不计入无法确认的时间；保留期同样适用。空闲结束可能更早发生。</p>
       </fieldset>
+      </details>
       {config.rules.map((rule, index) => <fieldset key={rule.id} className="monitor-rule">
         <legend>工作页面 {index + 1}</legend>
         <label>工作 URL<input type="url" required maxLength={2048} disabled={busy} value={rule.url_prefix}

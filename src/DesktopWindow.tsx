@@ -2,6 +2,7 @@ import { Icon } from "./Icon";
 import { useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import {backgroundStyle,type Background} from "./desktopPreferences";
 
 const DIRECTIONS = [
   "North", "NorthEast", "East", "SouthEast", "South", "SouthWest", "West", "NorthWest",
@@ -9,7 +10,8 @@ const DIRECTIONS = [
 type ResizeDirection = (typeof DIRECTIONS)[number];
 
 /** Window controls stay outside the drag area; closing uses the save-on-close path. */
-export function DesktopWindow({ children, appearanceStyle, navigation, categories, density = "compact" }: {
+export function DesktopWindow({ children, appearanceStyle, navigation, categories, density = "compact",background }: {
+  background?:Background|null;
   children: ReactNode; appearanceStyle?: CSSProperties; navigation?: ReactNode; categories?: ReactNode;
   density?: "compact" | "comfortable";
 }) {
@@ -46,6 +48,7 @@ export function DesktopWindow({ children, appearanceStyle, navigation, categorie
   return (
     <div className="desktop-frame" data-density={density} style={appearanceStyle}>
       <div className="app-shell">
+        {background&&<div aria-hidden="true" className="window-background" style={backgroundStyle(background)}/>}
         <header className="titlebar">
           <div className="titlebar-drag" title={native ? "按住这里移动窗口" : "请在桌面应用中移动窗口"}
             onMouseDown={(event) => { void drag(event); }}>

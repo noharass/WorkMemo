@@ -13,12 +13,12 @@ pub struct Notice {
 
 impl Store {
     pub fn monitor_config(&self) -> Result<MonitorConfig> {
-        let (enabled, revision, times, poll_interval_seconds, auto_resume_manual) = self
+        let (enabled, revision, times, poll_interval_seconds, auto_resume_manual, browsing_only) = self
             .connection
             .query_row(
-                "SELECT enabled,revision,idle_warning_seconds,idle_end_seconds,away_pause_seconds,hold_seconds,poll_interval_seconds,auto_resume_manual FROM monitoring_settings WHERE id=1",
+                "SELECT enabled,revision,idle_warning_seconds,idle_end_seconds,away_pause_seconds,hold_seconds,poll_interval_seconds,auto_resume_manual,browsing_only FROM monitoring_settings WHERE id=1",
                 [],
-                |r| Ok((r.get(0)?, r.get(1)?, TrackingTimes { idle_warning_seconds: r.get(2)?, idle_end_seconds: r.get(3)?, away_pause_seconds: r.get(4)?, hold_seconds: r.get(5)? }, r.get(6)?, r.get(7)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, TrackingTimes { idle_warning_seconds: r.get(2)?, idle_end_seconds: r.get(3)?, away_pause_seconds: r.get(4)?, hold_seconds: r.get(5)? }, r.get(6)?, r.get(7)?, r.get(8)?)),
             )
             .map_err(db_error)?;
         let mut statement = self
@@ -41,6 +41,7 @@ impl Store {
             return Err("检测间隔必须为 1 到 5 秒。".into());
         }
         Ok(MonitorConfig {
+            browsing_only,
             poll_interval_seconds,
             auto_resume_manual,
             times,
@@ -121,6 +122,7 @@ impl Store {
 
     pub fn activate_monitoring(&mut self) {
         self.monitor.active = true;
+        self.monitor.status.browsing_only = self.monitor.config.browsing_only;
         self.monitor.input_floor = self.clock.now().ticks_ms;
         self.monitor.status.enabled = self.monitor.config.enabled;
         self.monitor.status.idle_warning_seconds = self.monitor.config.times.idle_warning_seconds;
@@ -313,6 +315,18 @@ impl Store {
             && sample.chrome_foreground
             && self.monitor.page.as_ref().is_some_and(|p| p.focused)
             && rule.is_some();
+        if !page_known
+            || !self.monitor.config.enabled
+            || self.monitor.config.browsing_only
+            || self.active()?.is_some()
+            || self
+                .monitor
+                .candidate
+                .as_ref()
+                .is_some_and(|c| rule.as_ref().is_none_or(|r| r.id != c.rule_id))
+        {
+            self.monitor.candidate = None;
+        }
         if matched && !self.monitor.page_was_matched {
             self.monitor.entered_at = self.monitor.page.as_ref().map(|page| page.at.ticks_ms);
         }
@@ -338,10 +352,31 @@ impl Store {
             last
         });
 
+        if !page_known
+            || !self.monitor.config.enabled
+            || self
+                .monitor
+                .browse_ready_rule
+                .is_some_and(|id| rule.as_ref().is_none_or(|r| r.id != id))
+        {
+            self.monitor.browse_ready_rule = None;
+        }
+        if matched
+            && native_ok
+            && candidate_input.is_some_and(|i| {
+                i > self.monitor.input_floor && now.ticks_ms - i <= RECENT_INPUT_MS
+            })
+        {
+            self.monitor.browse_ready_rule = rule.as_ref().map(|r| r.id);
+        }
         // Manual pauses remain protected from deadlines. A new input after the pause,
         // on a confirmed matching page, may explicitly resume the same record under
         // automatic monitoring when the user has enabled this behavior.
-        if matched && native_ok && self.monitor.config.auto_resume_manual {
+        if matched
+            && native_ok
+            && !self.monitor.config.browsing_only
+            && self.monitor.config.auto_resume_manual
+        {
             if let Some(record) = self.active()?.filter(|r| {
                 r.is_paused && !r.recovery_pending && r.pause_reason.as_deref() == Some("MANUAL")
             }) {
@@ -423,6 +458,7 @@ impl Store {
                     if record.is_paused
                         && matches!(record.pause_reason.as_deref(), Some("AWAY" | "MONITOR"))
                         && fresh
+                        && !self.monitor.config.browsing_only
                     {
                         let last = candidate_input.unwrap();
                         self.resume_at(
@@ -464,19 +500,14 @@ impl Store {
                     && last > self.monitor.input_floor
                     && now.ticks_ms - last <= RECENT_INPUT_MS
                 {
-                    self.start_at(
-                        StartInput {
-                            category: rule.category,
-                            quantity: None,
-                            remark: String::new(),
-                        },
-                        "AUTO",
-                        TimePoint {
-                            ticks_ms: last,
-                            wall_ms: now.wall_ms.saturating_sub(now.ticks_ms - last).max(0),
-                        },
-                        false,
-                    )?;
+                    if !self.monitor.config.browsing_only && self.monitor.candidate.is_none() {
+                        self.monitor.candidate_sequence += 1;
+                        self.monitor.candidate = Some(StartCandidate {
+                            id: self.monitor.candidate_sequence,
+                            rule_id: rule.id,
+                            category: rule.category.clone(),
+                        });
+                    }
                 }
             }
         }
@@ -521,6 +552,22 @@ impl Store {
         } else {
             None
         };
+        self.monitor.status.browsing_only = self.monitor.config.browsing_only;
+        self.monitor.status.start_candidate = self.monitor.candidate.clone();
+        self.monitor.status.browse_ready = self.monitor.config.enabled
+            && page_known
+            && native_ok
+            && self.monitor.browse_ready_rule.is_some();
+        self.monitor.status.browse_category = if self.monitor.status.browse_ready {
+            self.monitor
+                .config
+                .rules
+                .iter()
+                .find(|r| Some(r.id) == self.monitor.browse_ready_rule)
+                .map(|r| r.category.clone())
+        } else {
+            None
+        };
         self.monitor.status.enabled = self.monitor.config.enabled;
         self.monitor.status.revision = self.monitor.config.revision;
         self.monitor.status.native_available = native_ok;
@@ -530,6 +577,14 @@ impl Store {
             "系统状态暂不可确认，已暂停计时"
         } else if !self.monitor.config.enabled {
             "自动页面识别未启用；手动计时仍有空闲保护"
+        } else if self.monitor.config.browsing_only {
+            if matched {
+                "仅浏览 · 工作页面已就绪，点击开始记录"
+            } else {
+                "仅浏览 · 当前不计时"
+            }
+        } else if self.monitor.candidate.is_some() {
+            "工作页面已就绪，等待确认开始记录"
         } else if self.active()?.is_some_and(|r| r.recovery_pending) {
             "有上次待恢复任务，请先继续或结束"
         } else if self
@@ -557,7 +612,7 @@ impl Store {
     }
 
     pub fn current_notice(&self) -> Result<Option<Notice>> {
-        let id:Option<i64>=self.connection.query_row("SELECT record_id FROM end_reminders JOIN work_records ON work_records.id=end_reminders.record_id WHERE dismissed=0 AND status='FINISHED' AND settlement_status='PENDING' ORDER BY record_id LIMIT 1",[],|r|r.get(0)).optional().map_err(db_error)?;
+        let id:Option<i64>=self.connection.query_row("SELECT record_id FROM end_reminders JOIN work_records ON work_records.id=end_reminders.record_id WHERE dismissed=0 AND status='FINISHED' AND settlement_status='PENDING' AND is_demo=0 ORDER BY record_id LIMIT 1",[],|r|r.get(0)).optional().map_err(db_error)?;
         if let Some(id) = id {
             return Ok(Some(Notice {
                 kind: "ended".into(),
@@ -597,5 +652,130 @@ impl Store {
             _ => return Err("提醒类型无效。".into()),
         }
         Ok(())
+    }
+}
+
+impl Store {
+    pub fn enter_browsing(&mut self) -> Result<()> {
+        let active = self.active()?;
+        let now = self.clock.now();
+        let tx = self.connection.transaction().map_err(db_error)?;
+        if let Some(r) = active.as_ref() {
+            let duration = match self.segment.as_ref() {
+                Some(s) if s.row_id == r.id => {
+                    s.base_ms + now.ticks_ms.saturating_sub(s.started_ticks).max(0)
+                }
+                _ => r.duration_ms,
+            };
+            if !r.is_paused {
+                write_segment(&tx, self.segment.as_ref(), r.id, duration, true)?;
+            }
+            tx.execute("UPDATE work_records SET duration_ms=?1,duration_seconds=?2,is_paused=1,pause_reason='MANUAL' WHERE id=?3",params![duration,duration/1000,r.id]).map_err(db_error)?;
+        }
+        tx.execute(
+            "UPDATE monitoring_settings SET browsing_only=1 WHERE id=1",
+            [],
+        )
+        .map_err(db_error)?;
+        tx.commit().map_err(db_error)?;
+        self.segment = None;
+        self.monitor.config.browsing_only = true;
+        self.monitor.browse_ready_rule = None;
+        self.monitor.status.browse_ready = false;
+        self.monitor.candidate = None;
+        self.monitor.status.start_candidate = None;
+        self.monitor.status.browsing_only = true;
+        self.monitor.status.idle_warning = false;
+        self.monitor.status.message = "仅浏览 · 当前不计时".into();
+        self.monitor.input_floor = now.ticks_ms;
+        Ok(())
+    }
+    pub fn confirm_work(&mut self, candidate_id: Option<u64>, own_focus: bool) -> Result<()> {
+        let now = self.clock.now();
+        let native = self
+            .monitor
+            .native
+            .filter(|n| {
+                n.reliable
+                    && n.unlocked
+                    && now.ticks_ms - n.at.ticks_ms <= 5000
+                    && (n.chrome_foreground || own_focus)
+            })
+            .ok_or("无法确认系统状态，请返回工作页面后重试。")?;
+        let _ = native;
+        let page = self
+            .monitor
+            .page
+            .as_ref()
+            .filter(|p| {
+                p.ready
+                    && p.revision == self.monitor.config.revision
+                    && now.ticks_ms - p.at.ticks_ms <= BROWSER_TIMEOUT_MS
+            })
+            .ok_or("页面连接已变化，请返回工作页面后重试。")?;
+        let rule = self
+            .monitor
+            .config
+            .rules
+            .iter()
+            .find(|r| Some(r.id) == page.rule_id)
+            .cloned()
+            .ok_or("当前页面未匹配工作规则。")?;
+        if !self.monitor.config.enabled {
+            return Err("请先启用工作页面识别。".into());
+        }
+        let active = self.active()?;
+        if let Some(c) = candidate_id {
+            if self
+                .monitor
+                .candidate
+                .as_ref()
+                .is_none_or(|p| p.id != c || p.rule_id != rule.id)
+                || active.is_some()
+            {
+                return Err("开工提示已失效，请重新确认。".into());
+            }
+        } else if !self.monitor.config.browsing_only
+            || self.monitor.browse_ready_rule != Some(rule.id)
+        {
+            return Err("请返回工作页面操作后，再点击开工入口。".into());
+        }
+        if let Some(record) = active {
+            if record.recovery_pending {
+                return Err("请先在主窗口处理上次待恢复的任务。".into());
+            }
+            if !record.is_paused {
+                return Err("当前任务已在计时。".into());
+            }
+            self.resume_at(record.id, now, "AUTO")?;
+        } else {
+            self.start_at(
+                StartInput {
+                    category: rule.category,
+                    quantity: None,
+                    remark: String::new(),
+                },
+                "AUTO",
+                now,
+                false,
+            )?;
+        }
+        Ok(())
+    }
+}
+
+impl Store {
+    pub fn browser_disconnected(&mut self, client: u64) {
+        if self.monitor.browser_owner != Some(client) {
+            return;
+        }
+        self.monitor.browser_owner = None;
+        self.monitor.page = None;
+        self.monitor.candidate = None;
+        self.monitor.browse_ready_rule = None;
+        self.monitor.status.start_candidate = None;
+        self.monitor.status.browse_ready = false;
+        self.monitor.status.browse_category = None;
+        self.monitor.status.browser_connected = false;
     }
 }

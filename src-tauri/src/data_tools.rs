@@ -6,7 +6,12 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf};
 use tauri::{Emitter, Manager};
-const FILES: [&str; 3] = ["appearance.json", "window-layout.json", "island.json"];
+const FILES: [&str; 4] = [
+    "appearance.json",
+    "window-layout.json",
+    "island.json",
+    "presentation.json",
+];
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Archive {
@@ -58,19 +63,46 @@ fn configs(dir: &Path) -> Result<BTreeMap<String, Vec<u8>>> {
             Err(e) => return Err(e.to_string()),
         }
     }
+    if let Some(bytes) = m.get("presentation.json") {
+        let p: crate::presentation::Presentation =
+            serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        p.validate()?;
+        if let Some(bg) = p.background {
+            let bytes =
+                std::fs::read(dir.join("backgrounds").join(&bg.file)).map_err(|e| e.to_string())?;
+            m.insert(format!("backgrounds/{}", bg.file), bytes);
+        }
+    }
     Ok(m)
 }
 fn validate_settings(settings: &BTreeMap<String, Vec<u8>>) -> Result<()> {
     for (name, b) in settings {
+        if let Some(file) = name.strip_prefix("backgrounds/") {
+            if !crate::presentation::image_name(file) {
+                return Err("备份图片路径无效".into());
+            }
+            crate::presentation::validate_image(b)?;
+            continue;
+        }
         if !FILES.contains(&name.as_str()) || b.len() > 65536 {
             return Err("备份设置无效。".into());
         }
         let v: serde_json::Value = serde_json::from_slice(b).map_err(|e| e.to_string())?;
         match name.as_str() {
+            "presentation.json" => {
+                let p: crate::presentation::Presentation =
+                    serde_json::from_slice(b).map_err(|e| e.to_string())?;
+                p.validate()?;
+                if let Some(bg) = p.background {
+                    if !settings.contains_key(&format!("backgrounds/{}", bg.file)) {
+                        return Err("备份缺少背景图片".into());
+                    }
+                }
+            }
             "appearance.json" => {
                 let a: crate::appearance::Appearance =
                     serde_json::from_value(v).map_err(|e| e.to_string())?;
-                if a.version != 1 || !(80..=100).contains(&a.opacity) {
+                if ![1, 2].contains(&a.version) || !(80..=100).contains(&a.opacity) {
                     return Err("备份外观无效。".into());
                 }
             }
@@ -91,6 +123,16 @@ fn validate_settings(settings: &BTreeMap<String, Vec<u8>>) -> Result<()> {
 fn write_configs(dir: &Path, settings: &BTreeMap<String, Vec<u8>>) -> Result<()> {
     validate_settings(settings)?;
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    for (name, bytes) in settings
+        .iter()
+        .filter(|(n, _)| n.starts_with("backgrounds/"))
+    {
+        let path = dir.join(name);
+        std::fs::create_dir_all(path.parent().ok_or("图片目录无效")?).map_err(|e| e.to_string())?;
+        let pending = path.with_extension("restore-pending");
+        std::fs::write(&pending, bytes).map_err(|e| e.to_string())?;
+        std::fs::rename(pending, path).map_err(|e| e.to_string())?;
+    }
     for name in FILES {
         let path = dir.join(name);
         if let Some(b) = settings.get(name) {
@@ -111,7 +153,7 @@ impl Store {
             .backup("main", &t.0, None::<fn(rusqlite::backup::Progress)>)
             .map_err(db_error)?;
         Ok(Archive {
-            version: 1,
+            version: 2,
             database: std::fs::read(&t.0).map_err(|e| e.to_string())?,
             settings: configs(dir)?,
         })
@@ -185,7 +227,7 @@ fn read_archive(path: &Path) -> Result<Archive> {
     }
     let a: Archive = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
         .map_err(|_| "备份格式无效。")?;
-    if a.version != 1 || a.database.len() > 128 * 1024 * 1024 {
+    if ![1, 2].contains(&a.version) || a.database.len() > 128 * 1024 * 1024 {
         return Err("备份版本或大小不受支持。".into());
     }
     validate_settings(&a.settings)?;
@@ -419,6 +461,7 @@ pub async fn restore_backup(
         let _ = handle.emit("workmemo:layout-changed", ());
         let _ = handle.emit("workmemo:data-changed", ());
         let _ = handle.emit("workmemo:appearance-changed", ());
+        let _ = handle.emit("workmemo:presentation-changed", ());
     }
     result
 }
@@ -632,7 +675,7 @@ fn merge_options(target: &mut Store, source: &Store, include_config: bool) -> Re
             )
             .map_err(db_error)?;
         }
-        tx.execute("UPDATE monitoring_settings SET enabled=0,revision=revision+1,idle_warning_seconds=?1,idle_end_seconds=?2,away_pause_seconds=?3,hold_seconds=?4,poll_interval_seconds=?5,auto_resume_manual=?6 WHERE id=1",params![c.times.idle_warning_seconds,c.times.idle_end_seconds,c.times.away_pause_seconds,c.times.hold_seconds,c.poll_interval_seconds,c.auto_resume_manual]).map_err(db_error)?;
+        tx.execute("UPDATE monitoring_settings SET enabled=0,revision=revision+1,idle_warning_seconds=?1,idle_end_seconds=?2,away_pause_seconds=?3,hold_seconds=?4,poll_interval_seconds=?5,auto_resume_manual=?6,browsing_only=?7 WHERE id=1",params![c.times.idle_warning_seconds,c.times.idle_end_seconds,c.times.away_pause_seconds,c.times.hold_seconds,c.poll_interval_seconds,c.auto_resume_manual,c.browsing_only]).map_err(db_error)?;
     }
     tx.commit().map_err(db_error)?;
     target.monitor.config = target.monitor_config()?;
@@ -922,4 +965,74 @@ mod tests {
 #[tauri::command]
 pub fn detect_preview_data(app: tauri::AppHandle) -> Result<bool> {
     Ok(preview_path(&app)?.is_file())
+}
+
+#[cfg(test)]
+mod image_backup_tests {
+    use super::*;
+    use crate::{
+        database::tests::{TestClock, TestDirectory},
+        presentation::{Background, Presentation},
+    };
+    #[test]
+    fn snapshot_keeps_managed_background_and_rejects_missing_image() {
+        let source = TestDirectory::new();
+        let path = source.db();
+        let directory = path.parent().unwrap();
+        let backgrounds = directory.join("backgrounds");
+        std::fs::create_dir(&backgrounds).unwrap();
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::new_rgb8(2, 2)
+            .write_to(&mut bytes, image::ImageFormat::Png)
+            .unwrap();
+        std::fs::write(backgrounds.join("bg-test.png"), bytes.get_ref()).unwrap();
+        let p = Presentation {
+            background: Some(Background {
+                file: "bg-test.png".into(),
+                opacity: 37,
+            }),
+            ..Default::default()
+        };
+        std::fs::write(
+            directory.join("presentation.json"),
+            serde_json::to_vec(&p).unwrap(),
+        )
+        .unwrap();
+        let mut store = Store::initialize(
+            Connection::open_in_memory().unwrap(),
+            Box::new(TestClock::new()),
+            None,
+        )
+        .unwrap();
+        let archive = store.archive(directory).unwrap();
+        assert_eq!(archive.version, 2);
+        validate_settings(&archive.settings).unwrap();
+        assert_eq!(
+            &archive.settings["backgrounds/bg-test.png"],
+            bytes.get_ref()
+        );
+        let target = TestDirectory::new();
+        let target_path = target.db();
+        let target_dir = target_path.parent().unwrap();
+        write_configs(target_dir, &archive.settings).unwrap();
+        assert_eq!(
+            crate::presentation::load(target_dir)
+                .unwrap()
+                .background
+                .unwrap()
+                .opacity,
+            37
+        );
+        let mut missing = archive.settings.clone();
+        missing.remove("backgrounds/bg-test.png");
+        assert!(validate_settings(&missing).is_err());
+        let mut invalid = archive.settings.clone();
+        invalid.insert("backgrounds/../secret.png".into(), vec![1]);
+        assert!(validate_settings(&invalid).is_err());
+        for dir in [directory, target_dir] {
+            std::fs::remove_file(dir.join("backgrounds/bg-test.png")).unwrap();
+            std::fs::remove_dir(dir.join("backgrounds")).unwrap();
+            std::fs::remove_file(dir.join("presentation.json")).unwrap();
+        }
+    }
 }

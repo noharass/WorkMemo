@@ -153,7 +153,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1 | 2 | 3 | 4 | 5 | 6 => {}
+            1 | 2 | 3 | 4 | 5 | 6 | 7 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -184,6 +184,12 @@ impl Store {
             tx.execute_batch(include_str!("../migrations/006_import_sources.sql"))
                 .map_err(db_error)?;
             tx.pragma_update(None, "user_version", 6)
+                .map_err(db_error)?;
+        }
+        if version < 7 {
+            tx.execute_batch(include_str!("../migrations/007_dashboard_intent.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 7)
                 .map_err(db_error)?;
         }
         // Never infer work while the application was closed from wall-clock time.
@@ -301,7 +307,7 @@ impl Store {
         self.checkpoint()?;
         let active = self.active()?;
         let mut statement = self.connection.prepare(
-            &format!("SELECT {COLUMNS} FROM work_records WHERE status='FINISHED' ORDER BY id DESC LIMIT 5")
+            &format!("SELECT {COLUMNS} FROM work_records WHERE status='FINISHED' AND is_demo=0 ORDER BY id DESC LIMIT 5")
         ).map_err(db_error)?;
         let recent_records = statement
             .query_map([], read_record)
@@ -313,7 +319,7 @@ impl Store {
             recent_records,
             warning: self.warning.clone(),
             pending_count: self.connection.query_row(
-                "SELECT COUNT(*) FROM work_records WHERE status='FINISHED' AND settlement_status='PENDING'", [], |r| r.get(0)
+                "SELECT COUNT(*) FROM work_records WHERE status='FINISHED' AND settlement_status='PENDING' AND is_demo=0", [], |r| r.get(0)
             ).map_err(db_error)?,
             monitoring: self.monitor.status.clone(),
         })
@@ -375,6 +381,11 @@ impl Store {
             params![input.category, input.quantity, remark, now.wall_ms,source,if source=="AUTO"{"AUTO"}else{"MANUAL"}]).map_err(db_error)?;
         let id = tx.last_insert_rowid();
         let row_id = insert_segment(&tx, id, now.wall_ms, &self.clock_session, now.ticks_ms)?;
+        tx.execute(
+            "UPDATE monitoring_settings SET browsing_only=0 WHERE id=1",
+            [],
+        )
+        .map_err(db_error)?;
         tx.commit().map_err(db_error)?;
         self.segment = Some(Segment {
             id,
@@ -454,6 +465,11 @@ impl Store {
             .max(record.start_time)
             .max(previous_end.unwrap_or(0));
         let row_id = insert_segment(&tx, id, started_wall, &self.clock_session, now.ticks_ms)?;
+        tx.execute(
+            "UPDATE monitoring_settings SET browsing_only=0 WHERE id=1",
+            [],
+        )
+        .map_err(db_error)?;
         tx.commit().map_err(db_error)?;
         self.segment = Some(Segment {
             id,
@@ -589,6 +605,9 @@ mod tracking_tests;
 #[cfg(test)]
 #[path = "reliability_tests.rs"]
 mod reliability_tests;
+
+#[path = "data_center.rs"]
+pub mod data_center;
 
 #[path = "data_tools.rs"]
 pub mod data_tools;

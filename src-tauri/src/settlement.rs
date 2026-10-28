@@ -15,7 +15,7 @@ pub struct SettleInput {
 impl Store {
     pub fn pending_records(&self) -> Result<Vec<WorkRecord>> {
         let mut statement = self.connection.prepare(&format!(
-            "SELECT {COLUMNS} FROM work_records WHERE status='FINISHED' AND settlement_status='PENDING' ORDER BY id"
+            "SELECT {COLUMNS} FROM work_records WHERE status='FINISHED' AND settlement_status='PENDING' AND is_demo=0 ORDER BY id"
         )).map_err(db_error)?;
         statement
             .query_map([], read_record)

@@ -1,14 +1,18 @@
 import type { CSSProperties } from "react";
 import {
-  HomeOutlined, HistoryOutlined, BgColorsOutlined, AppstoreOutlined,
+  HomeOutlined, HistoryOutlined, SkinOutlined, AppstoreOutlined,
   FileTextOutlined, CheckCircleOutlined, PauseOutlined, CaretRightFilled,
   CloseOutlined, SyncOutlined, MinusOutlined, ArrowUpOutlined,
   SettingOutlined, ClockCircleOutlined, SearchOutlined, DeleteOutlined,
   BarChartOutlined, UnorderedListOutlined, LeftOutlined, RightOutlined,
+  CheckSquareOutlined, SafetyCertificateOutlined, CodeOutlined, StarOutlined,
+  RocketOutlined, BulbOutlined, ToolOutlined, ReadOutlined,
 } from "@ant-design/icons";
 
 const icons = {
-  home: HomeOutlined, history: HistoryOutlined, palette: BgColorsOutlined,
+  home: HomeOutlined, history: HistoryOutlined, palette: SkinOutlined,
+  checkSquare:CheckSquareOutlined,safety:SafetyCertificateOutlined,code:CodeOutlined,
+  star:StarOutlined,rocket:RocketOutlined,bulb:BulbOutlined,tool:ToolOutlined,read:ReadOutlined,
   layout: AppstoreOutlined, note: FileTextOutlined, check: CheckCircleOutlined,
   pause: PauseOutlined, play: CaretRightFilled, close: CloseOutlined,
   refresh: SyncOutlined, minimize: MinusOutlined, open: ArrowUpOutlined,

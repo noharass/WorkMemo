@@ -65,7 +65,14 @@ pub fn start(shared: SharedStore, directory: &Path) -> Result<(), String> {
                     count.fetch_add(1, Ordering::Relaxed);
                     let client = NEXT_CLIENT.fetch_add(1, Ordering::Relaxed);
                     std::thread::spawn(move || {
-                        let _ = serve(stream, weak, token, client);
+                        let _ = serve(stream, weak.clone(), token, client);
+                        if let Some(shared) = weak.upgrade() {
+                            if let Ok(mut guard) = shared.lock() {
+                                if let Ok(store) = guard.as_mut() {
+                                    store.browser_disconnected(client);
+                                }
+                            }
+                        }
                         count.fetch_sub(1, Ordering::Relaxed);
                     });
                 }

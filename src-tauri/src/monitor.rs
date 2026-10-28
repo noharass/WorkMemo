@@ -56,6 +56,8 @@ pub struct MonitorConfig {
     pub times: TrackingTimes,
     pub poll_interval_seconds: i64,
     pub auto_resume_manual: bool,
+    #[serde(default)]
+    pub browsing_only: bool,
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -92,8 +94,18 @@ pub struct PageSample {
     pub ready: bool,
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub struct StartCandidate {
+    pub id: u64,
+    pub rule_id: i64,
+    pub category: String,
+}
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct MonitorStatus {
+    pub browsing_only: bool,
+    pub browse_ready: bool,
+    pub browse_category: Option<String>,
+    pub start_candidate: Option<StartCandidate>,
     pub enabled: bool,
     pub browser_connected: bool,
     pub native_available: bool,
@@ -108,6 +120,9 @@ pub struct MonitorStatus {
 
 #[derive(Default)]
 pub struct Runtime {
+    pub candidate: Option<StartCandidate>,
+    pub candidate_sequence: u64,
+    pub browse_ready_rule: Option<i64>,
     pub page_activity_at: Option<i64>,
     pub active: bool,
     pub events_failed: bool,
@@ -130,6 +145,10 @@ pub struct Runtime {
 
 impl Runtime {
     pub fn record_changed(&mut self, id: i64, at: TimePoint) {
+        self.candidate = None;
+        self.status.start_candidate = None;
+        self.config.browsing_only = false;
+        self.status.browsing_only = false;
         self.record_id = Some(id);
         self.last_input = Some(at.ticks_ms);
         self.away_since = None;

@@ -32,7 +32,7 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml
 
 测试与打包按顺序执行；不要让不同配置的 Cargo 构建并行复用 target 目录。特别是复制隔离可执行文件前，要核对其编译标识，避免把另一构建产生的文件作为隔离程序。
 
-## 构建 v0.2.0 成品
+## 构建 v0.2.1 成品
 
 ```powershell
 & .\scripts\package-windows.ps1
@@ -40,10 +40,10 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml
 
 脚本收集第三方许可，执行前端与 Tauri release 构建，准备浏览器组件，生成 NSIS 安装器和免安装 ZIP：
 
-- `artifacts/0.2.0/WorkMemo_0.2.0_x64-setup.exe`
-- `artifacts/0.2.0/WorkMemo_0.2.0_windows_x64.zip`
-- `artifacts/0.2.0/THIRD-PARTY-LICENSES.txt`
-- `artifacts/0.2.0/SHA256SUMS.txt`
+- `artifacts/0.2.1/WorkMemo_0.2.1_x64-setup.exe`
+- `artifacts/0.2.1/WorkMemo_0.2.1_windows_x64.zip`
+- `artifacts/0.2.1/THIRD-PARTY-LICENSES.txt`
+- `artifacts/0.2.1/SHA256SUMS.txt`
 
 脚本不启动成品或执行安装。产物、数据库、凭据和本机配置不提交 Git。相同版本重建会替换该输出目录中的同名文件。
 

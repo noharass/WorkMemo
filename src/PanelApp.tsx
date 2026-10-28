@@ -5,13 +5,17 @@ import { DesktopWindow } from "./DesktopWindow";
 import { DraftContext, Surface, type Draft, useDraft } from "./Drafts";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { MonitoringSettings } from "./MonitoringSettings";
-import { HistoryPanel } from "./HistoryPanel";
-import { SettlementPanel } from "./SettlementPanel";
 import { useAppearance } from "./useAppearance";
 import { themeStyle } from "./themes";
-import { useWorkSession } from "./useWorkSession";
 import { DraftController } from "./draftController";
 import { UiDialog } from "./UiDialog";
+import {
+  useLayout,
+  usePresentation,
+  layoutStyle,
+  useDashboard,
+} from "./desktopPreferences";
+import { VisualSettings, LayoutPanel } from "./SettingsExtras";
 
 type Report = {
   source: string | null;
@@ -27,6 +31,25 @@ type Report = {
   backup: string | null;
 };
 function DataPanel({ onClose }: { onClose: () => void }) {
+  const dashboard = useDashboard();
+  const [demoConfirm, setDemoConfirm] = useState(false);
+  async function demo(command: string) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const count = await invoke<number>(command);
+      setMessage(
+        command === "seed_demo_data"
+          ? `演示数据已准备：${count}条。真实统计仍与演示分开。`
+          : `已清理${count}条演示记录，真实记录保留。`,
+      );
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   const [report, setReport] = useState<Report | null>(null);
   const [restoreInfo, setRestoreInfo] = useState<Report | null>(null);
   const [message, setMessage] = useState("");
@@ -72,6 +95,58 @@ function DataPanel({ onClose }: { onClose: () => void }) {
   }, []);
   return (
     <Surface title="数据管理" onClose={onClose}>
+      <h3>演示数据</h3>
+      <p className="hint">
+        用于查看图表效果，明确标记并与真实统计分开。重复生成不会增加重复记录。
+      </p>
+      <div className="data-buttons">
+        <button
+          disabled={busy}
+          onClick={() => {
+            void demo("seed_demo_data");
+          }}
+        >
+          生成演示数据
+        </button>
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => {
+            void dashboard.open("all", "demo");
+          }}
+        >
+          查看演示效果
+        </button>
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => setDemoConfirm(true)}
+        >
+          清理演示数据…
+        </button>
+      </div>
+      {dashboard.fallback}
+      <UiDialog
+        open={demoConfirm}
+        onClose={() => setDemoConfirm(false)}
+        title="清理演示数据"
+        id="clear-demo"
+      >
+        <p>只删除标记为演示的已结束记录。真实工作记录和当前任务保留。</p>
+        <div className="settings-actions">
+          <button className="secondary" onClick={() => setDemoConfirm(false)}>
+            取消
+          </button>
+          <button
+            onClick={() => {
+              setDemoConfirm(false);
+              void demo("clear_demo_data");
+            }}
+          >
+            清理演示记录
+          </button>
+        </div>
+      </UiDialog>
       <h3>从预览版迁移</h3>
       <p className="hint">
         先从托盘退出预览版。正式版原记录保留，重复导入会跳过；已导入记录有变化时列为冲突。两边都有未结束任务时，冲突任务留在原处。
@@ -172,94 +247,11 @@ function DataPanel({ onClose }: { onClose: () => void }) {
     </Surface>
   );
 }
-function LayoutPanel({ onClose }: { onClose: () => void }) {
-  const [density, setDensity] = useState("comfortable");
-  const [saved, setSaved] = useState("comfortable");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    void invoke<{ density: string }>("get_layout_settings")
-      .then((v) => {
-        setDensity(v.density);
-        setSaved(v.density);
-      })
-      .catch((e) => setError(String(e)));
-  }, []);
-  async function save() {
-    setBusy(true);
-    try {
-      await invoke("set_layout_density", { density });
-      setSaved(density);
-      return true;
-    } catch (e) {
-      setError(String(e));
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }
-  useDraft("layout", density !== saved, busy, save, () => setDensity(saved));
-  return (
-    <Surface
-      title="布局设置"
-      onClose={onClose}
-      actions={
-        <button
-          disabled={busy}
-          onClick={() => {
-            void save();
-          }}
-        >
-          保存布局
-        </button>
-      }
-    >
-      <label>
-        显示间距
-        <select value={density} onChange={(e) => setDensity(e.target.value)}>
-          <option value="comfortable">舒展</option>
-          <option value="compact">紧凑</option>
-        </select>
-      </label>
-      <p className="hint">
-        窗口尺寸和位置在关闭或退出时记住；恢复时限制在当前显示器工作区内。
-      </p>
-      <button
-        className="secondary"
-        onClick={() => {
-          void invoke("reset_window_layout")
-            .then(() => {
-              setDensity("comfortable");
-              setSaved("comfortable");
-            })
-            .catch((e) => setError(String(e)));
-        }}
-      >
-        恢复所有窗口默认布局
-      </button>
-      {error && <p className="error-banner">{error}</p>}
-    </Surface>
-  );
-}
 export function PanelApp({ panel }: { panel: string }) {
-  const [density, setDensity] = useState<"compact" | "comfortable">(
-    "comfortable",
-  );
-  useEffect(() => {
-    if (!isTauri()) return;
-    const load = () => {
-      void invoke<{ density: "compact" | "comfortable" }>("get_layout_settings")
-        .then((v) => setDensity(v.density))
-        .catch(() => {});
-    };
-    load();
-    const p = listen("workmemo:layout-changed", load);
-    return () => {
-      void p.then((f) => f());
-    };
-  }, []);
+  const layout = useLayout();
+  const presentation = usePresentation();
   const appearance = useAppearance();
-  const session = useWorkSession();
+
   const [section, setSection] = useState(
     new URLSearchParams(window.location.search).get("section") ?? "monitor",
   );
@@ -316,6 +308,7 @@ export function PanelApp({ panel }: { panel: string }) {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (document.querySelector("dialog[open]")) return;
         e.preventDefault();
         close();
       }
@@ -332,7 +325,7 @@ export function PanelApp({ panel }: { panel: string }) {
         listen<string>("workmemo:settings-section", (e) =>
           change(() =>
             setSection(
-              ["appearance", "layout", "data"].includes(e.payload)
+              ["appearance", "layout", "data", "visuals"].includes(e.payload)
                 ? e.payload
                 : "monitor",
             ),
@@ -360,8 +353,12 @@ export function PanelApp({ panel }: { panel: string }) {
   return (
     <DraftContext.Provider value={register}>
       <DesktopWindow
-        density={density}
-        appearanceStyle={themeStyle(appearance.current)}
+        density={layout.current.density}
+        background={presentation.current.background}
+        appearanceStyle={{
+          ...themeStyle(appearance.current),
+          ...layoutStyle(layout.current),
+        }}
         navigation={
           <nav aria-label="二级窗口">
             <strong>
@@ -379,6 +376,7 @@ export function PanelApp({ panel }: { panel: string }) {
             <nav className="settings-tabs">
               {[
                 ["appearance", "外观"],
+                ["visuals", "工作外观"],
                 ["monitor", "监测"],
                 ["layout", "布局"],
                 ["data", "数据管理"],
@@ -402,24 +400,14 @@ export function PanelApp({ panel }: { panel: string }) {
           {hasDraft && (
             <p className="draft-indicator">有未保存修改 · Ctrl+S 保存</p>
           )}
-          {panel === "history" ? (
-            <HistoryPanel
-              open
+          {section === "appearance" ? (
+            <AppearanceSettings
+              appearance={appearance}
+              presentation={presentation}
               onClose={close}
-              refreshKey={String(version)}
-              onDeleted={session.recordDeleted}
             />
-          ) : panel === "settlement" ? (
-            <SettlementPanel
-              open
-              onClose={close}
-              refreshKey={String(version)}
-              busy={session.busy}
-              onSave={session.settle}
-              beforeChange={change}
-            />
-          ) : section === "appearance" ? (
-            <AppearanceSettings appearance={appearance} onClose={close} />
+          ) : section === "visuals" ? (
+            <VisualSettings presentation={presentation} />
           ) : section === "monitor" ? (
             <MonitoringSettings
               key={version}
@@ -428,7 +416,7 @@ export function PanelApp({ panel }: { panel: string }) {
               onSaved={() => setVersion((v) => v + 1)}
             />
           ) : section === "layout" ? (
-            <LayoutPanel onClose={close} />
+            <LayoutPanel />
           ) : (
             <DataPanel onClose={close} />
           )}

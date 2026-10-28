@@ -3,7 +3,7 @@ use rusqlite::{Row, params};
 use serde::{Deserialize, Serialize};
 
 const PAGE_SIZE: i64 = 20;
-const FILTER: &str = "status='FINISHED'
+const FILTER: &str = "is_demo=0 AND status='FINISHED'
     AND date(start_time / 1000, 'unixepoch', 'localtime') BETWEEN ?1 AND ?2
     AND (?3 IS NULL OR category=?3)";
 
@@ -47,7 +47,7 @@ pub struct HistoryPage {
     pub categories: Vec<CategoryTotal>,
 }
 
-fn valid_date(value: &str) -> bool {
+pub(super) fn valid_date(value: &str) -> bool {
     let bytes = value.as_bytes();
     if bytes.len() != 10
         || bytes[4] != b'-'
@@ -122,7 +122,9 @@ impl Store {
         let columns = "COUNT(*), COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity END),0.0), COALESCE(SUM(duration_ms),0), COALESCE(SUM(settlement_status='PENDING'),0)";
         let overview = tx
             .query_row(
-                &format!("SELECT {columns} FROM work_records WHERE status='FINISHED'"),
+                &format!(
+                    "SELECT {columns} FROM work_records WHERE status='FINISHED' AND is_demo=0"
+                ),
                 [],
                 |row| totals(row, 0),
             )

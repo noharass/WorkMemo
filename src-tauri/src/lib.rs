@@ -6,10 +6,12 @@ mod browser_bridge;
 mod browser_protocol;
 mod clock;
 mod connection;
+mod dashboard;
 mod database;
 mod desktop;
 mod monitor;
 mod native_activity;
+mod presentation;
 #[allow(dead_code)] // Shared with the separately built native host CLI.
 mod registration;
 mod service;
@@ -33,6 +35,9 @@ fn app_info() -> AppInfo {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .register_uri_scheme_protocol("background", |context, request| {
+            presentation::background_response(context.app_handle(), request.uri().path())
+        })
         .setup(|app| {
             app.manage(database::data_tools::ArchiveSelection(
                 std::sync::Mutex::new(None),
@@ -42,12 +47,40 @@ pub fn run() {
             app.manage(desktop::IslandState::initialize(app));
             windows::initialize(app)?;
             app.manage(appearance::AppearanceState::initialize(app));
+            app.manage(presentation::initialize(app)?);
+            app.manage(dashboard::initialize(app)?);
             desktop::setup(app)?;
+            if std::env::args().any(|a| a == "--demo") {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    let result = (|| -> Result<(), String> {
+                        {
+                            let backend = handle.state::<service::Backend>();
+                            let mut guard = backend.inner.lock().map_err(|_| "数据锁异常")?;
+                            guard.as_mut().map_err(|e| e.clone())?.seed_demo()?;
+                        }
+                        dashboard::open_impl(&handle, "all", "demo", false)
+                    })();
+                    if let Err(error) = result {
+                        let _ = handle.emit("workmemo:runtime-error", error);
+                    }
+                });
+            }
             Ok(())
         })
         .on_window_event(service::handle_window_event)
         .invoke_handler(tauri::generate_handler![
             app_info,
+            presentation::get_presentation,
+            presentation::save_presentation,
+            presentation::import_background,
+            service::confirm_work,
+            service::enter_browsing,
+            dashboard::open_dashboard,
+            dashboard::get_dashboard_address,
+            dashboard::get_today_workload,
+            dashboard::seed_demo_data,
+            dashboard::clear_demo_data,
             database::data_tools::detect_preview_data,
             database::data_tools::inspect_backup,
             database::data_tools::create_backup,
@@ -57,6 +90,7 @@ pub fn run() {
             windows::open_panel,
             windows::get_layout_settings,
             windows::set_layout_density,
+            windows::set_layout_options,
             windows::reset_window_layout,
             windows::set_window_dirty,
             windows::close_panel,
@@ -102,6 +136,8 @@ pub fn run() {
                 if let Err(error) = app.state::<service::Backend>().save_on_exit() {
                     api.prevent_exit();
                     let _ = app.emit("workmemo:storage-error", error);
+                } else {
+                    dashboard::cleanup(app);
                 }
             }
         });
@@ -116,4 +152,20 @@ pub fn monitor_probe() -> String {
             "chrome_foreground":sample.chrome_foreground,"last_input_age_ms":sample.at.ticks_ms.saturating_sub(sample.last_input_ticks)}).to_string(),
         Err(error)=>serde_json::json!({"application_id":application_id,"native_available":false,"error":error}).to_string(),
     }
+}
+
+pub fn prepare_demo_data() -> Result<String, String> {
+    let context: tauri::Context<tauri::Wry> = tauri::generate_context!();
+    let identifier = &context.config().identifier;
+    let path = registration::data_root()?
+        .join(identifier)
+        .join("workmemo.sqlite3");
+    let mut store = database::Store::open(&path, Box::new(clock::SystemClock::new()))?;
+    let before = store.active()?.map(|r| r.id);
+    let count = store.seed_demo()?;
+    let after = store.active()?.map(|r| r.id);
+    if before != after {
+        return Err("演示准备未能保留活动任务。".into());
+    }
+    Ok(serde_json::json!({"version":env!("CARGO_PKG_VERSION"),"identifier":identifier,"demo_records":count,"active_preserved":true}).to_string())
 }

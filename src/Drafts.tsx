@@ -3,8 +3,13 @@ import {
   useContext,
   useEffect,
   useRef,
+  Children,
+  isValidElement,
+  cloneElement,
+  type ReactElement,
   type ReactNode,
 } from "react";
+import { useLayout } from "./desktopPreferences";
 import type { Draft } from "./draftController";
 export type { Draft } from "./draftController";
 export const DraftContext = createContext<
@@ -32,24 +37,43 @@ export function useDraft(
 }
 export function Surface({
   title,
-  onClose,
   children,
   actions,
 }: {
   title: string;
-  onClose: () => void;
+  onClose?: () => void;
   children: ReactNode;
   actions?: ReactNode;
 }) {
+  const compact = useLayout().current.density === "compact";
+  function fold(node: ReactNode): ReactNode {
+    return Children.map(node, (child) => {
+      if (!isValidElement(child)) return child;
+      const element = child as ReactElement<{
+        children?: ReactNode;
+        className?: string;
+      }>;
+      if (
+        element.type === "p" &&
+        element.props.className?.split(" ").includes("hint")
+      )
+        return (
+          <details className="compact-help">
+            <summary>说明</summary>
+            {element}
+          </details>
+        );
+      return element.props.children
+        ? cloneElement(element, {}, fold(element.props.children))
+        : element;
+    });
+  }
   return (
     <section className="panel-surface">
       <header className="panel-heading">
         <h2>{title}</h2>
-        <button type="button" className="secondary" onClick={onClose}>
-          关闭
-        </button>
       </header>
-      <div className="panel-scroll">{children}</div>
+      <div className="panel-scroll">{compact ? fold(children) : children}</div>
       {actions && <footer className="panel-actions">{actions}</footer>}
     </section>
   );

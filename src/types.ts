@@ -1,5 +1,7 @@
 export const CATEGORIES = ["评测", "质检", "开发", "文档"] as const;
 
+export type Category = (typeof CATEGORIES)[number];
+
 export interface WorkRecord {
   id: number;
   category: string;
@@ -38,6 +40,10 @@ export interface StartInput {
 }
 
 export interface MonitorStatus {
+  browsing_only:boolean;
+  browse_ready:boolean;
+  browse_category:string|null;
+  start_candidate:{id:number;rule_id:number;category:string}|null;
   enabled: boolean;
   browser_connected: boolean;
   native_available: boolean;

@@ -124,11 +124,11 @@ async function poll() {
     if (ready && currentConfig.enabled) {
       const window = await chrome.windows.getLastFocused();
       focused = window.focused === true;
-      if (focused) {
+      {
         const [tab] = await chrome.tabs.query({ active: true, windowId: window.id });
         activeTab = tab;
         ruleId = matchRule(tab?.url, rules);
-        if (ruleId && chrome.scripting) void chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['activity.js']}).catch(() => {});
+        if (focused && ruleId && chrome.scripting) void chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['activity.js']}).catch(() => {});
       }
     }
     // The native frame deliberately has no URL, title, page content, or input data.

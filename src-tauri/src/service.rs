@@ -86,6 +86,8 @@ impl Backend {
                 };
                 let mut notice = None;
                 let mut active_id = None;
+                let mut candidate_id = None;
+                let mut browsing = false;
                 let mut runtime_failure: Option<String> = None;
                 // Sample after the preceding loop has finished creating and positioning the window.
                 // Creation emits transient move events, so those events must not overwrite saved coordinates.
@@ -161,6 +163,9 @@ impl Backend {
                                     let _ = app_handle.emit("workmemo:data-changed", ());
                                     last_pending = Some(snapshot.pending_count);
                                 }
+                                candidate_id =
+                                    snapshot.monitoring.start_candidate.as_ref().map(|c| c.id);
+                                browsing = snapshot.monitoring.browsing_only;
                                 active_id = snapshot.active.map(|record| record.id);
                             }
                             Err(error) => runtime_failure = Some(error),
@@ -170,7 +175,11 @@ impl Backend {
                 let key = notice
                     .as_ref()
                     .map(|n| format!("{}:{}", n.kind, n.record.id))
+                    .or_else(|| candidate_id.map(|id| format!("candidate:{id}")))
                     .or_else(|| {
+                        if browsing && app_handle.state::<crate::desktop::IslandState>().enabled() {
+                            return Some("browsing".into());
+                        }
                         app_handle
                             .state::<crate::desktop::IslandState>()
                             .enabled()
@@ -183,6 +192,7 @@ impl Backend {
                         &app_handle,
                         key.is_some(),
                         notice.is_some(),
+                        candidate_id.is_some(),
                     ) {
                         Ok(()) => presented = key,
                         Err(error) => {
@@ -436,4 +446,20 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
             let _ = window.emit("workmemo:storage-error", error);
         }
     }
+}
+
+#[tauri::command]
+pub async fn enter_browsing(state: State<'_, Backend>) -> Result<Snapshot> {
+    execute(state.inner.clone(), |store| store.enter_browsing()).await
+}
+#[tauri::command]
+pub async fn confirm_work(
+    state: State<'_, Backend>,
+    candidate_id: Option<u64>,
+) -> Result<Snapshot> {
+    let own = crate::native_activity::own_process_foreground();
+    execute(state.inner.clone(), move |store| {
+        store.confirm_work(candidate_id, own)
+    })
+    .await
 }

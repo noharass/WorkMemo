@@ -44,7 +44,7 @@ impl Harness {
         harness.tick();
         harness
     }
-    fn tick(&mut self) {
+    fn tick_unconfirmed(&mut self) {
         let now = self.clock.now();
         if self.connected {
             self.store.observe_page(PageSample {
@@ -69,6 +69,17 @@ impl Harness {
                 now,
             )
             .unwrap();
+    }
+    fn tick(&mut self) {
+        self.tick_unconfirmed();
+        self.accept();
+    }
+    // Existing timer scenarios model a user accepting the initial prompt immediately.
+    // Dedicated confirmation tests below leave candidates unanswered explicitly.
+    fn accept(&mut self) {
+        if let Some(c) = self.store.monitor.candidate.clone() {
+            self.store.confirm_work(Some(c.id), false).unwrap();
+        }
     }
     fn step(&mut self, ms: i64, input: bool) {
         self.clock.advance(ms);
@@ -1031,13 +1042,15 @@ fn browser_evidence_time_allows_first_input_before_next_state_machine_tick() {
             now,
         )
         .unwrap();
+    assert!(h.store.active().unwrap().is_none());
+    h.accept();
     let active = h
         .store
         .active()
         .unwrap()
         .expect("first input after confirmed page should start");
     assert_eq!(active.control_mode, "AUTO");
-    assert_eq!(active.duration_ms, 400);
+    assert_eq!(active.duration_ms, 0);
 }
 
 #[test]
@@ -1263,7 +1276,181 @@ fn page_activity_starts_at_confirmation_without_backfilling_earlier_input() {
             confirmed,
         )
         .unwrap();
+    assert!(h.store.active().unwrap().is_none());
+    h.accept();
     let record = h.store.active().unwrap().unwrap();
     assert_eq!(record.start_time, confirmed.wall_ms);
     assert_eq!(record.duration_ms, 0);
+}
+
+#[test]
+fn confirmation_deduplicates_and_counts_only_after_acceptance() {
+    let mut h = Harness::new();
+    h.clock.advance(1000);
+    h.input = h.clock.now().ticks_ms;
+    h.tick_unconfirmed();
+    let candidate = h.store.monitor.candidate.clone().unwrap();
+    for _ in 0..4 {
+        h.clock.advance(1000);
+        h.input = h.clock.now().ticks_ms;
+        h.tick_unconfirmed();
+        assert_eq!(h.store.monitor.candidate.as_ref().unwrap().id, candidate.id);
+        assert!(h.store.active().unwrap().is_none());
+    }
+    let confirmed = h.clock.now();
+    h.store.confirm_work(Some(candidate.id), false).unwrap();
+    let record = h.store.active().unwrap().unwrap();
+    assert_eq!(record.start_time, confirmed.wall_ms);
+    assert_eq!(record.duration_ms, 0);
+    assert!(h.store.confirm_work(Some(candidate.id), false).is_err());
+    assert_eq!(h.store.active().unwrap().unwrap().id, record.id);
+}
+#[test]
+fn confirmation_survives_own_window_focus_but_rejects_stale_page() {
+    let mut h = Harness::new();
+    h.clock.advance(1000);
+    h.input = h.clock.now().ticks_ms;
+    h.tick_unconfirmed();
+    let c = h.store.monitor.candidate.clone().unwrap();
+    h.clock.advance(3000);
+    let now = h.clock.now();
+    h.store.observe_page(PageSample {
+        at: now,
+        focused: false,
+        rule_id: Some(c.rule_id),
+        revision: h.store.monitor.config.revision,
+        ready: true,
+    });
+    h.store
+        .monitor_tick(
+            NativeSample {
+                at: now,
+                last_input_ticks: now.ticks_ms,
+                chrome_foreground: false,
+                unlocked: true,
+                reliable: true,
+            },
+            now,
+        )
+        .unwrap();
+    assert!(h.store.confirm_work(Some(c.id), false).is_err());
+    h.store.confirm_work(Some(c.id), true).unwrap();
+    assert_eq!(h.store.active().unwrap().unwrap().start_time, now.wall_ms);
+    let mut h = Harness::new();
+    h.clock.advance(1000);
+    h.input = h.clock.now().ticks_ms;
+    h.tick_unconfirmed();
+    let c = h.store.monitor.candidate.clone().unwrap();
+    h.connected = false;
+    h.clock.advance(16000);
+    h.tick_unconfirmed();
+    assert!(h.store.monitor.candidate.is_none());
+    assert!(h.store.confirm_work(Some(c.id), true).is_err());
+    assert!(h.store.active().unwrap().is_none());
+}
+#[test]
+fn browsing_blocks_new_work_and_protects_a_paused_task_until_explicit_resume() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.matched = false;
+    h.step(1, false);
+    h.advance(120000, false);
+    assert!(h.saved(id).is_paused);
+    h.store.enter_browsing().unwrap();
+    h.advance(3600000, true);
+    assert_eq!(h.saved(id).status, "WORKING");
+    assert_eq!(h.saved(id).pause_reason.as_deref(), Some("MANUAL"));
+    h.matched = true;
+    h.step(1000, true);
+    assert!(h.saved(id).is_paused);
+    assert!(h.store.monitor.status.browse_ready);
+    h.store.confirm_work(None, false).unwrap();
+    assert_eq!(h.store.active().unwrap().unwrap().id, id);
+    assert!(!h.saved(id).is_paused);
+    assert!(!h.store.monitor.config.browsing_only);
+    h.store.finish(id).unwrap();
+    h.store.enter_browsing().unwrap();
+    h.step(1000, true);
+    assert!(h.store.active().unwrap().is_none());
+    assert!(h.store.monitor.candidate.is_none());
+    assert!(h.store.monitor.status.browse_ready);
+}
+#[test]
+fn browsing_intent_persists_across_restart_without_ending_work() {
+    let d = TestDirectory::new();
+    let clock = TestClock::new();
+    let id;
+    {
+        let mut s = Store::open(&d.db(), Box::new(clock.clone())).unwrap();
+        s.start(StartInput {
+            category: "开发".into(),
+            quantity: None,
+            remark: String::new(),
+        })
+        .unwrap();
+        id = s.active().unwrap().unwrap().id;
+        s.enter_browsing().unwrap();
+    }
+    clock.advance(600000);
+    let mut s = Store::open(&d.db(), Box::new(clock)).unwrap();
+    s.activate_monitoring();
+    assert!(s.monitor.config.browsing_only);
+    assert!(s.monitor.status.browsing_only);
+    let record = s.active().unwrap().unwrap();
+    assert_eq!(record.id, id);
+    assert!(record.is_paused && record.recovery_pending);
+    assert_eq!(record.duration_ms, 0);
+}
+
+#[test]
+fn leaving_browse_mode_commits_atomically_with_start_or_resume() {
+    let mut h = Harness::new();
+    h.store.enter_browsing().unwrap();
+    let trigger = "CREATE TRIGGER refuse_work_intent BEFORE UPDATE OF browsing_only ON monitoring_settings WHEN NEW.browsing_only=0 BEGIN SELECT RAISE(ABORT,'injected intent failure'); END;";
+    h.store.connection.execute_batch(trigger).unwrap();
+    assert!(
+        h.store
+            .start(StartInput {
+                category: "文档".into(),
+                quantity: None,
+                remark: String::new()
+            })
+            .is_err()
+    );
+    assert!(h.store.active().unwrap().is_none());
+    assert!(h.store.monitor.config.browsing_only);
+    h.store
+        .connection
+        .execute_batch("DROP TRIGGER refuse_work_intent")
+        .unwrap();
+    h.store
+        .start(StartInput {
+            category: "开发".into(),
+            quantity: None,
+            remark: String::new(),
+        })
+        .unwrap();
+    let id = h.store.active().unwrap().unwrap().id;
+    h.store.enter_browsing().unwrap();
+    h.store.connection.execute_batch(trigger).unwrap();
+    assert!(h.store.resume(id).is_err());
+    assert!(h.saved(id).is_paused);
+    assert!(h.store.monitor.config.browsing_only);
+    let open: i64 = h
+        .store
+        .connection
+        .query_row(
+            "SELECT COUNT(*) FROM work_segments WHERE state='OPEN'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(open, 0);
+    h.store
+        .connection
+        .execute_batch("DROP TRIGGER refuse_work_intent")
+        .unwrap();
+    h.store.resume(id).unwrap();
+    assert!(!h.saved(id).is_paused);
+    assert!(!h.store.monitor_config().unwrap().browsing_only);
 }
