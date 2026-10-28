@@ -35,7 +35,7 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
       const saved = await invoke<MonitorConfig>("save_monitor_config", { input: {
         enabled: config.enabled, expected_revision: config.revision, times: config.times,
         poll_interval_seconds: config.poll_interval_seconds, auto_resume_manual: config.auto_resume_manual,
-        rules: config.rules.map(({ url_prefix, category }) => ({ url_prefix, category })),
+        rules: config.rules.map(({ url_prefix, category, match_mode }) => ({ url_prefix, category, match_mode })),
       } });
       setConfig(saved); setBaseline(JSON.stringify(saved));setNotice("配置已保存。请在 Chrome 扩展中同步工作站点授权。"); onSaved();void emit("workmemo:data-changed");return true;
     } catch (failure: unknown) { setError(String(failure));return false; }
@@ -84,14 +84,15 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
       </details>
       {config.rules.map((rule, index) => <fieldset key={rule.id} className="monitor-rule">
         <legend>工作页面 {index + 1}</legend>
-        <label>工作 URL<input type="url" required maxLength={2048} disabled={busy} value={rule.url_prefix}
+        <label>匹配模式<select disabled={busy} value={rule.match_mode ?? "path_prefix"} onChange={event => setConfig({ ...config, rules: config.rules.map((item, i) => i === index ? { ...item, match_mode: event.target.value as typeof rule.match_mode } : item) })}><option value="path_prefix">路径前缀</option><option value="origin">整个站点</option><option value="domain_suffix">域名后缀（含子域名）</option></select></label>
+        <label>{rule.match_mode === "domain_suffix" ? "域名后缀" : "工作 URL"}<input type={rule.match_mode === "domain_suffix" ? "text" : "url"} required maxLength={2048} disabled={busy} value={rule.url_prefix}
           placeholder="https://工作站点/路径" onChange={event => setConfig({ ...config, rules: config.rules.map((item, i) => i === index ? { ...item, url_prefix: event.target.value } : item) })} /></label>
         <label>默认类别<select value={rule.category} disabled={busy} onChange={event => setConfig({ ...config, rules: config.rules.map((item, i) => i === index ? { ...item, category: event.target.value } : item) })}>
           {CATEGORIES.map(category => <option key={category}>{category}</option>)}</select></label>
         <button type="button" className="text-button" disabled={busy} onClick={() => setConfig({ ...config, rules: config.rules.filter((_, i) => i !== index) })}>移除这条配置</button>
       </fieldset>)}
-      <button type="button" className="secondary" disabled={busy || config.rules.length >= 50} onClick={() => setConfig({ ...config, rules: [...config.rules, { id: -Date.now(), url_prefix: "", category: "评测" }] })}>添加工作 URL</button>
-      <p className="hint">匹配精确站点及路径边界；查询参数和片段不参与匹配。保存监测配置会暂停当前自动记录；重新确认工作页面并产生新的输入后才会恢复。</p>
+      <button type="button" className="secondary" disabled={busy || config.rules.length >= 50} onClick={() => setConfig({ ...config, rules: [...config.rules, { id: -Date.now(), url_prefix: "", category: "评测", match_mode: "path_prefix" }] })}>添加工作 URL</button>
+      <p className="hint">路径前缀限定站点与路径边界；整个站点覆盖该来源全部路径；域名后缀覆盖该域名与子域名，例如 .cn-beijing-vpc.fcapp.run。查询参数和片段不参与匹配。保存监测配置会暂停当前自动记录；重新确认工作页面并产生新的输入后才会恢复。</p>
 
       <details><summary>连接与隐私说明</summary>
         <p className="hint">第一版配套 Chrome 扩展。安装扩展和本机通信主机后，在扩展面板同步已配置站点授权。只传规则标识、前台匹配状态、连接状态和页面活动信号；不传 URL、网页内容或输入文本。连接断开时暂停自动累计。</p>

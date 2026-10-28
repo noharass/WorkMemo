@@ -40,10 +40,10 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml
 
 脚本收集第三方许可，执行前端与 Tauri release 构建，准备浏览器组件，生成 NSIS 安装器和免安装 ZIP：
 
-- `artifacts/0.2.1/WorkMemo_0.2.1_x64-setup.exe`
-- `artifacts/0.2.1/WorkMemo_0.2.1_windows_x64.zip`
-- `artifacts/0.2.1/THIRD-PARTY-LICENSES.txt`
-- `artifacts/0.2.1/SHA256SUMS.txt`
+- `artifacts/0.2.2/WorkMemo_0.2.2_x64-setup.exe`
+- `artifacts/0.2.2/WorkMemo_0.2.2_windows_x64.zip`
+- `artifacts/0.2.2/THIRD-PARTY-LICENSES.txt`
+- `artifacts/0.2.2/SHA256SUMS.txt`
 
 脚本不启动成品或执行安装。产物、数据库、凭据和本机配置不提交 Git。相同版本重建会替换该输出目录中的同名文件。
 

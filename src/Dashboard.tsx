@@ -267,6 +267,8 @@ export default function Dashboard() {
   const [editorError, setEditorError] = useState("");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const quantityInput = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (editing) { quantityInput.current?.focus(); quantityInput.current?.scrollIntoView({block:"nearest"}); } }, [editing]);
   const [deleting, setDeleting] = useState<Row | null>(null);
   const [guard, setGuard] = useState(false);
   const next = useRef<(() => void) | null>(null);
@@ -474,12 +476,12 @@ export default function Dashboard() {
       animationDuration: 300,
       tooltip: { ...tooltip, trigger: "axis" },
       legend: { top: 0, right: 12, data: ["工作量", "有效工时"] },
-      grid: { left: 58, right: 54, top: 46, bottom: 54 },
+      grid: { left: 52, right: 52, top: 40, bottom: 76, containLabel: true },
       xAxis: {
         type: "category",
         data: data?.trend.map((x) => x.date) ?? [],
         axisLine: { lineStyle: { color: "#dbe3ec" } },
-        axisLabel: { color: "#64748b" },
+        axisLabel: { color: "#64748b", hideOverlap: true, showMinLabel: true, showMaxLabel: true, formatter: (value: string) => value.slice(5) },
       },
       yAxis: [
         {
@@ -497,7 +499,7 @@ export default function Dashboard() {
       ],
       dataZoom: [
         { type: "inside" },
-        { type: "slider", height: 14, bottom: 4, borderColor: "transparent" },
+        { type: "slider", height: 14, bottom: 24, showDetail: false, borderColor: "transparent" },
       ],
       series: [
         {
@@ -572,23 +574,22 @@ export default function Dashboard() {
         },
       },
       visualMap: {
-        min: 0,
-        max: Math.max(1, ...(data?.calendar.map((v) => v[1]) ?? [1])),
-        show: false,
-        inRange: { color: ["#f1f5fb", "#cddcf9", "#7298e1", "#335ed4"] },
+        type: "piecewise", show: false,
+        pieces: [
+          {value:0,color:"#ebedf0"},
+          ...["#9be9a8","#40c463","#30a14e","#216e39"].map((color,index) => ({gt:index*Math.max(1,...(data?.calendar.map(v=>v[1])??[1]))/4,lte:(index+1)*Math.max(1,...(data?.calendar.map(v=>v[1])??[1]))/4,color})),
+        ],
       },
       calendar: {
         range: [localDate(start), end],
-        cellSize: ["auto", 18],
+        cellSize: [16, 16],
         left: 38,
-        right: 18,
         top: 32,
-        bottom: 18,
         yearLabel: { show: false },
         monthLabel: { nameMap: "cn", color: "#64748b" },
         dayLabel: { firstDay: 1, nameMap: "cn", color: "#94a3b8" },
         splitLine: { lineStyle: { color: "#dce4ef" } },
-        itemStyle: { borderWidth: 3, borderColor: "#fff", color: "#f1f5fb" },
+        itemStyle: { borderWidth: 3, borderColor: "#fff", color: "#ebedf0" },
       },
       series: [
         {
@@ -603,7 +604,7 @@ export default function Dashboard() {
   return (
     <div className="data-center">
       <aside className="dc-sidebar">
-        <a className="dc-brand" href="/dashboard">
+        <a className="dc-brand" href="/dashboard" aria-label="WorkMemo 工作数据中心" title="WorkMemo 工作数据中心">
           <img src="/workmemo.png" alt="" />
           <span>
             WorkMemo<small>工作数据中心</small>
@@ -611,14 +612,14 @@ export default function Dashboard() {
         </a>
         <div className="dc-side-label">WORKSPACE</div>
         <button
-          className="dc-side-link selected"
+          className="dc-side-link selected" aria-label="工作总览" title="工作总览"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
           <Icon name="chart" />
-          工作总览
+          <span className="dc-nav-label">工作总览</span>
         </button>
         <button
-          className="dc-side-link"
+          className="dc-side-link" aria-label="工作明细" title="工作明细"
           onClick={() =>
             document
               .getElementById("records")
@@ -626,14 +627,14 @@ export default function Dashboard() {
           }
         >
           <Icon name="list" />
-          工作明细
+          <span className="dc-nav-label">工作明细</span>
         </button>
         <div className="dc-sidebar-bottom">
           <span className={`connection-dot ${online ? "connected" : ""}`} />
           {online ? "本机连接正常" : "等待本机连接"}
           <small>
             记录保存在你的电脑中
-            <br />v{meta?.version ?? "0.2.1"}
+            <br />v{meta?.version ?? "0.2.2"}
           </small>
         </div>
       </aside>
@@ -902,6 +903,7 @@ export default function Dashboard() {
               </div>
               <span className="dc-chip">WORK CALENDAR</span>
             </div>
+            <div className="dc-heat-legend" aria-label="工时由少到多">少 {["#ebedf0","#9be9a8","#40c463","#30a14e","#216e39"].map(color=><i key={color} style={{background:color}}/>)} 多</div>
             <Chart option={calendarOption} label="近90天有效工时工作日历" />
           </article>
           <section className="dc-card dc-records" id="records">
@@ -1105,6 +1107,7 @@ export default function Dashboard() {
                     工作量
                     <input
                       disabled={busy}
+                      ref={quantityInput}
                       type="number"
                       min={0}
                       max={1e9}
@@ -1200,6 +1203,7 @@ export default function Dashboard() {
               {editing ? (
                 <button
                   className="dc-button"
+                  key="save-workload"
                   form="dc-editor"
                   type="submit"
                   disabled={busy || !online}
@@ -1210,6 +1214,9 @@ export default function Dashboard() {
                 <button
                   className="dc-button"
                   disabled={!online || detail.record.status !== "FINISHED"}
+                  key="edit-workload"
+                  type="button"
+                  title={detail.record.status !== "FINISHED" ? "请先结束工作，再编辑工作量" : "编辑类别、数量和备注"}
                   onClick={() => setEditing(true)}
                 >
                   编辑工作量

@@ -670,8 +670,8 @@ fn merge_options(target: &mut Store, source: &Store, include_config: bool) -> Re
         tx.execute("DELETE FROM work_urls", []).map_err(db_error)?;
         for rule in c.rules {
             tx.execute(
-                "INSERT INTO work_urls(url_prefix,category) VALUES(?1,?2)",
-                params![rule.url_prefix, rule.category],
+                "INSERT INTO work_urls(url_prefix,category,match_mode) VALUES(?1,?2,?3)",
+                params![rule.url_prefix, rule.category, rule.match_mode],
             )
             .map_err(db_error)?;
         }
@@ -767,6 +767,27 @@ mod tests {
             .unwrap();
         b.apply_image(&image.0).unwrap();
         assert_eq!(b.record(1).unwrap().remark, "original");
+    }
+    #[test]
+    fn legacy_schema_backup_and_new_rule_modes_restore() {
+        let d = TestDirectory::new();
+        let dir = d.db().parent().unwrap().to_path_buf();
+        let mut source = empty();
+        source.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode) VALUES('cn-beijing-vpc.fcapp.run','开发','domain_suffix')",[]).unwrap();
+        let image = checked_image(&source.archive(&dir).unwrap(), &dir).unwrap();
+        let mut target = empty();
+        target.apply_image(&image.0).unwrap();
+        assert_eq!(
+            target.monitor_config().unwrap().rules[0].match_mode,
+            "domain_suffix"
+        );
+        source.connection.execute_batch("DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); PRAGMA user_version=7;").unwrap();
+        let image = checked_image(&source.archive(&dir).unwrap(), &dir).unwrap();
+        target.apply_image(&image.0).unwrap();
+        assert_eq!(
+            target.monitor_config().unwrap().rules[0].match_mode,
+            "path_prefix"
+        );
     }
     fn empty() -> Store {
         Store::initialize(

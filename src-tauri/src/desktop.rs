@@ -245,7 +245,7 @@ pub fn present_notice(
                 WebviewUrl::App("index.html?notice=1".into()),
             )
             .title("WorkMemo 工作提醒")
-            .inner_size(360.0, 80.0)
+            .inner_size(320.0, 56.0)
             .resizable(false)
             .transparent(true)
             .no_redirection_bitmap(true)
@@ -266,7 +266,7 @@ pub fn present_notice(
                 let scale = monitor.scale_factor();
                 let origin = &monitor.work_area().position;
                 let size = &monitor.work_area().size;
-                let width = (360.0 * scale) as i32;
+                let width = (320.0 * scale) as i32;
                 let x = origin.x + ((size.width as i32 - width) / 2).max(0);
                 let y = origin.y + (16.0 * scale) as i32;
                 window
@@ -282,9 +282,9 @@ pub fn present_notice(
     let (width, height) = if expanded {
         (420.0, 460.0)
     } else if confirming {
-        (420.0, 140.0)
+        (320.0, 88.0)
     } else {
-        (420.0, 92.0)
+        (320.0, 56.0)
     };
     window
         .set_size(tauri::LogicalSize::new(width, height))

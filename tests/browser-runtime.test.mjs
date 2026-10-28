@@ -229,3 +229,12 @@ test('活动脚本仅注册已授权的配置站点，未授权站点不注入',
     assert.equal(registrations[0].allFrames,false);
   });
 });
+
+test('匹配能力只发送给声明支持的软件，旧协议不增加未知字段', async () => {
+  await backgroundScenario(async ({native,messages,tick}) => {
+    assert.equal(messages[0].match_modes, undefined);
+    native.onMessage.emit({connected:true,config:{enabled:false,revision:1,rules:[]},app:{identifier:'com.workmemo.desktop',protocol:1,match_modes:true}});
+    await tick();
+    assert.equal(messages.at(-1).match_modes,true);
+  });
+});

@@ -28,3 +28,18 @@ test('扩展固定公开标识、最小权限和原生主机来源一致', () =>
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.content_scripts, undefined);
 });
+
+test('站点与域名后缀覆盖动态子域，查询与伪造后缀不会匹配；重叠时具体规则优先', () => {
+  const rules = [
+    {id:1,match_mode:'domain_suffix',url_prefix:'cn-beijing-vpc.fcapp.run'},
+    {id:2,match_mode:'origin',url_prefix:'https://moonshot.feishu.cn/'},
+    {id:3,match_mode:'path_prefix',url_prefix:'https://moonshot.feishu.cn/sheets'},
+    {id:4,match_mode:'domain_suffix',url_prefix:'fcapp.run'},
+  ];
+  assert.equal(matchRule('https://deploymloy-edfd-upfyahnvng.cn-beijing-vpc.fcapp.run/',rules),1);
+  assert.equal(matchRule('http://cn-beijing-vpc.fcapp.run/work',rules),1);
+  assert.equal(matchRule('https://moonshot.feishu.cn/docs/a',rules),2);
+  assert.equal(matchRule('https://moonshot.feishu.cn/sheets/a',rules),3);
+  for (const url of ['https://evil.test/?next=https://moonshot.feishu.cn','https://cn-beijing-vpc.fcapp.run.evil.test','https://moonshot.feishu.cn.evil.test','file:///cn-beijing-vpc.fcapp.run']) assert.equal(matchRule(url,rules),null);
+  assert.deepEqual(permissionOrigins(rules),['http://*.cn-beijing-vpc.fcapp.run/*','https://*.cn-beijing-vpc.fcapp.run/*','https://moonshot.feishu.cn/*','http://*.fcapp.run/*','https://*.fcapp.run/*']);
+});

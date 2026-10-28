@@ -98,7 +98,7 @@ export function NotificationApp() {
       setBusy(false);
     }
   }
-  async function intent(action: "confirm_work" | "enter_browsing") {
+  async function intent(action: "confirm_work" | "enter_browsing" | "pause_task" | "resume_task") {
     if (busy) return;
     setBusy(true);
     setError("");
@@ -108,7 +108,7 @@ export function NotificationApp() {
           action,
           action === "confirm_work"
             ? { candidateId: snapshot?.monitoring.start_candidate?.id ?? null }
-            : {},
+            : action === "pause_task" || action === "resume_task" ? {id:snapshot?.active?.id} : {},
         ),
       );
     } catch (e) {
@@ -191,6 +191,8 @@ export function NotificationApp() {
                 </strong>
               )}
             </div>
+            {!candidate && active && !monitor?.browsing_only && <button type="button" className="island-action" aria-label={active.is_paused ? "继续记录" : "暂停记录"} title={active.is_paused ? "继续记录" : "暂停记录"} disabled={busy || active.recovery_pending} onClick={() => { void intent(active.is_paused ? "resume_task" : "pause_task"); }}><Icon name={active.is_paused ? "play" : "pause"}/></button>}
+            {!candidate && monitor?.browsing_only && <button type="button" className="island-start" disabled={busy || !monitor.browse_ready || !!active?.recovery_pending} onClick={() => { void intent("confirm_work"); }}>{active ? "继续" : "开始记录"}</button>}
             <button
               className="island-open"
               aria-label="打开WorkMemo"
@@ -203,7 +205,7 @@ export function NotificationApp() {
               <Icon name="open" />
             </button>
           </div>
-          {(candidate || monitor?.browsing_only) && (
+          {candidate && (
             <div className="island-intent">
               <button
                 disabled={
@@ -229,19 +231,6 @@ export function NotificationApp() {
                 </button>
               )}
             </div>
-          )}
-          {active && !monitor?.browsing_only && !candidate && (
-            <button
-              className="island-browse"
-              aria-label="仅浏览并暂停计时"
-              title="仅浏览并暂停计时"
-              disabled={busy}
-              onClick={() => {
-                void intent("enter_browsing");
-              }}
-            >
-              <Icon name="pause" />
-            </button>
           )}
           {(error || readError) && (
             <span

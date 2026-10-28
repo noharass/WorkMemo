@@ -58,6 +58,8 @@ struct Segment {
 }
 
 pub struct Store {
+    pub(crate) sounds: crate::sound::Tracker,
+    pub(crate) sound_config: Option<std::path::PathBuf>,
     connection: Connection,
     clock: Box<dyn Clock>,
     segment: Option<Segment>,
@@ -153,7 +155,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1 | 2 | 3 | 4 | 5 | 6 | 7 => {}
+            1..=8 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -192,6 +194,12 @@ impl Store {
             tx.pragma_update(None, "user_version", 7)
                 .map_err(db_error)?;
         }
+        if version < 8 {
+            tx.execute_batch(include_str!("../migrations/008_url_matching.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 8)
+                .map_err(db_error)?;
+        }
         // Never infer work while the application was closed from wall-clock time.
         tx.execute("UPDATE work_segments SET state='RECOVERED',end_time=checkpoint_time WHERE state='OPEN'", [])
             .map_err(db_error)?;
@@ -204,6 +212,8 @@ impl Store {
         tx.commit().map_err(db_error)?;
         let now = clock.now();
         let mut store = Self {
+            sounds: crate::sound::Tracker::default(),
+            sound_config: None,
             connection,
             clock,
             segment: None,

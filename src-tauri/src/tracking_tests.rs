@@ -27,6 +27,7 @@ impl Harness {
                 enabled: true,
                 expected_revision: 0,
                 rules: vec![RuleInput {
+                    match_mode: "path_prefix".into(),
                     url_prefix: "https://work.example.test/tasks?ignored=1#fragment".into(),
                     category: "开发".into(),
                 }],
@@ -372,6 +373,7 @@ fn config_validation_conflict_and_storage_failure_keep_previous_rules() {
                     enabled: true,
                     expected_revision: original.revision,
                     rules: vec![RuleInput {
+                        match_mode: "path_prefix".into(),
                         url_prefix: url.into(),
                         category: "开发".into()
                     }]
@@ -389,6 +391,7 @@ fn config_validation_conflict_and_storage_failure_keep_previous_rules() {
                 enabled: true,
                 expected_revision: original.revision,
                 rules: vec![RuleInput {
+                    match_mode: "path_prefix".into(),
                     url_prefix: "https://other.example.test/".into(),
                     category: "开发".into()
                 }]
@@ -562,6 +565,7 @@ fn real_loopback_bridge_rejects_bad_auth_and_replay_before_changing_page_state()
         serde_json::from_slice(&std::fs::read(&endpoint_path).unwrap()).unwrap();
     let send = |stream: &mut TcpStream, token: String, sequence, focused| {
         let frame = BrowserFrame {
+            match_modes: true,
             page_activity: false,
             version: 1,
             sequence,
@@ -715,6 +719,7 @@ fn real_loopback_bridge_keeps_one_connection_between_heartbeats() {
         let request = WireRequest {
             token: endpoint.token.clone(),
             frame: BrowserFrame {
+                match_modes: true,
                 page_activity: false,
                 version: 1,
                 sequence,
@@ -780,6 +785,7 @@ fn configured_deadlines_control_work_and_status() {
                 .rules
                 .into_iter()
                 .map(|r| RuleInput {
+                    match_mode: r.match_mode.clone(),
                     url_prefix: r.url_prefix,
                     category: r.category,
                 })
@@ -823,6 +829,7 @@ fn configured_idle_deadline_and_notice_are_consistent() {
                 .rules
                 .into_iter()
                 .map(|r| RuleInput {
+                    match_mode: r.match_mode.clone(),
                     url_prefix: r.url_prefix,
                     category: r.category,
                 })
@@ -872,6 +879,7 @@ fn schema_three_migrates_defaults_and_settings_persist_with_validation() {
         assert_eq!(old.revision, 8);
         let rule = || {
             vec![RuleInput {
+                match_mode: "path_prefix".into(),
                 url_prefix: "https://work.example/".into(),
                 category: "开发".into(),
             }]
@@ -930,6 +938,7 @@ fn saving_settings_clears_old_away_deadline_and_requires_fresh_input() {
                 .rules
                 .into_iter()
                 .map(|r| RuleInput {
+                    match_mode: r.match_mode.clone(),
                     url_prefix: r.url_prefix,
                     category: r.category,
                 })
@@ -1069,6 +1078,7 @@ fn monitor_interval_is_validated_persisted_and_changes_sample_due() {
             .rules
             .iter()
             .map(|r| RuleInput {
+                match_mode: r.match_mode.clone(),
                 url_prefix: r.url_prefix.clone(),
                 category: r.category.clone(),
             })
@@ -1136,6 +1146,7 @@ fn schema_four_migrates_options_without_changing_records_or_existing_thresholds(
                     .rules
                     .into_iter()
                     .map(|r| RuleInput {
+                        match_mode: r.match_mode.clone(),
                         url_prefix: r.url_prefix,
                         category: r.category,
                     })
@@ -1178,6 +1189,7 @@ fn manually_paused_task_is_not_auto_resumed_after_restart() {
             poll_interval_seconds: 1,
             auto_resume_manual: true,
             rules: vec![RuleInput {
+                match_mode: "path_prefix".into(),
                 url_prefix: "https://work.example/".into(),
                 category: "开发".into(),
             }],
@@ -1453,4 +1465,59 @@ fn leaving_browse_mode_commits_atomically_with_start_or_resume() {
     h.store.resume(id).unwrap();
     assert!(!h.saved(id).is_paused);
     assert!(!h.store.monitor_config().unwrap().browsing_only);
+}
+
+#[test]
+fn schema_seven_rules_migrate_and_modes_round_trip_without_touching_active_work() {
+    let h = Harness::new();
+    h.store
+        .connection
+        .execute_batch("ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; UPDATE sqlite_sequence SET seq=99 WHERE name='work_urls'; PRAGMA user_version=7;")
+        .unwrap();
+    let c = h.store.connection;
+    let mut store = Store::initialize(c, Box::new(h.clock), None).unwrap();
+    let config = store.monitor_config().unwrap();
+    assert_eq!(config.rules[0].match_mode, "path_prefix");
+    assert_eq!(
+        store
+            .connection
+            .query_row(
+                "SELECT seq FROM sqlite_sequence WHERE name='work_urls'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+        99
+    );
+    store
+        .connection
+        .execute(
+            "INSERT INTO work_urls(url_prefix,category,match_mode) VALUES(?1,?2,?3)",
+            params![config.rules[0].url_prefix, "开发", "origin"],
+        )
+        .unwrap();
+    let saved = store
+        .save_monitor_config(ConfigInput {
+            enabled: true,
+            expected_revision: config.revision,
+            times: config.times,
+            poll_interval_seconds: 1,
+            auto_resume_manual: false,
+            rules: vec![
+                RuleInput {
+                    match_mode: "origin".into(),
+                    url_prefix: "https://moonshot.feishu.cn/sheets/a".into(),
+                    category: "开发".into(),
+                },
+                RuleInput {
+                    match_mode: "domain_suffix".into(),
+                    url_prefix: ".cn-beijing-vpc.fcapp.run".into(),
+                    category: "评测".into(),
+                },
+            ],
+        })
+        .unwrap();
+    assert_eq!(saved.rules[0].url_prefix, "https://moonshot.feishu.cn/");
+    assert_eq!(saved.rules[1].url_prefix, "cn-beijing-vpc.fcapp.run");
+    assert_eq!(store.monitor_config().unwrap().rules, saved.rules);
 }

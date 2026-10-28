@@ -10,6 +10,8 @@ pub const MAX_MESSAGE: usize = 131_072;
 pub struct BrowserFrame {
     #[serde(default)]
     pub page_activity: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub match_modes: bool,
     pub version: u32,
     pub sequence: u64,
     pub config_revision: i64,
@@ -95,4 +97,8 @@ mod tests {
         value["url"] = serde_json::json!("https://unconfigured.invalid/private");
         assert!(serde_json::from_value::<BrowserFrame>(value).is_err());
     }
+}
+
+fn is_false(value: &bool) -> bool {
+    !value
 }

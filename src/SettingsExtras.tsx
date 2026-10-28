@@ -140,6 +140,7 @@ export function LayoutPanel() {
       const result = await invoke<LayoutSettings>("set_layout_options", {
         input: {
           density: current.density,
+          sound_enabled: current.sound_enabled,
           font_size: current.font_size,
           font_weight: current.font_weight,
           line_spacing: current.line_spacing,
@@ -181,6 +182,8 @@ export function LayoutPanel() {
       }
     >
       <div className="layout-form">
+        <label className="monitor-toggle"><input type="checkbox" checked={current.sound_enabled} disabled={busy} onChange={e => field("sound_enabled", e.target.checked)}/>关键状态提示音</label>
+        <button type="button" className="secondary" disabled={!isTauri() || busy} onClick={() => { void invoke("preview_sound").catch(e => setError(String(e))); }}>试听提示音</button>
         <label>
           界面模式
           <select

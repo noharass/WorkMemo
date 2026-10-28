@@ -7,6 +7,8 @@ pub const BROWSER_TIMEOUT_MS: i64 = 15_000;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct WorkUrl {
     pub id: i64,
+    #[serde(default = "default_match_mode")]
+    pub match_mode: String,
     pub url_prefix: String,
     pub category: String,
 }
@@ -62,6 +64,8 @@ pub struct MonitorConfig {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RuleInput {
+    #[serde(default = "default_match_mode")]
+    pub match_mode: String,
     pub url_prefix: String,
     pub category: String,
 }
@@ -185,4 +189,91 @@ pub fn normalize_url(value: &str) -> Result<String, String> {
         return Err("规范化后的 URL 过长。".into());
     }
     Ok(result)
+}
+
+pub fn default_match_mode() -> String {
+    "path_prefix".into()
+}
+pub fn normalize_rule(value: &str, mode: &str) -> Result<String, String> {
+    match mode {
+        "path_prefix" => normalize_url(value),
+        "origin" => {
+            let value = normalize_url(value)?;
+            let url = url::Url::parse(&value).map_err(|_| "站点无效")?;
+            Ok(format!("{}/", url.origin().ascii_serialization()))
+        }
+        "domain_suffix" => {
+            let value = value.trim().trim_start_matches('.');
+            if value.is_empty()
+                || value.len() > 253
+                || value.contains(['/', ':', '?', '#', '@', '*', '\\'])
+            {
+                return Err(
+                    "请输入域名，例如 cn-beijing-vpc.fcapp.run，不含协议、端口或路径。".into(),
+                );
+            }
+            let host = url::Host::parse(value).map_err(|_| "域名无效")?;
+            let url::Host::Domain(domain) = host else {
+                return Err("域名后缀不能是 IP 地址。".into());
+            };
+            if !domain.contains('.')
+                || domain.split('.').any(|label| {
+                    label.is_empty()
+                        || label.len() > 63
+                        || label.starts_with('-')
+                        || label.ends_with('-')
+                        || !label
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+                })
+            {
+                return Err("请输入有效的完整域名后缀。".into());
+            }
+            Ok(domain)
+        }
+        _ => Err("未知的网址匹配模式，请更新应用及扩展。".into()),
+    }
+}
+
+pub fn supports_match_modes(capable: bool, rules: &[WorkUrl]) -> bool {
+    capable || rules.iter().all(|r| r.match_mode == "path_prefix")
+}
+#[cfg(test)]
+mod matching_tests {
+    use super::*;
+    #[test]
+    fn rule_validation_and_legacy_capabilities() {
+        assert_eq!(
+            normalize_rule("https://moonshot.feishu.cn/sheets/a?q=1", "origin").unwrap(),
+            "https://moonshot.feishu.cn/"
+        );
+        assert_eq!(
+            normalize_rule(".CN-BEIJING-VPC.fcapp.run", "domain_suffix").unwrap(),
+            "cn-beijing-vpc.fcapp.run"
+        );
+        for value in [
+            "https://example.com",
+            "localhost",
+            "example.com/",
+            "example.com:443",
+            "evil@host.com",
+            "*",
+            "127.0.0.1",
+            "bad..example.com",
+        ] {
+            assert!(normalize_rule(value, "domain_suffix").is_err(), "{value}");
+        }
+        assert!(normalize_rule("https://user:pass@example.com", "origin").is_err());
+        assert!(normalize_rule("https://example.com", "unknown").is_err());
+        let mut rules = vec![WorkUrl {
+            id: 1,
+            url_prefix: "https://example.com/".into(),
+            category: "开发".into(),
+            match_mode: default_match_mode(),
+        }];
+        assert!(supports_match_modes(false, &rules));
+        rules[0].match_mode = "origin".into();
+        assert!(!supports_match_modes(false, &rules));
+        assert!(supports_match_modes(true, &rules));
+    }
 }

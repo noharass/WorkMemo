@@ -15,6 +15,7 @@ mod presentation;
 #[allow(dead_code)] // Shared with the separately built native host CLI.
 mod registration;
 mod service;
+mod sound;
 mod windows;
 
 /// A real IPC round trip verifies that the desktop backend is available.
@@ -110,6 +111,7 @@ pub fn run() {
             service::settle_record,
             service::get_monitor_config,
             service::save_monitor_config,
+            sound::preview_sound,
             service::get_notice,
             service::defer_notice,
             service::show_main,

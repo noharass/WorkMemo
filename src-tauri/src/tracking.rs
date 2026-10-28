@@ -23,7 +23,7 @@ impl Store {
             .map_err(db_error)?;
         let mut statement = self
             .connection
-            .prepare("SELECT id,url_prefix,category FROM work_urls ORDER BY id")
+            .prepare("SELECT id,url_prefix,category,match_mode FROM work_urls ORDER BY id")
             .map_err(db_error)?;
         let rules = statement
             .query_map([], |r| {
@@ -31,6 +31,7 @@ impl Store {
                     id: r.get(0)?,
                     url_prefix: r.get(1)?,
                     category: r.get(2)?,
+                    match_mode: r.get(3)?,
                 })
             })
             .map_err(db_error)?
@@ -62,14 +63,14 @@ impl Store {
         let mut seen = HashSet::new();
         let mut rules = Vec::new();
         for rule in input.rules {
-            let prefix = normalize_url(&rule.url_prefix)?;
-            if !seen.insert(prefix.clone()) {
+            let prefix = normalize_rule(&rule.url_prefix, &rule.match_mode)?;
+            if !seen.insert((rule.match_mode.clone(), prefix.clone())) {
                 return Err("工作 URL 重复，请合并重复规则。".into());
             }
             if !["评测", "质检", "开发", "文档"].contains(&rule.category.as_str()) {
                 return Err("请选择有效的工作类别。".into());
             }
-            rules.push((prefix, rule.category));
+            rules.push((prefix, rule.category, rule.match_mode));
         }
         let current = self.monitor_config()?;
         if input.expected_revision != current.revision {
@@ -91,10 +92,10 @@ impl Store {
                 params![duration,duration/1000,if input.enabled{"MONITOR"}else{"MANUAL"},if input.enabled{"AUTO"}else{"MANUAL"},record.id]).map_err(db_error)?;
         }
         tx.execute("DELETE FROM work_urls", []).map_err(db_error)?;
-        for (prefix, category) in rules {
+        for (prefix, category, mode) in rules {
             tx.execute(
-                "INSERT INTO work_urls(url_prefix,category) VALUES(?1,?2)",
-                params![prefix, category],
+                "INSERT INTO work_urls(url_prefix,category,match_mode) VALUES(?1,?2,?3)",
+                params![prefix, category, mode],
             )
             .map_err(db_error)?;
         }

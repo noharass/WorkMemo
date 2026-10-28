@@ -55,7 +55,7 @@ export interface MonitorStatus {
   idle_end_seconds: number;
   away_pause_remaining_seconds: number | null;
 }
-export interface WorkUrl { id: number; url_prefix: string; category: string }
+export interface WorkUrl { id: number; url_prefix: string; category: string; match_mode: "path_prefix" | "origin" | "domain_suffix" }
 export interface TrackingTimes { idle_warning_seconds: number; idle_end_seconds: number; away_pause_seconds: number; hold_seconds: number }
 export interface MonitorConfig { enabled: boolean; revision: number; rules: WorkUrl[]; times: TrackingTimes; poll_interval_seconds: number; auto_resume_manual: boolean }
 export interface WorkNotice { kind: "idle" | "ended"; record: WorkRecord; idle_warning_seconds: number; idle_end_seconds: number }

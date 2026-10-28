@@ -54,7 +54,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   glass: {
     name: "Glass", description: "薄荷烟玻璃", defaultOpacity: 82, scheme: "dark",
     windowRgb: "30 42 57", surfaceRgb: "43 58 76", inputRgb: "31 44 59",
-    text: "#f0f5fa", muted: "#c5d2e0", accent: "#83dfce", accentHover: "#a7eddf",
+    text: "#f0f5fa", muted: "#c5d2e0", accent: "#83dfce", accentHover: "#90e3d4",
     accentText: "#a0efdf", onAccent: "#142f2c", line: "#52657b", border: "rgb(196 218 241 / 27%)",
     header: "transparent", controlHover: "rgb(188 218 235 / 12%)", secondaryHover: "#3d5369",
     shadow: "0 2px 8px rgb(9 20 35 / 24%)", panelShadow: "inset 0 1px 0 rgb(255 255 255 / 5%), 0 4px 16px rgb(4 15 29 / 10%)",
@@ -66,7 +66,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   cream: {
     name: "Cream", description: "温暖奶油", defaultOpacity: 88, scheme: "light",
     windowRgb: "245 243 238", surfaceRgb: "255 253 248", inputRgb: "255 254 250",
-    text: "#303b35", muted: "#435247", accent: "#3b6551", accentHover: "#2c513e",
+    text: "#303b35", muted: "#435247", accent: "#3b6551", accentHover: "#345b48",
     accentText: "#284b38", onAccent: "#ffffff", line: "#d7d8c9", border: "rgb(255 255 247 / 85%)",
     header: "rgb(255 255 255 / 15%)", controlHover: "rgb(70 90 65 / 12%)", secondaryHover: "#eeeee5",
     shadow: "0 2px 6px rgb(51 43 25 / 18%)", panelShadow: "0 6px 24px rgb(74 65 43 / 4%)",
@@ -78,7 +78,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   dark: {
     name: "Dark", description: "安静深色", defaultOpacity: 94, scheme: "dark",
     windowRgb: "23 29 38", surfaceRgb: "32 40 51", inputRgb: "28 35 45",
-    text: "#edf2f8", muted: "#c2ccd8", accent: "#a8d8be", accentHover: "#c2ead1",
+    text: "#edf2f8", muted: "#c2ccd8", accent: "#a8d8be", accentHover: "#b2dfc6",
     accentText: "#bce5cd", onAccent: "#16291f", line: "#4b596a", border: "rgb(156 181 203 / 34%)",
     header: "rgb(0 0 0 / 12%)", controlHover: "rgb(188 211 235 / 15%)", secondaryHover: "#344254",
     shadow: "0 2px 6px rgb(0 0 0 / 45%)", panelShadow: "0 6px 20px rgb(0 0 0 / 10%)",
@@ -90,7 +90,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   neon: {
     name: "Neon", description: "赛博微光", defaultOpacity: 90, scheme: "dark",
     windowRgb: "15 22 35", surfaceRgb: "22 32 49", inputRgb: "18 28 44",
-    text: "#edf9ff", muted: "#c0d3e7", accent: "#6ef3da", accentHover: "#a6ffed",
+    text: "#edf9ff", muted: "#c0d3e7", accent: "#6ef3da", accentHover: "#85f5e0",
     accentText: "#87f7e2", onAccent: "#092c29", line: "#3e697d", border: "rgb(110 243 218 / 57%)",
     header: "rgb(80 141 202 / 7%)", controlHover: "rgb(110 243 218 / 15%)", secondaryHover: "#234256",
     shadow: "0 1px 6px rgb(44 211 194 / 30%)", panelShadow: "inset 0 0 18px rgb(57 139 199 / 5%)",

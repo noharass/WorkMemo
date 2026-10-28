@@ -136,20 +136,31 @@ fn serve(
             {
                 return Err("浏览器规则标识无效。".into());
             }
+            let compatible = crate::monitor::supports_match_modes(frame.match_modes, &config.rules);
+            if !compatible {
+                store.warning = Some(
+                    "浏览器扩展不支持新网址匹配模式，请更新配套扩展至 0.2.2 并同步站点授权。"
+                        .into(),
+                );
+            } else if store.warning.as_deref()
+                == Some("浏览器扩展不支持新网址匹配模式，请更新配套扩展至 0.2.2 并同步站点授权。")
+            {
+                store.warning = None;
+            }
             store.observe_browser_page(
                 client,
                 PageSample {
                     at: SystemClock::new().now(),
                     focused: frame.focused,
-                    rule_id: frame.rule_id,
+                    rule_id: if compatible { frame.rule_id } else { None },
                     revision: frame.config_revision,
-                    ready: frame.ready,
+                    ready: frame.ready && compatible,
                 },
             );
-            if frame.page_activity {
+            if frame.page_activity && compatible {
                 store.observe_browser_activity(client);
             }
-            serde_json::json!({"connected":true,"config":config,"app":{"identifier":env!("WORKMEMO_IDENTIFIER"),"version":env!("CARGO_PKG_VERSION"),"protocol":1,"page_activity":true}})
+            serde_json::json!({"connected":true,"config":config,"app":{"identifier":env!("WORKMEMO_IDENTIFIER"),"version":env!("CARGO_PKG_VERSION"),"protocol":1,"page_activity":true,"match_modes":true,"update_required":!compatible}})
         };
         let mut response = serde_json::to_vec(&reply).map_err(|e| e.to_string())?;
         response.push(b'\n');

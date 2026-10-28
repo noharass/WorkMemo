@@ -48,6 +48,11 @@ impl Backend {
                     }
                 }
                 if let Ok(store) = guard.as_mut() {
+                    store.sound_config = app
+                        .path()
+                        .app_config_dir()
+                        .ok()
+                        .map(|p| p.join("window-layout.json"));
                     store.activate_monitoring();
                 }
             }
@@ -103,6 +108,7 @@ impl Backend {
                 }
                 if let Ok(mut guard) = shared.lock() {
                     if let Ok(store) = guard.as_mut() {
+                        observe_sound(store, false);
                         let now = SystemClock::new().now();
                         for signal in signals.try_iter() {
                             match signal {
@@ -150,6 +156,7 @@ impl Backend {
                             store.warning = Some(error.clone());
                             runtime_failure = Some(error);
                         }
+                        observe_sound(store, true);
                         match store.current_notice() {
                             Ok(value) => notice = value,
                             Err(error) => {
@@ -268,7 +275,10 @@ pub(crate) async fn access<T: Send + 'static>(
             .lock()
             .map_err(|_| "本地数据服务异常，请重新打开应用。")?;
         let store = guard.as_mut().map_err(|e| e.clone())?;
-        action(store)
+        observe_sound(store, false);
+        let result = action(store);
+        observe_sound(store, true);
+        result
     })
     .await
     .map_err(|e| format!("数据操作未能完成：{e}"))?
@@ -462,4 +472,28 @@ pub async fn confirm_work(
         store.confirm_work(candidate_id, own)
     })
     .await
+}
+
+fn observe_sound(store: &mut Store, enabled: bool) {
+    if let Ok(active) = store.active() {
+        let state = active.map(|r| crate::sound::Status {
+            id: r.id,
+            paused: r.is_paused,
+            recovery: r.recovery_pending,
+        });
+        let cues = store
+            .sounds
+            .observe(state, store.monitor.status.idle_warning);
+        if enabled
+            && store
+                .sound_config
+                .as_ref()
+                .and_then(|p| crate::windows::load(p).ok())
+                .is_some_and(|layout| layout.sound_enabled)
+        {
+            for cue in cues {
+                let _ = crate::sound::play(cue);
+            }
+        }
+    }
 }

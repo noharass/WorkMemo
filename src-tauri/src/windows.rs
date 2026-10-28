@@ -14,6 +14,7 @@ pub struct Geometry {
 pub struct Layout {
     pub density: String,
     pub revision: u64,
+    pub sound_enabled: bool,
     pub font_size: u8,
     pub font_weight: u16,
     pub line_spacing: String,
@@ -24,6 +25,7 @@ impl Default for Layout {
         Self {
             density: "comfortable".into(),
             revision: 0,
+            sound_enabled: true,
             font_size: 14,
             font_weight: 400,
             line_spacing: "standard".into(),
@@ -317,6 +319,7 @@ pub fn set_layout_density(app: tauri::AppHandle, density: String) -> Result<(), 
         app,
         LayoutInput {
             density,
+            sound_enabled: current.sound_enabled,
             font_size: current.font_size,
             font_weight: current.font_weight,
             line_spacing: current.line_spacing,
@@ -400,6 +403,15 @@ mod tests {
     #[test]
     fn typography_migrates_defaults_and_validates_saved_options() {
         let legacy = decode_layout(br#"{"density":"compact","windows":{}}"#).unwrap();
+        assert!(legacy.sound_enabled);
+        let muted =
+            decode_layout(br#"{"density":"compact","sound_enabled":false,"windows":{}}"#).unwrap();
+        assert!(!muted.sound_enabled);
+        assert!(
+            !decode_layout(&serde_json::to_vec(&muted).unwrap())
+                .unwrap()
+                .sound_enabled
+        );
         assert_eq!(legacy.font_size, 14);
         assert_eq!(legacy.font_weight, 400);
         let mut settings = legacy;
@@ -430,6 +442,7 @@ pub fn reload(app: &tauri::AppHandle) -> Result<(), String> {
 #[serde(deny_unknown_fields)]
 pub struct LayoutInput {
     pub density: String,
+    pub sound_enabled: bool,
     pub font_size: u8,
     pub font_weight: u16,
     pub line_spacing: String,
@@ -451,6 +464,7 @@ pub fn set_layout_options(app: tauri::AppHandle, input: LayoutInput) -> Result<L
         previous = d.clone();
         let mut next = d.clone();
         next.density = input.density;
+        next.sound_enabled = input.sound_enabled;
         next.font_size = input.font_size;
         next.font_weight = input.font_weight;
         next.line_spacing = input.line_spacing;

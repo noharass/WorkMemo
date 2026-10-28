@@ -139,6 +139,7 @@ async function poll() {
       return;
     }
     const frame = { version: 1, sequence: ++sequence, config_revision: config?.revision ?? -1, focused, ready, rule_id: ruleId };
+    if (app?.match_modes === true) frame.match_modes = true;
     if (app?.page_activity === true && pageActivity && focused && ruleId && activeTab?.id === pageActivity.tabId && activeTab?.url === pageActivity.url && pageActivity.revision === currentConfig?.revision && Date.now() - pageActivity.at <= 2000) frame.page_activity = true;
     pageActivity = null;
     awaitingReply = true;
