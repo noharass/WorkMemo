@@ -64,7 +64,8 @@ fn actual_native_host_round_trip_authenticates_and_forwards_only_metadata() {
         reader.read_line(&mut line).unwrap();
         let request: serde_json::Value = serde_json::from_str(&line).unwrap();
         assert_eq!(request["token"], token);
-        assert_eq!(request["frame"].as_object().unwrap().len(), 6);
+        assert_eq!(request["frame"].as_object().unwrap().len(), 7);
+        assert_eq!(request["frame"]["page_activity"], false);
         assert!(request["frame"].get("url").is_none());
         stream.write_all(b"{\"connected\":true,\"config\":{\"enabled\":false,\"revision\":0,\"rules\":[]}}\n").unwrap();
     });

@@ -24,7 +24,7 @@ test('扩展固定公开标识、最小权限和原生主机来源一致', () =>
     .map(n => String.fromCharCode(97 + (n >> 4), 97 + (n & 15))).join('');
   const protocol = readFileSync(new URL('../src-tauri/src/browser_protocol.rs', import.meta.url), 'utf8');
   assert.ok(protocol.includes(`chrome-extension://${id}/`));
-  assert.deepEqual(manifest.permissions, ['nativeMessaging', 'alarms']);
+  assert.deepEqual(manifest.permissions, ['nativeMessaging', 'alarms', 'scripting']);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.content_scripts, undefined);
 });

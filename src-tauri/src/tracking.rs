@@ -135,23 +135,25 @@ impl Store {
     }
 
     pub fn monitor_sample_due(&self, now: i64) -> bool {
-        self.monitor.native.is_none_or(|sample| {
-            now.saturating_sub(sample.at.ticks_ms)
-                >= self.monitor.config.poll_interval_seconds * 1000
-        }) || self.monitor.last_input.is_some_and(|last| {
-            [
-                self.monitor.config.times.idle_warning_seconds * 1000,
-                self.monitor.config.times.idle_end_seconds * 1000,
-            ]
-            .iter()
-            .any(|threshold| {
-                now >= last + threshold
-                    && self
-                        .monitor
-                        .native
-                        .is_none_or(|s| s.at.ticks_ms < last + threshold)
+        self.monitor.page_activity_at.is_some()
+            || self.monitor.native.is_none_or(|sample| {
+                now.saturating_sub(sample.at.ticks_ms)
+                    >= self.monitor.config.poll_interval_seconds * 1000
             })
-        })
+            || self.monitor.last_input.is_some_and(|last| {
+                [
+                    self.monitor.config.times.idle_warning_seconds * 1000,
+                    self.monitor.config.times.idle_end_seconds * 1000,
+                ]
+                .iter()
+                .any(|threshold| {
+                    now >= last + threshold
+                        && self
+                            .monitor
+                            .native
+                            .is_none_or(|s| s.at.ticks_ms < last + threshold)
+                })
+            })
     }
 
     pub fn observe_browser_page(&mut self, client: u64, page: PageSample) {
@@ -162,6 +164,19 @@ impl Store {
         {
             self.monitor.browser_owner = Some(client);
             self.observe_page(page);
+        }
+    }
+
+    pub fn observe_browser_activity(&mut self, client: u64) {
+        if self.monitor.browser_owner == Some(client) {
+            if let Some(page) = self.monitor.page.as_ref().filter(|p| {
+                p.focused
+                    && p.ready
+                    && p.rule_id.is_some()
+                    && p.revision == self.monitor.config.revision
+            }) {
+                self.monitor.page_activity_at = Some(page.at.ticks_ms);
+            }
         }
     }
 
@@ -305,6 +320,23 @@ impl Store {
             self.monitor.entered_at = None;
         }
         self.monitor.page_was_matched = matched;
+        let activity = self.monitor.page_activity_at.take();
+        let candidate_input = new_input.map(|last| {
+            if matched
+                && native_ok
+                && last > self.monitor.input_floor
+                && now.ticks_ms - last <= RECENT_INPUT_MS
+            {
+                if let Some(at) = activity.filter(|at| {
+                    *at >= self.monitor.entered_at.unwrap_or(now.ticks_ms)
+                        && *at <= now.ticks_ms
+                        && now.ticks_ms - *at <= 2_000
+                }) {
+                    return last.max(at);
+                }
+            }
+            last
+        });
 
         // Manual pauses remain protected from deadlines. A new input after the pause,
         // on a confirmed matching page, may explicitly resume the same record under
@@ -313,7 +345,7 @@ impl Store {
             if let Some(record) = self.active()?.filter(|r| {
                 r.is_paused && !r.recovery_pending && r.pause_reason.as_deref() == Some("MANUAL")
             }) {
-                if let (Some(last), Some(entered)) = (new_input, self.monitor.entered_at) {
+                if let (Some(last), Some(entered)) = (candidate_input, self.monitor.entered_at) {
                     if last >= entered
                         && last > self.monitor.input_floor
                         && now.ticks_ms - last <= RECENT_INPUT_MS
@@ -383,7 +415,7 @@ impl Store {
             } else if record.control_mode == "AUTO" && native_ok && page_known {
                 if matched {
                     self.monitor.away_since = None;
-                    let fresh = new_input.is_some_and(|last| {
+                    let fresh = candidate_input.is_some_and(|last| {
                         last >= self.monitor.entered_at.unwrap_or(now.ticks_ms)
                             && last > self.monitor.input_floor
                             && now.ticks_ms - last <= RECENT_INPUT_MS
@@ -392,7 +424,7 @@ impl Store {
                         && matches!(record.pause_reason.as_deref(), Some("AWAY" | "MONITOR"))
                         && fresh
                     {
-                        let last = new_input.unwrap();
+                        let last = candidate_input.unwrap();
                         self.resume_at(
                             record.id,
                             TimePoint {
@@ -426,7 +458,7 @@ impl Store {
 
         if self.active()?.is_none() && matched && native_ok {
             if let (Some(last), Some(entered), Some(rule)) =
-                (self.monitor.last_input, self.monitor.entered_at, rule)
+                (candidate_input, self.monitor.entered_at, rule)
             {
                 if last >= entered
                     && last > self.monitor.input_floor

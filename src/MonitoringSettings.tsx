@@ -88,7 +88,7 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
       <p className="hint">匹配精确站点及路径边界；查询参数和片段不参与匹配。保存监测配置会暂停当前自动记录；重新确认工作页面并产生新的输入后才会恢复。</p>
       <button type="submit" disabled={busy}>{busy ? "正在保存…" : "保存监测配置"}</button>
       <details><summary>连接与隐私说明</summary>
-        <p className="hint">第一版配套 Chrome 扩展。安装扩展和本机通信主机后，在扩展面板同步已配置站点授权。只传规则标识、前台匹配状态和连接状态；不传 URL、网页内容或输入文本。连接断开时暂停自动累计。</p>
+        <p className="hint">第一版配套 Chrome 扩展。安装扩展和本机通信主机后，在扩展面板同步已配置站点授权。只传规则标识、前台匹配状态、连接状态和页面活动信号；不传 URL、网页内容或输入文本。连接断开时暂停自动累计。</p>
         <p className="hint">离开工作页面后按设置暂停并保留记录。空闲结束时扣除最后输入后的尾段，阅读或思考可能少计，可稍后人工修正。</p>
       </details>
     </form>}

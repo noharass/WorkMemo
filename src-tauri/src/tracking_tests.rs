@@ -551,6 +551,7 @@ fn real_loopback_bridge_rejects_bad_auth_and_replay_before_changing_page_state()
         serde_json::from_slice(&std::fs::read(&endpoint_path).unwrap()).unwrap();
     let send = |stream: &mut TcpStream, token: String, sequence, focused| {
         let frame = BrowserFrame {
+            page_activity: false,
             version: 1,
             sequence,
             config_revision: revision,
@@ -703,6 +704,7 @@ fn real_loopback_bridge_keeps_one_connection_between_heartbeats() {
         let request = WireRequest {
             token: endpoint.token.clone(),
             frame: BrowserFrame {
+                page_activity: false,
                 version: 1,
                 sequence,
                 config_revision: revision,
@@ -1228,4 +1230,40 @@ fn input_before_page_evidence_does_not_start_or_backfill_unknown_time() {
     h.matched = true;
     h.step(1000, true);
     assert!(h.store.active().unwrap().is_some());
+}
+
+#[test]
+fn page_activity_starts_at_confirmation_without_backfilling_earlier_input() {
+    let mut h = Harness::new();
+    h.step(1000, false);
+    let input = h.clock.now().ticks_ms;
+    h.clock.advance(100);
+    let confirmed = h.clock.now();
+    h.store.observe_browser_page(
+        99,
+        PageSample {
+            at: confirmed,
+            focused: true,
+            rule_id: Some(h.store.monitor.config.rules[0].id),
+            revision: h.store.monitor.config.revision,
+            ready: true,
+        },
+    );
+    h.store.observe_browser_activity(99);
+    h.store.monitor.page_was_matched = false;
+    h.store
+        .monitor_tick(
+            NativeSample {
+                at: confirmed,
+                last_input_ticks: input,
+                chrome_foreground: true,
+                unlocked: true,
+                reliable: true,
+            },
+            confirmed,
+        )
+        .unwrap();
+    let record = h.store.active().unwrap().unwrap();
+    assert_eq!(record.start_time, confirmed.wall_ms);
+    assert_eq!(record.duration_ms, 0);
 }

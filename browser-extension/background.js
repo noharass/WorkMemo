@@ -17,6 +17,26 @@ let pendingEvent = false;
 let eventGeneration = 0;
 let intervalId = null;
 let intervalSeconds = 0;
+let pageActivity = null;
+let registeredOrigins = '';
+let registrationBusy = false;
+async function syncActivityScript() {
+  if (!chrome.scripting || registrationBusy) return;
+  registrationBusy = true;
+  try {
+    const allowed = [];
+    for (const origin of permissionOrigins(config?.enabled ? config.rules : [])) {
+      if (await chrome.permissions.contains({origins: [origin]})) allowed.push(origin);
+    }
+    const signature = JSON.stringify(allowed.sort());
+    if (signature === registeredOrigins) return;
+    const existing = await chrome.scripting.getRegisteredContentScripts({ids: ['workmemo-activity']});
+    if (existing.length) await chrome.scripting.unregisterContentScripts({ids: ['workmemo-activity']});
+    if (allowed.length) await chrome.scripting.registerContentScripts([{id: 'workmemo-activity', matches: allowed, js: ['activity.js'], runAt: 'document_start', allFrames: false, persistAcrossSessions: false}]);
+    registeredOrigins = signature;
+  } catch { registeredOrigins = ''; }
+  finally { registrationBusy = false; }
+}
 
 // The older desktop protocol did not include an interval. Keep its original
 // five-second behavior, while new desktop configurations specify 1–5 seconds.
@@ -39,6 +59,7 @@ function status() {
 }
 
 function drop(message) {
+  pageActivity = null;
   const stale = port; port = null; connected = false; config = null; app = null; awaitingReply = false;
   hostIndex = (hostIndex + 1) % hosts.length;
   retryAfter = Date.now() + 1000;
@@ -65,6 +86,7 @@ function connect() {
       }
       connected = true; config = message.config; app = message.app ?? null; connectionError = '';
       setPollingInterval(config.poll_interval_seconds);
+      void syncActivityScript();
       if (pendingEvent) void poll();
     });
     current.onDisconnect.addListener(() => {
@@ -98,12 +120,15 @@ async function poll() {
     const ready = !!currentConfig && (origins.length === 0 || await chrome.permissions.contains({ origins }));
     let focused = false;
     let ruleId = null;
+    let activeTab = null;
     if (ready && currentConfig.enabled) {
       const window = await chrome.windows.getLastFocused();
       focused = window.focused === true;
       if (focused) {
         const [tab] = await chrome.tabs.query({ active: true, windowId: window.id });
+        activeTab = tab;
         ruleId = matchRule(tab?.url, rules);
+        if (ruleId && chrome.scripting) void chrome.scripting.executeScript({target: {tabId: tab.id}, files: ['activity.js']}).catch(() => {});
       }
     }
     // The native frame deliberately has no URL, title, page content, or input data.
@@ -114,6 +139,8 @@ async function poll() {
       return;
     }
     const frame = { version: 1, sequence: ++sequence, config_revision: config?.revision ?? -1, focused, ready, rule_id: ruleId };
+    if (app?.page_activity === true && pageActivity && focused && ruleId && activeTab?.id === pageActivity.tabId && activeTab?.url === pageActivity.url && pageActivity.revision === currentConfig?.revision && Date.now() - pageActivity.at <= 2000) frame.page_activity = true;
+    pageActivity = null;
     awaitingReply = true;
     sentAt = Date.now();
     current.postMessage(frame);
@@ -132,13 +159,19 @@ chrome.tabs.onActivated.addListener(requestEventPoll);
 chrome.tabs.onUpdated.addListener((_id, change, tab) => { if (tab.active && (change.status || change.url)) requestEventPoll(); });
 chrome.tabs.onRemoved.addListener(requestEventPoll);
 chrome.windows.onFocusChanged.addListener(requestEventPoll);
-chrome.permissions.onAdded.addListener(requestEventPoll);
-chrome.permissions.onRemoved.addListener(requestEventPoll);
+chrome.permissions.onAdded.addListener(() => { void syncActivityScript(); requestEventPoll(); });
+chrome.permissions.onRemoved.addListener(() => { pageActivity = null; void syncActivityScript(); requestEventPoll(); });
 chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'workmemo-reconnect') void poll(); });
 chrome.runtime.onStartup.addListener(() => { void poll(); });
 chrome.runtime.onInstalled.addListener(() => { void poll(); });
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('popup.html')) return false;
+  if (sender.id !== chrome.runtime.id) return false;
+  if (message?.type === 'page-activity' && sender.frameId === 0 && sender.tab && sender.url === sender.tab.url && config?.enabled && matchRule(sender.url, config.rules)) {
+    pageActivity = {tabId: sender.tab.id, url: sender.url, revision: config.revision, at: Date.now()};
+    requestEventPoll();
+    return false;
+  }
+  if (sender.url !== chrome.runtime.getURL('popup.html')) return false;
   if (message?.type === 'status') reply(status());
   else if (message?.type === 'refresh') { retryAfter = 0; requestEventPoll(); reply(status()); }
   return false;

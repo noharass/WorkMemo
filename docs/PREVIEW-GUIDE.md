@@ -31,3 +31,6 @@ EXE 安装版步骤见 PREVIEW-INSTALLER-GUIDE.md。更新前从托盘正常退�
 监测设置中查看连接诊断，点击“修复本机连接”；“打开配套扩展文件夹”可定位应加载的扩展。也可双击同目录 Register-Browser.cmd，不依赖 PowerShell、不修改执行策略。缺文件或组件版本不匹配时须完整更新；详细见 BROWSER-REGISTRATION-FIX.md。
 
 停用时先从托盘退出，再执行 Register-Browser.cmd /unregister 或 Register-Browser.ps1 -Unregister。仅移除仍属于本目录的主机注册，不删除工作数据。Chrome 扩展由用户手动停用或移除。源码与成品：https://github.com/noharass/WorkMemo 。
+
+
+2026-10-28 用户确认增加页面活动信号：扩展增加 scripting 权限，仅向已授权的工作站点注入活动监听。只发送是否发生可信操作的信号，不读取按键值、输入文本、坐标或网页内容；仍需系统输入和前台工作页交叉确认。页面信号用于从后端确认时刻开始/恢复，不回填此前时间。旧扩展需重新加载并同步站点授权；刚安装或未授权时监听尚未就绪，仍可能需要再次操作。

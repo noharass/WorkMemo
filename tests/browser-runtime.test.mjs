@@ -195,3 +195,23 @@ test('页面查询期间发生切换时，过期查询结果不发送并改为�
     assert.equal(queries, 2);
   });
 });
+
+
+test('页面活动仅随当前匹配标签和支持能力的软件发送；后台标签不会产生活动帧', async () => {
+  await backgroundScenario(async ({native, chrome, messages, tick}) => {
+    const cfg = {enabled:true,revision:2,poll_interval_seconds:1,rules:[{id:1,url_prefix:'https://work.example.test/tasks',category:'开发'}]};
+    chrome.permissions.contains = async () => true;
+    chrome.windows.getLastFocused = async () => ({focused:true,id:1});
+    chrome.tabs.query = async () => [{id:7,url:'https://work.example.test/tasks'}];
+    native.onMessage.emit({connected:true, config:cfg, app:{protocol:1,identifier:'com.workmemo.test.monitor',page_activity:true}});
+    await tick(1000);
+    chrome.runtime.onMessage.emit({type:'page-activity'}, {id:chrome.runtime.id,frameId:0,tab:{id:7,url:'https://work.example.test/tasks'},url:'https://work.example.test/tasks'},()=>{});
+    native.onMessage.emit({connected:true,config:cfg,app:{protocol:1,identifier:'com.workmemo.test.monitor',page_activity:true}});
+    await flush();await flush();
+    assert.equal(messages.at(-1).page_activity,true);
+    chrome.runtime.onMessage.emit({type:'page-activity'}, {id:chrome.runtime.id,frameId:0,tab:{id:8,url:'https://work.example.test/tasks'},url:'https://work.example.test/tasks'},()=>{});
+    native.onMessage.emit({connected:true,config:cfg,app:{protocol:1,identifier:'com.workmemo.test.monitor',page_activity:true}});
+    await flush();await flush();
+    assert.equal(messages.at(-1).page_activity,undefined);
+  });
+});

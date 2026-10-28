@@ -8,6 +8,8 @@ pub const MAX_MESSAGE: usize = 131_072;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BrowserFrame {
+    #[serde(default)]
+    pub page_activity: bool,
     pub version: u32,
     pub sequence: u64,
     pub config_revision: i64,

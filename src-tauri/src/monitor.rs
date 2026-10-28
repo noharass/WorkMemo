@@ -108,6 +108,7 @@ pub struct MonitorStatus {
 
 #[derive(Default)]
 pub struct Runtime {
+    pub page_activity_at: Option<i64>,
     pub active: bool,
     pub events_failed: bool,
     pub config: MonitorConfig,
