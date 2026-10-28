@@ -215,3 +215,17 @@ test('页面活动仅随当前匹配标签和支持能力的软件发送；后�
     assert.equal(messages.at(-1).page_activity,undefined);
   });
 });
+
+
+test('活动脚本仅注册已授权的配置站点，未授权站点不注入', async () => {
+  await backgroundScenario(async ({native,chrome}) => {
+    const registrations=[];
+    chrome.scripting={getRegisteredContentScripts:async()=>[],unregisterContentScripts:async()=>{},registerContentScripts:async entries=>registrations.push(...entries)};
+    chrome.permissions.contains=async ({origins})=>origins.every(x=>x.startsWith('https://allowed.example.test/'));
+    native.onMessage.emit({connected:true,config:{enabled:true,revision:1,rules:[{id:1,url_prefix:'https://allowed.example.test/tasks',category:'开发'},{id:2,url_prefix:'https://denied.example.test/tasks',category:'开发'}]}});
+    await flush();await flush();
+    assert.equal(registrations.length,1);
+    assert.deepEqual(registrations[0].matches,['https://allowed.example.test/*']);
+    assert.equal(registrations[0].allFrames,false);
+  });
+});

@@ -39,7 +39,7 @@ for (const pkg of graph.packages.filter((pkg) => pkg.source && resolved.has(pkg.
   collect(`Cargo ${pkg.name} ${pkg.version}`, dirname(pkg.manifest_path), pkg.license, pkg.repository, supplemental[`${pkg.name}@${pkg.version}`], `https://crates.io/api/v1/crates/${pkg.name}/${pkg.version}/download`);
 }
 const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
-for (const [path, entry] of Object.entries(lock.packages).filter(([path, entry]) => path && !entry.dev).sort()) {
+for (const [path, entry] of Object.entries(lock.packages).filter(([path, entry]) => path && (!entry.dev || path === "node_modules/tailwindcss")).sort()) {
   const directory = join(root, path);
   const pkg = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'));
   collect(`npm ${pkg.name} ${entry.version}`, directory, pkg.license, pkg.repository, supplemental[`${pkg.name}@${entry.version}`]);
