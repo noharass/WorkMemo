@@ -1,5 +1,7 @@
 # WorkMemo v0.2.2 本地交付记录
 
+最新多 URL 分组设置与当前成品摘要见 [UPDATE-0.2.2-MULTI-URL.md](UPDATE-0.2.2-MULTI-URL.md)。
+
 后续紧凑布局修订及当前成品摘要见 [UPDATE-0.2.2-COMPACT.md](UPDATE-0.2.2-COMPACT.md)。本文末尾摘要是 0ddb32e 的原始交付记录；当前 artifacts/0.2.2 已更新。
 
 日期：2026-10-28（Asia/Shanghai）。起点：3f9b994，main 与 origin/main 一致；原有未跟踪的 docs/DYNAMIC-ISLAND-PLAN.md 保留，不纳入本次提交。遵循已确认方案完成本轮九项需求，不自动公开 Release 或扩展功能。

@@ -410,3 +410,13 @@ button { transition:background-color .14s,border-color .14s,color .14s; }
 button:active:not(:disabled) { box-shadow:inset 0 1px 2px rgb(0 0 0 / 12%); }
 button.nav-button:hover:not(:disabled),button.text-button:hover:not(:disabled),button.workload-carousel:hover:not(:disabled) { background:var(--control-hover); }
 @media (prefers-reduced-motion:reduce) { button { transition:none; } }
+
+.monitor-work-sites { display:grid; gap:10px; min-width:0; }
+.monitor-work-sites h3 { margin:0; font-size:1em; }
+.monitor-work-sites > .hint { margin:0; }
+.monitor-work-group { border:1px solid var(--line); border-radius:12px; min-width:0; }
+.monitor-work-group > summary { display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; list-style:none; }
+.monitor-work-group > summary::before { content:"›"; color:var(--text-muted); transition:transform .14s; }
+.monitor-work-group[open] > summary::before { transform:rotate(90deg); }
+.monitor-work-group > summary span { margin-left:auto; font-size:.8em; color:var(--text-muted); }
+.monitor-work-urls { display:grid; gap:10px; padding:0 12px 12px; min-width:0; }

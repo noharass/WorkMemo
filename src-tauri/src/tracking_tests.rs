@@ -1521,3 +1521,69 @@ fn schema_seven_rules_migrate_and_modes_round_trip_without_touching_active_work(
     assert_eq!(saved.rules[1].url_prefix, "cn-beijing-vpc.fcapp.run");
     assert_eq!(store.monitor_config().unwrap().rules, saved.rules);
 }
+
+#[test]
+fn multiple_sites_for_one_work_keep_one_record_and_continuous_time() {
+    let mut h = Harness::new();
+    let config = h.store.monitor_config().unwrap();
+    let config = h
+        .store
+        .save_monitor_config(ConfigInput {
+            enabled: true,
+            expected_revision: config.revision,
+            times: config.times,
+            poll_interval_seconds: 1,
+            auto_resume_manual: true,
+            rules: vec![
+                RuleInput {
+                    match_mode: "origin".into(),
+                    url_prefix: "https://moonshot.feishu.cn/".into(),
+                    category: "评测".into(),
+                },
+                RuleInput {
+                    match_mode: "domain_suffix".into(),
+                    url_prefix: ".cn-beijing-vpc.fcapp.run".into(),
+                    category: "评测".into(),
+                },
+            ],
+        })
+        .unwrap();
+    h.tick();
+    let id = h.start();
+    h.advance(5_000, true);
+    for index in 0..6 {
+        h.clock.advance(1_000);
+        let now = h.clock.now();
+        h.input = now.ticks_ms;
+        h.store.observe_page(PageSample {
+            at: now,
+            focused: true,
+            ready: true,
+            revision: config.revision,
+            rule_id: Some(config.rules[(index + 1) % 2].id),
+        });
+        h.store
+            .monitor_tick(
+                NativeSample {
+                    at: now,
+                    last_input_ticks: now.ticks_ms,
+                    chrome_foreground: true,
+                    unlocked: true,
+                    reliable: true,
+                },
+                now,
+            )
+            .unwrap();
+        let snapshot = h.store.snapshot().unwrap();
+        let record = snapshot.active.unwrap();
+        assert_eq!(record.id, id);
+        assert_eq!(record.category, "评测");
+        assert!(!record.is_paused);
+        assert!(snapshot.monitoring.start_candidate.is_none());
+        assert!(snapshot.monitoring.away_pause_remaining_seconds.is_none());
+        assert_eq!(snapshot.pending_count, 0);
+    }
+    h.store.finish(id).unwrap();
+    assert_eq!(h.saved(id).duration_ms, 11_000);
+    assert_eq!(h.store.pending_records().unwrap().len(), 1);
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {emit} from "@tauri-apps/api/event";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { CATEGORIES, type MonitorConfig } from "./types";
@@ -17,6 +17,14 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
   const [notice, setNotice] = useState("");
   const [baseline,setBaseline]=useState("");
   const [retry, setRetry] = useState(0);
+  const nextRuleId = useRef(-1);
+  function addRule(category: string) {
+    if (busy) return;
+    const id = nextRuleId.current--;
+    setConfig(previous => previous && previous.rules.length < 50 ? {
+      ...previous, rules: [...previous.rules, {id, category, url_prefix: "", match_mode: "path_prefix"}],
+    } : previous);
+  }
   useEffect(() => {
     if (!open || !isTauri()) return;
     let stale = false;
@@ -82,16 +90,33 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
         <p className="hint">每项 1 至 86400 秒；空闲提醒须早于空闲结束。离页宽限后暂停，再等待保留期结束记录。连接中断时不计入无法确认的时间；保留期同样适用。空闲结束可能更早发生。</p>
       </fieldset>
       </details>
-      {config.rules.map((rule, index) => <fieldset key={rule.id} className="monitor-rule">
-        <legend>工作页面 {index + 1}</legend>
-        <label>匹配模式<select disabled={busy} value={rule.match_mode ?? "path_prefix"} onChange={event => setConfig({ ...config, rules: config.rules.map((item, i) => i === index ? { ...item, match_mode: event.target.value as typeof rule.match_mode } : item) })}><option value="path_prefix">路径前缀</option><option value="origin">整个站点</option><option value="domain_suffix">域名后缀（含子域名）</option></select></label>
-        <label>{rule.match_mode === "domain_suffix" ? "域名后缀" : "工作 URL"}<input type={rule.match_mode === "domain_suffix" ? "text" : "url"} required maxLength={2048} disabled={busy} value={rule.url_prefix}
-          placeholder="https://工作站点/路径" onChange={event => setConfig({ ...config, rules: config.rules.map((item, i) => i === index ? { ...item, url_prefix: event.target.value } : item) })} /></label>
-        <label>默认类别<select value={rule.category} disabled={busy} onChange={event => setConfig({ ...config, rules: config.rules.map((item, i) => i === index ? { ...item, category: event.target.value } : item) })}>
-          {CATEGORIES.map(category => <option key={category}>{category}</option>)}</select></label>
-        <button type="button" className="text-button" disabled={busy} onClick={() => setConfig({ ...config, rules: config.rules.filter((_, i) => i !== index) })}>移除这条配置</button>
-      </fieldset>)}
-      <button type="button" className="secondary" disabled={busy || config.rules.length >= 50} onClick={() => setConfig({ ...config, rules: [...config.rules, { id: -Date.now(), url_prefix: "", category: "评测", match_mode: "path_prefix" }] })}>添加工作 URL</button>
+      <section className="monitor-work-sites" aria-label="每项工作的多个网址">
+        <h3>工作与网址</h3>
+        <p className="hint">同一项工作可添加多个 URL，命中其中任意一个网站都属于工作页面。计时中切换这些网站会保留同一条记录，不重复开工。</p>
+        {CATEGORIES.map(category => {
+          const rules = config.rules.filter(rule => rule.category === category);
+          return <details key={category} className="monitor-work-group" open={rules.length > 0} aria-label={`${category}工作网址`}>
+            <summary><strong>{category}</strong><span>{rules.length} 个 URL</span></summary>
+            <div className="monitor-work-urls">
+              {rules.length === 0 && <p className="hint">还没有网址，添加这项工作需要使用的网站。</p>}
+              {rules.map((rule, index) => <fieldset key={rule.id} className="monitor-rule">
+                <legend>网址 {index + 1}</legend>
+                <label>匹配模式<select disabled={busy} value={rule.match_mode ?? "path_prefix"} onChange={event => setConfig({ ...config, rules: config.rules.map(item => item.id === rule.id ? { ...item, match_mode: event.target.value as typeof rule.match_mode } : item) })}>
+                  <option value="path_prefix">路径前缀</option><option value="origin">整个站点</option><option value="domain_suffix">域名后缀（含子域名）</option>
+                </select></label>
+                <label>{rule.match_mode === "domain_suffix" ? "域名后缀" : "工作 URL"}<input type={rule.match_mode === "domain_suffix" ? "text" : "url"} required maxLength={2048} disabled={busy} value={rule.url_prefix}
+                  placeholder={rule.match_mode === "domain_suffix" ? ".cn-beijing-vpc.fcapp.run" : "https://工作站点/路径"} onChange={event => setConfig({ ...config, rules: config.rules.map(item => item.id === rule.id ? { ...item, url_prefix: event.target.value } : item) })} /></label>
+                <label>归属工作<select value={rule.category} disabled={busy} onChange={event => setConfig({ ...config, rules: config.rules.map(item => item.id === rule.id ? { ...item, category: event.target.value } : item) })}>
+                  {CATEGORIES.map(value => <option key={value}>{value}</option>)}
+                </select></label>
+                <button type="button" className="text-button" disabled={busy} onClick={() => setConfig({ ...config, rules: config.rules.filter(item => item.id !== rule.id) })}>移除此 URL</button>
+              </fieldset>)}
+              <button type="button" className="secondary" disabled={busy || config.rules.length >= 50} onClick={() => addRule(category)}>为{category}添加 URL</button>
+            </div>
+          </details>;
+        })}
+        <p className="hint">全部工作合计最多 50 条 URL；移除一个 URL 不影响同一工作下的其他网址。配置保存后，请在扩展中同步所有工作站点授权。</p>
+      </section>
       <p className="hint">路径前缀限定站点与路径边界；整个站点覆盖该来源全部路径；域名后缀覆盖该域名与子域名，例如 .cn-beijing-vpc.fcapp.run。查询参数和片段不参与匹配。保存监测配置会暂停当前自动记录；重新确认工作页面并产生新的输入后才会恢复。</p>
 
       <details><summary>连接与隐私说明</summary>
