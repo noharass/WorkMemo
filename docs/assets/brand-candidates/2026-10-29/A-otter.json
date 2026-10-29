@@ -1,0 +1,30 @@
+{
+  "provider": "builtin image_gen",
+  "model": "not exposed by tool metadata",
+  "constraintDelivery": "main-prompt constraints",
+  "direction": "小水獭：安静、勤快、可靠",
+  "colors": {
+    "face": "#F4DFC2",
+    "bodyAndFacialMarks": "#503B32",
+    "background": "#73A99C"
+  },
+  "generationPolicy": "One independent generation per candidate; all results preserved unchanged; no automatic retry or post-processing.",
+  "candidates": [
+    {
+      "label": "A1",
+      "corner": "lower-left",
+      "path": "E:\\WorkMemo\\docs\\assets\\brand-candidates\\2026-10-29\\A1-otter.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Create one complete full-bleed 1:1 square image, approximately 1536 × 1536 pixels at native resolution.\nBackground: fill the entire square with solid gently muted teal green #73A99C. Keep this teal green visible in every open area and in the corners not occupied by the character; the lower-left emergence corner must be occupied by the character.\nSubject: place one extremely simplified, cute, endearing baby river otter character on the background, reduced to one soft rounded continuous silhouette with broad rounded cheeks and two blunt round ears, both visible. Give it a calm, dependable, quietly industrious personality.\nComplexity: use only 4–7 large basic shapes and at most two broad internal color regions. Use two simple eyes and add one tiny mouth only when it helps the expression. Remove every nonessential line, outline, anatomical detail, texture, and decoration. Keep the character readable at 32 × 32.\nColor behavior: use exactly three semantic colors in the complete image: creamy beige #F4DFC2 for one broad continuous face region, dark brown #503B32 for the body and simple facial marks, and the solid teal green #73A99C background. Organize both character colors into broad purposeful masses. Keep the character, facial marks, and background clearly separated.\nComposition: keep the character upright and emerging from the lower-left, filling about 85–95% of the square so it remains visually dominant. Cropping at the bottom or left side is welcome when it strengthens the corner emergence. Preserve both round ears in the visible composition. Never center or bottom-center the character.\nStyle: make simplification, cuteness, and lovable baby-like appeal the strongest qualities. Use large soft forms, compact proportions, thick rounded contours, and an ultra-clean graphic treatment. Prefer one clear shape over several explanatory details. Add an extremely, extremely subtle, almost imperceptible sense of depth through a barely-there neo-skeuomorphic treatment.\nFinish: show only the character on the full-canvas background, with clean surfaces and normal square outer corners.\nConstraints: Use no text or watermark. Add no borders, frames, cards, or presentation masks. Include one character only, with no extra subjects or scenery. Use no props or clocks. Use no fragile lines, sharp tips, unnecessary outlines, tiny details, or decorative marks. Add no photorealistic material, dramatic bevel, glossy hotspot, deep occlusion, extrusion, strong three-dimensional rendering, or external cast shadow. Keep the background solid and uniform, with no texture, vignette, or lighting variation."
+    },
+    {
+      "label": "A2",
+      "corner": "lower-right",
+      "path": "E:\\WorkMemo\\docs\\assets\\brand-candidates\\2026-10-29\\A2-otter.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Create one complete full-bleed 1:1 square image, approximately 1536 × 1536 pixels at native resolution.\nBackground: fill the entire square with solid gently muted teal green #73A99C. Keep this teal green visible in every open area and in the corners not occupied by the character; the lower-right emergence corner must be occupied by the character.\nSubject: place one extremely simplified, cute, endearing baby river otter character on the background, reduced to one soft rounded continuous silhouette with broad rounded cheeks and two blunt round ears, both visible. Give it a calm, dependable, quietly industrious personality.\nComplexity: use only 4–7 large basic shapes and at most two broad internal color regions. Use two simple eyes and add one tiny mouth only when it helps the expression. Remove every nonessential line, outline, anatomical detail, texture, and decoration. Keep the character readable at 32 × 32.\nColor behavior: use exactly three semantic colors in the complete image: creamy beige #F4DFC2 for one broad continuous face region, dark brown #503B32 for the body and simple facial marks, and the solid teal green #73A99C background. Organize both character colors into broad purposeful masses. Keep the character, facial marks, and background clearly separated.\nComposition: keep the character upright and emerging from the lower-right, filling about 85–95% of the square so it remains visually dominant. Cropping at the bottom or right side is welcome when it strengthens the corner emergence. Preserve both round ears in the visible composition. Never center or bottom-center the character.\nStyle: make simplification, cuteness, and lovable baby-like appeal the strongest qualities. Use large soft forms, compact proportions, thick rounded contours, and an ultra-clean graphic treatment. Prefer one clear shape over several explanatory details. Add an extremely, extremely subtle, almost imperceptible sense of depth through a barely-there neo-skeuomorphic treatment.\nFinish: show only the character on the full-canvas background, with clean surfaces and normal square outer corners.\nConstraints: Use no text or watermark. Add no borders, frames, cards, or presentation masks. Include one character only, with no extra subjects or scenery. Use no props or clocks. Use no fragile lines, sharp tips, unnecessary outlines, tiny details, or decorative marks. Add no photorealistic material, dramatic bevel, glossy hotspot, deep occlusion, extrusion, strong three-dimensional rendering, or external cast shadow. Keep the background solid and uniform, with no texture, vignette, or lighting variation."
+    }
+  ]
+}

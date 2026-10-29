@@ -1,0 +1,44 @@
+{
+  "candidates": [
+    {
+      "label": "B1",
+      "direction": "小猫头鹰：专注观察与工作记忆",
+      "corner": "lower-left",
+      "path": "E:\\WorkMemo\\docs\\assets\\brand-candidates\\2026-10-29\\B1-owl.png",
+      "sourcePath": "C:\\Users\\Administrator\\.codex\\generated_images\\01a18589-b96e-7d50-ba3c-1ffa56be1dd0\\exec-0f2b8b5d-b2e5-4427-a09c-ee3682fa3907.png",
+      "prompt": "Create one complete full-bleed 1:1 square image, approximately 1536 × 1536.\nBackground: fill the entire square with solid gently muted blue #819DBD. Keep this blue visible in every open area and in the corners not occupied by the character; the lower-left emergence corner must be occupied by the character.\nSubject: place one extremely simplified, cute, endearing baby owl character on the background, reduced to one soft rounded continuous body silhouette and one defining continuous broad double-lobed facial mask. Convey quiet attentive companionship with compact baby proportions. The mask is mint green #B9E3C7; the body and two simple eyes are deep forest green #234D42. The owl is upright.\nComplexity: use only 4–7 large basic shapes and at most two broad internal color regions. Use two simple eyes, no additional tiny facial features. Remove every nonessential line, outline, anatomical detail, feather, texture, and decoration. Keep the character readable at 32 × 32. Any wings shown must be broad and rounded, with both visible. Any necessary beak must be blunt and reuse the two subject colors.\nColor behavior: use exactly three semantic colors in the complete image: mint green #B9E3C7 and deep forest green #234D42 as exactly two character base colors, plus solid blue #819DBD as the background. Organize both character colors into broad purposeful masses and reuse deep green for facial marks. Keep the subject, facial marks and background clearly separated.\nComposition: keep the character upright and emerging from the lower-left, filling about 85–95% of the square so it remains visually dominant. Cropping at the bottom or left side is welcome when it strengthens the corner emergence. Preserve both paired identifying features. Never center or bottom-center the character.\nStyle: make simplification, cuteness, and lovable baby-like appeal the strongest qualities. Use large soft forms, compact proportions, thick rounded contours, and an ultra-clean graphic treatment. Prefer one clear shape over several explanatory details. Add an extremely, extremely subtle, almost imperceptible sense of depth through a barely-there neo-skeuomorphic treatment.\nFinish: show only the character on the full-canvas background, with clean surfaces and normal square outer corners.\nConstraints: Use no text or watermark. Add no borders, frames, cards, or presentation masks. Include one character only, with no extra subjects, props, clocks or scenery. Use no fragile lines, sharp tips, unnecessary outlines, tiny details, or decorative marks. Add no photorealistic material, dramatic bevel, glossy hotspot, deep occlusion, extrusion, strong three-dimensional rendering, or external cast shadow. Keep the background solid and uniform, with no texture, vignette, or lighting variation.",
+      "colors": {
+        "face": "#B9E3C7",
+        "bodyAndEyes": "#234D42",
+        "background": "#819DBD"
+      },
+      "provider": "built-in image_gen",
+      "model": "not exposed by runtime tool schema or result",
+      "constraintDelivery": "main-prompt constraints",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      }
+    },
+    {
+      "label": "B2",
+      "direction": "小猫头鹰：专注观察与工作记忆",
+      "corner": "lower-right",
+      "path": "E:\\WorkMemo\\docs\\assets\\brand-candidates\\2026-10-29\\B2-owl.png",
+      "sourcePath": "C:\\Users\\Administrator\\.codex\\generated_images\\01a18589-b96e-7d50-ba3c-1ffa56be1dd0\\exec-808d2938-c6d2-4648-963e-b524379498a2.png",
+      "prompt": "Create one complete full-bleed 1:1 square image, approximately 1536 × 1536.\nBackground: fill the entire square with solid gently muted blue #819DBD. Keep this blue visible in every open area and in the corners not occupied by the character; the lower-right emergence corner must be occupied by the character.\nSubject: place one extremely simplified, cute, endearing baby owl character on the background, reduced to one soft rounded continuous body silhouette and one defining continuous broad double-lobed facial mask. Convey quiet attentive companionship with compact baby proportions. The mask is mint green #B9E3C7; the body and two simple eyes are deep forest green #234D42. The owl is upright.\nComplexity: use only 4–7 large basic shapes and at most two broad internal color regions. Use two simple eyes, no additional tiny facial features. Remove every nonessential line, outline, anatomical detail, feather, texture, and decoration. Keep the character readable at 32 × 32. Any wings shown must be broad and rounded, with both visible. Any necessary beak must be blunt and reuse the two subject colors.\nColor behavior: use exactly three semantic colors in the complete image: mint green #B9E3C7 and deep forest green #234D42 as exactly two character base colors, plus solid blue #819DBD as the background. Organize both character colors into broad purposeful masses and reuse deep green for facial marks. Keep the subject, facial marks and background clearly separated.\nComposition: keep the character upright and emerging from the lower-right, filling about 85–95% of the square so it remains visually dominant. Cropping at the bottom or right side is welcome when it strengthens the corner emergence. Preserve both paired identifying features. Never center or bottom-center the character.\nStyle: make simplification, cuteness, and lovable baby-like appeal the strongest qualities. Use large soft forms, compact proportions, thick rounded contours, and an ultra-clean graphic treatment. Prefer one clear shape over several explanatory details. Add an extremely, extremely subtle, almost imperceptible sense of depth through a barely-there neo-skeuomorphic treatment.\nFinish: show only the character on the full-canvas background, with clean surfaces and normal square outer corners.\nConstraints: Use no text or watermark. Add no borders, frames, cards, or presentation masks. Include one character only, with no extra subjects, props, clocks or scenery. Use no fragile lines, sharp tips, unnecessary outlines, tiny details, or decorative marks. Add no photorealistic material, dramatic bevel, glossy hotspot, deep occlusion, extrusion, strong three-dimensional rendering, or external cast shadow. Keep the background solid and uniform, with no texture, vignette, or lighting variation.",
+      "colors": {
+        "face": "#B9E3C7",
+        "bodyAndEyes": "#234D42",
+        "background": "#819DBD"
+      },
+      "provider": "built-in image_gen",
+      "model": "not exposed by runtime tool schema or result",
+      "constraintDelivery": "main-prompt constraints",
+      "dimensions": {
+        "width": 1254,
+        "height": 1254
+      }
+    }
+  ]
+}

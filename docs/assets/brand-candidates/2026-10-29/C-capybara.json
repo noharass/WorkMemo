@@ -1,0 +1,35 @@
+{
+  "provider": "built-in image_gen",
+  "model": null,
+  "modelNote": "The tool schema and result do not disclose the underlying model identifier.",
+  "constraintDeliveryMode": "main-prompt constraints",
+  "skillSource": "https://github.com/s1dashu/ip-as-logo-skill/blob/main/SKILL.md",
+  "ipDirection": "水豚",
+  "rationale": "安静陪伴、不催促，与 WorkMemo 安静记录工作过程的定位相连。",
+  "palette": {
+    "body": "#E7B176",
+    "muzzleAndEyes": "#65443A",
+    "background": "#9B8BAF"
+  },
+  "candidates": [
+    {
+      "label": "C1",
+      "assignedCorner": "lower-left",
+      "path": "E:\\WorkMemo\\docs\\assets\\brand-candidates\\2026-10-29\\C1-capybara.png",
+      "originalPath": "C:\\Users\\Administrator\\.codex\\generated_images\\01a1858a-201e-7303-be95-c23a6fc3fc79\\exec-91e9c805-6afe-4105-b2fb-5b3738aa25ad.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Create one complete full-bleed 1:1 square image, approximately 1536 × 1536 in native resolution.\nBackground: fill the entire square with solid softly muted purple #9B8BAF. Keep this purple visible in every open area and in the corners not occupied by the character; the lower-left emergence corner must be occupied by the character.\nSubject: place one extremely simplified, cute, endearing baby capybara IP character on the background, reduced to one soft rounded continuous silhouette and one defining feature: a broad rounded muzzle. Give it a peaceful, friendly expression suggesting quiet companionship.\nComplexity: use only 4–7 large basic shapes and at most two broad internal color regions. Use two simple eyes and add one tiny mouth only if it helps the expression. Remove every nonessential line, outline, anatomical detail, texture, and decoration. Keep the character readable at 32 × 32.\nColor behavior: use exactly three semantic colors in the complete image: warm apricot #E7B176 for the continuous main body and head, deep brown #65443A for one broad rounded muzzle region and the two eyes, plus the purple background #9B8BAF. Reuse these two character colors for all facial marks. Keep the character, facial marks, and background clearly separated.\nComposition: keep the character upright and emerging from the lower-left, filling about 85–95% of the square so it remains visually dominant. Cropping at the bottom or left side is welcome when it strengthens the corner emergence. Preserve both rounded ears clearly within the visible composition. Never center or bottom-center the character.\nStyle: make simplification, cuteness, and lovable baby-like appeal the strongest qualities. Use large soft forms, compact proportions, a thick oval head-body silhouette, thick rounded contours, and an ultra-clean graphic treatment. Prefer one clear shape over several explanatory details. Add an extremely, extremely subtle, almost imperceptible sense of depth through a barely-there neo-skeuomorphic treatment.\nFinish: show only the character on the full-canvas background, with clean surfaces and normal square outer corners.\nConstraints: Use no text or watermark. Add no borders, frames, cards, or presentation masks. Include one character only, with no extra subjects, props, clocks, or scenery. Use no fragile lines, sharp tips, unnecessary outlines, tiny details, or decorative marks. Add no photorealistic material, dramatic bevel, glossy hotspot, deep occlusion, extrusion, strong three-dimensional rendering, or external cast shadow. Keep the background solid and uniform, with no texture, vignette, or lighting variation."
+    },
+    {
+      "label": "C2",
+      "assignedCorner": "lower-right",
+      "path": "E:\\WorkMemo\\docs\\assets\\brand-candidates\\2026-10-29\\C2-capybara.png",
+      "originalPath": "C:\\Users\\Administrator\\.codex\\generated_images\\01a1858a-201e-7303-be95-c23a6fc3fc79\\exec-12d88899-9ba2-4cad-b90b-01bf23815304.png",
+      "width": 1254,
+      "height": 1254,
+      "prompt": "Create one complete full-bleed 1:1 square image, approximately 1536 × 1536 in native resolution.\nBackground: fill the entire square with solid softly muted purple #9B8BAF. Keep this purple visible in every open area and in the corners not occupied by the character; the lower-right emergence corner must be occupied by the character.\nSubject: place one extremely simplified, cute, endearing baby capybara IP character on the background, reduced to one soft rounded continuous silhouette and one defining feature: a broad rounded muzzle. Give it a peaceful, friendly expression suggesting quiet companionship.\nComplexity: use only 4–7 large basic shapes and at most two broad internal color regions. Use two simple eyes and add one tiny mouth only if it helps the expression. Remove every nonessential line, outline, anatomical detail, texture, and decoration. Keep the character readable at 32 × 32.\nColor behavior: use exactly three semantic colors in the complete image: warm apricot #E7B176 for the continuous main body and head, deep brown #65443A for one broad rounded muzzle region and the two eyes, plus the purple background #9B8BAF. Reuse these two character colors for all facial marks. Keep the character, facial marks, and background clearly separated.\nComposition: keep the character upright and emerging from the lower-right, filling about 85–95% of the square so it remains visually dominant. Cropping at the bottom or right side is welcome when it strengthens the corner emergence. Preserve both rounded ears clearly within the visible composition. Never center or bottom-center the character.\nStyle: make simplification, cuteness, and lovable baby-like appeal the strongest qualities. Use large soft forms, compact proportions, a thick oval head-body silhouette, thick rounded contours, and an ultra-clean graphic treatment. Prefer one clear shape over several explanatory details. Add an extremely, extremely subtle, almost imperceptible sense of depth through a barely-there neo-skeuomorphic treatment.\nFinish: show only the character on the full-canvas background, with clean surfaces and normal square outer corners.\nConstraints: Use no text or watermark. Add no borders, frames, cards, or presentation masks. Include one character only, with no extra subjects, props, clocks, or scenery. Use no fragile lines, sharp tips, unnecessary outlines, tiny details, or decorative marks. Add no photorealistic material, dramatic bevel, glossy hotspot, deep occlusion, extrusion, strong three-dimensional rendering, or external cast shadow. Keep the background solid and uniform, with no texture, vignette, or lighting variation."
+    }
+  ],
+  "generationPolicy": "One independent generation per candidate; both preserved as returned without post-processing, filtering, or retries."
+}
