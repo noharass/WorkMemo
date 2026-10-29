@@ -6,9 +6,16 @@
 
 版本统一为 0.2.4，提供中文 NSIS 安装器、完整免安装 ZIP、完整第三方许可及 SHA256。旧版 Release 与本机程序不覆盖、不删除，数据格式保持 schema 9。
 
-本地正式构建、包内文件与摘要核对已完成；公开上传进行中，公开回执在完成后追加。本地目录：`E:\WorkMemo\artifacts\0.2.4`。
+本地正式构建、包内文件与摘要核对已完成，GitHub Release 已公开为 Latest。四项资产的服务端大小及 SHA256 一致，匿名重新下载后摘要再次全部一致。本地目录：`E:\WorkMemo\artifacts\0.2.4`。
 
-计划发布入口：[WorkMemo v0.2.4](https://github.com/noharass/WorkMemo/releases/tag/v0.2.4)。完整功能变化见[网页优化](WEB-UI-UPDATE.md)与[顶部空间规划](TITLEBAR-UPDATE.md)，其中「尚未发行」是对应源码阶段的历史状态，本次确认已授权进入成品发布。
+发布入口：[WorkMemo v0.2.4](https://github.com/noharass/WorkMemo/releases/tag/v0.2.4)。完整功能变化见[网页优化](WEB-UI-UPDATE.md)与[顶部空间规划](TITLEBAR-UPDATE.md)，其中「尚未发行」是对应源码阶段的历史状态，本次确认已授权进入成品发布。
+
+## 公开发布回执
+
+- Release ID：`427613324`；服务端发布时间：2026-10-29 16:27:46（Asia/Shanghai）。`draft=false`、`prerelease=false`，匿名 Latest 查询返回 v0.2.4。
+- 构建源码与轻量标签 `v0.2.4`：`3796547f8e582120e41cafb913caf9cec8dc1914`；推送后已与远程 main、标签比较一致。发布后文档回执另行提交，构建标签保持在该提交。
+- [中文 x64 安装器](https://github.com/noharass/WorkMemo/releases/download/v0.2.4/WorkMemo_0.2.4_x64-setup.exe)、[完整 x64 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.2.4/WorkMemo_0.2.4_windows_x64.zip)、[第三方许可](https://github.com/noharass/WorkMemo/releases/download/v0.2.4/THIRD-PARTY-LICENSES.txt)、[SHA256 校验表](https://github.com/noharass/WorkMemo/releases/download/v0.2.4/SHA256SUMS.txt) 已全部公开；四项公开下载地址均实际匿名读取并核对字节数与 SHA256。
+- 本地详细回执：`E:\WorkMemo\artifacts\0.2.4\qa\RELEASE-RECEIPT.json`；匿名下载副本：`E:\WorkMemo\artifacts\0.2.4\qa\public-downloads`。这些内容不加入 Git。
 
 ## 本版内容
 
@@ -93,6 +100,20 @@ git push origin main
 git tag v0.2.4
 git push origin refs/tags/v0.2.4
 git rev-parse HEAD
+git ls-remote origin refs/heads/main refs/tags/v0.2.4
+git status --short
+```
+
+公开回执补齐后，另行执行以下命令同步文档；不移动构建标签：
+
+```powershell
+git add -- docs/RELEASE-0.2.4.md docs/PHASE-8.md
+git diff --cached --check
+git commit -m "docs: record verified v0.2.4 public release"
+git push origin main
+git fetch origin
+git rev-parse HEAD
+git rev-parse origin/main
 git ls-remote origin refs/heads/main refs/tags/v0.2.4
 git status --short
 ```
