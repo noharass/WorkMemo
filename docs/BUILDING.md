@@ -32,6 +32,23 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml
 
 测试与打包按顺序执行；不要让不同配置的 Cargo 构建并行复用 target 目录。特别是复制隔离可执行文件前，要核对其编译标识，避免把另一构建产生的文件作为隔离程序。
 
+### 网页组件与隔离回归（源码更新，尚未发行）
+
+网页通过共享 `src/ui/UiProvider.tsx` 使用 Ant Design 6.6.8，保留桌面原有控件和样式。不要在网页继续手写标准按钮、选择框、表格或弹层；主题通过官方 token、语义样式及共享封装配置。未引入全局 reset，图表继续使用 ECharts。
+
+先在一个 PowerShell 窗口运行 `npm.cmd run dev -- --host 127.0.0.1`，再在另一个窗口运行：
+
+```powershell
+# Playwright 是验收工具，不是应用运行依赖；填写本机已有的 playwright/index.mjs。
+$env:WORKMEMO_PLAYWRIGHT = 'C:\path\to\playwright\index.mjs'
+npm.cmd run test:web
+node scripts/verify-ui-022.mjs --desktop-only
+node scripts/verify-v023-phase1.mjs
+node scripts/verify-multi-url.mjs
+```
+
+这些浏览器回归使用隔离 HTTP／IPC 数据，不对真实任务发送操作。新版网页回归以 `test:web` 为准；旧网页脚本中的原生 select、侧抽屉及清空统计的断言对应历史布局，不能当作新版的验收入口。新截图和结果写入 `artifacts/web-ui/qa`；CSS 缩放和模拟 IPC 不等于 Windows 原生透明、系统 DPI 或实际浏览器扩展验收。完整说明见 [WEB-UI-UPDATE.md](WEB-UI-UPDATE.md)。
+
 ## 构建 v0.2.3 成品
 
 ```powershell

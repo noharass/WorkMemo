@@ -104,9 +104,10 @@ try {
   const dashboard=await context.newPage();
   const dashboardRecord={id:1,category:'开发',quantity:0,remark:'isolated rename fixture',start_time:Date.now()-10000,end_time:Date.now(),duration_ms:10000,duration_seconds:10,status:'FINISHED',is_paused:true,recovery_pending:false,settlement_status:'COMPLETE',source:'MANUAL_START',pause_reason:null,confirmed_end_time:Date.now(),last_input_time:null,end_reason:'MANUAL',legacy_duration_ms:0,revision:0,control_mode:'MANUAL'};
   const queries=[];
+  const dashboardNames=await settings.evaluate(()=>JSON.parse(localStorage.getItem('qa-names')));
   await dashboard.route('**/api/**',async route=>{
     const endpoint=new URL(route.request().url()).pathname.split('/').at(-1);
-    if(endpoint==='meta')return route.fulfill({json:{version:'0.2.2',active:null,category_names:await dashboard.evaluate(()=>JSON.parse(localStorage.getItem('qa-names')))}});
+    if(endpoint==='meta')return route.fulfill({json:{version:'0.2.2',active:null,category_names:dashboardNames}});
     if(endpoint==='detail')return route.fulfill({json:{record:dashboardRecord,segments:[],revisions:[]}});
     if(endpoint==='query'){
       queries.push(JSON.parse(route.request().postData()));
@@ -115,16 +116,19 @@ try {
     return route.fulfill({json:{saved:true}});
   });
   await dashboard.goto('http://127.0.0.1:1420/dashboard#token=isolated-rename-fixture');
-  await dashboard.locator('td .work-badge').filter({hasText:'第一窗口更新'}).waitFor();
-  await dashboard.locator('select').filter({has:dashboard.locator('option[value="开发"]')}).first().selectOption('开发');
+  await dashboard.locator('td .work-badge').filter({hasText:'第一窗口更新'}).first().waitFor();
+  await dashboard.getByRole('combobox',{name:'筛选工作类别',exact:true}).click();
+  await dashboard.locator('.wm-select-dropdown:visible').getByText('第一窗口更新',{exact:true}).last().click();
   await dashboard.getByRole('button',{name:'应用筛选'}).click();
   await dashboard.waitForTimeout(100);
   assert.equal(queries.at(-1).category,'开发');
   await dashboard.getByRole('button',{name:'详情',exact:true}).click();
   await dashboard.locator('.dc-record-summary .work-badge').filter({hasText:'第一窗口更新'}).waitFor();
   await dashboard.getByRole('button',{name:'编辑工作量',exact:true}).click();
-  assert.equal(await dashboard.locator('#dc-editor select').inputValue(),'开发');
-  assert.equal(await dashboard.locator('#dc-editor option[value="开发"]').textContent(),'第一窗口更新');
+  await dashboard.locator('#dc-editor .wm-select-content').filter({hasText:'第一窗口更新'}).waitFor();
+  await dashboard.getByRole('combobox',{name:'工作类别',exact:true}).click();
+  await dashboard.locator('.wm-select-dropdown:visible').getByText('第一窗口更新',{exact:true}).last().waitFor();
+  await dashboard.keyboard.press('Escape');
   assert.deepEqual(errors,[]);
   await writeFile(new URL('phase1-ui-result.json',output),JSON.stringify({renameSave:true,failedSavePreservesInput:true,multiWindowConflict:true,explicitReload:true,stableSelectIdentity:true,monitorGroupName:true,idlePauseSetting:true,dashboardNameAndStableFilter:true,widths:[390,780],pageErrors:errors},null,2));
   console.log('v0.2.3 phase 1 UI regressions passed; isolated IPC fixtures only.');

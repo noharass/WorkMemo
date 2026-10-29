@@ -15,6 +15,7 @@
     "test:workflow": "node --test tests/workflow.test.mjs",
     "test:history": "node --test tests/history.test.mjs",
     "test": "node --test tests/*.test.mjs",
+    "test:web": "node scripts/verify-web-ui.mjs",
     "icons": "node scripts/prepare-icon.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
@@ -23,6 +24,8 @@
     "@ant-design/icons": "^6.3.4",
     "@ant-design/icons-svg": "^4.6.0",
     "@tauri-apps/api": "^2",
+    "antd": "6.6.8",
+    "dayjs": "1.11.13",
     "echarts": "6.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

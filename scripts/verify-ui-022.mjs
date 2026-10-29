@@ -17,6 +17,9 @@ const graphDays=Array.from({length:90},(_,i)=>{
   const date=new Date();date.setDate(date.getDate()-89+i);
   return {date:date.toLocaleDateString('sv-SE'),duration_ms:(i%8)*1800000,quantity:i%5,records:i%3};
 });
+// The Ant Design web surface has its own current regression in verify-web-ui.mjs.
+// Keep the historical desktop fixtures independently runnable.
+if (!process.argv.includes('--desktop-only')) {
 let saves=0, failure=null;
 await page.route('**/api/**',async route=>{
   const name=new URL(route.request().url()).pathname.split('/').at(-1);
@@ -83,6 +86,7 @@ assert.deepEqual(await page.evaluate(()=>window.qaWindowErrors),[]);
 await writeFile(new URL('browser-result.json',output),JSON.stringify({enterEditNoSubmit:true,focus:true,zeroSave:true,failurePreservesInput:true,revisionConflictPreservesInput:true,periodReportLayout:true,widths:[390,800,1024,1280,1440,1600,1920],cssZoom:1.25,pageErrors:errors},null,2));
 await writeFile(new URL('overview-layout-result.json',output),JSON.stringify(layoutCases,null,2));
 if(process.argv.includes('--dashboard-only')) { await browser.close();console.log('Overview report layout and editor regressions passed; HTTP fixtures only.');process.exit(0); }
+}
 // Mock IPC only in a fresh browser page. No native work commands are sent.
 const island=await browser.newPage({viewport:{width:320,height:56}});
 await island.addInitScript(({record})=>{
