@@ -6,6 +6,8 @@ use serde_json::{Value, json};
 #[derive(Debug, Deserialize, Default)]
 #[serde(default, deny_unknown_fields)]
 pub struct DashboardQuery {
+    pub period: String,
+    pub anchor_date: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
     pub category: Option<String>,
@@ -13,6 +15,9 @@ pub struct DashboardQuery {
     pub status: String,
     pub page: u32,
 }
+#[path = "report_periods.rs"]
+mod periods;
+
 fn tagged(row: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
     let record = read_record(row)?;
     let mut value = serde_json::to_value(record)
@@ -34,20 +39,13 @@ impl Store {
         self.connection.prepare("SELECT category,COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),SUM(settlement_status!='COMPLETE'),COUNT(*),SUM(settlement_status='COMPLETE') FROM work_records WHERE is_demo=0 AND date(start_time/1000,'unixepoch','localtime')=date('now','localtime') GROUP BY category ORDER BY MIN(id)").map_err(db_error)?
             .query_map([],|r|Ok(TodayWorkload{category:r.get(0)?,quantity:r.get(1)?,pending:r.get(2)?,records:r.get(3)?,complete:r.get(4)?})).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)
     }
-    pub fn dashboard_query(&self, q: DashboardQuery) -> Result<Value> {
-        if q.start_date
-            .as_ref()
-            .is_some_and(|v| !super::history::valid_date(v))
-            || q.end_date
-                .as_ref()
-                .is_some_and(|v| !super::history::valid_date(v))
-            || matches!((&q.start_date,&q.end_date),(Some(a),Some(b)) if a>b)
-        {
-            return Err("请选择有效的日期范围。".into());
-        }
+    pub fn dashboard_query(&self, mut q: DashboardQuery) -> Result<Value> {
+        let mut range = periods::ReportRange::resolve(&self.connection, &q)?;
+        q.start_date = range.start_date.clone();
+        q.end_date = range.end_date.clone();
         if q.category
             .as_ref()
-            .is_some_and(|s| !["评测", "质检", "开发", "文档"].contains(&s.as_str()))
+            .is_some_and(|s| !crate::presentation::CATEGORIES.contains(&s.as_str()))
         {
             return Err("工作类别无效。".into());
         }
@@ -60,43 +58,54 @@ impl Store {
         let tx = self.connection.unchecked_transaction().map_err(db_error)?;
         let filter = "(?1='all' OR is_demo=CASE WHEN ?1='demo' THEN 1 ELSE 0 END) AND (?2 IS NULL OR date(start_time/1000,'unixepoch','localtime')>=?2) AND (?3 IS NULL OR date(start_time/1000,'unixepoch','localtime')<=?3) AND (?4 IS NULL OR category=?4) AND (?5='' OR ?5='all' OR (?5='pending' AND settlement_status='PENDING') OR (?5='complete' AND settlement_status='COMPLETE') OR (?5='working' AND status='WORKING'))";
         let args = params![scope, q.start_date, q.end_date, q.category, q.status];
-        let sql = format!(
-            "SELECT COUNT(*),COALESCE(SUM(CASE WHEN status='FINISHED' THEN duration_ms ELSE 0 END),0),COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),COALESCE(SUM(settlement_status='PENDING'),0),MIN(start_time),MAX(start_time) FROM work_records WHERE {filter}"
-        );
-        let (count, duration, quantity, pending, first, last): (
-            i64,
-            i64,
-            f64,
-            i64,
-            Option<i64>,
-            Option<i64>,
-        ) = self
+        let record_count: i64 = self
             .connection
-            .query_row(&sql, args, |r| {
-                Ok((
-                    r.get(0)?,
-                    r.get(1)?,
-                    r.get(2)?,
-                    r.get(3)?,
-                    r.get(4)?,
-                    r.get(5)?,
-                ))
-            })
+            .query_row(
+                &format!("SELECT COUNT(*) FROM work_records WHERE {filter}"),
+                args,
+                |r| r.get(0),
+            )
             .map_err(db_error)?;
-        let months = first.zip(last).is_some_and(|(a, b)| b - a > 120 * 86400000);
-        let group = if months {
-            "strftime('%Y-%m',start_time/1000,'unixepoch','localtime')"
-        } else {
-            "date(start_time/1000,'unixepoch','localtime')"
+        // Report aggregates always describe ended work, independently of list paging.
+        let report_filter = format!("{filter} AND status='FINISHED'");
+        let (count,duration,quantity,pending,first,last):(i64,i64,f64,i64,Option<i64>,Option<i64>) = self.connection.query_row(
+            &format!("SELECT COUNT(*),COALESCE(SUM(duration_ms),0),COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),COALESCE(SUM(settlement_status='PENDING'),0),MIN(start_time),MAX(start_time) FROM work_records WHERE {report_filter}"),args,
+            |r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?))
+        ).map_err(db_error)?;
+        let months = range.period == "custom"
+            && first.zip(last).is_some_and(|(a, b)| b - a > 120 * 86400000);
+        if months {
+            range.trend_unit = "month".into();
+        }
+        let group = match range.trend_unit.as_str() {
+            "hour" => "strftime('%H:00',start_time/1000,'unixepoch','localtime')",
+            "month" => "strftime('%Y-%m',start_time/1000,'unixepoch','localtime')",
+            _ => "date(start_time/1000,'unixepoch','localtime')",
         };
-        let trend:Vec<Value>=self.connection.prepare(&format!("SELECT {group} AS period,COALESCE(SUM(CASE WHEN status='FINISHED' THEN duration_ms ELSE 0 END),0),COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),COUNT(*) FROM work_records WHERE {filter} GROUP BY period ORDER BY period")).map_err(db_error)?.query_map(args,|r|Ok(json!({"date":r.get::<_,String>(0)?,"duration_ms":r.get::<_,i64>(1)?,"quantity":r.get::<_,f64>(2)?,"records":r.get::<_,i64>(3)?}))).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)?;
-        let categories:Vec<Value>=self.connection.prepare(&format!("SELECT category,COALESCE(SUM(CASE WHEN status='FINISHED' THEN duration_ms ELSE 0 END),0),COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),COUNT(*) FROM work_records WHERE {filter} GROUP BY category")).map_err(db_error)?.query_map(args,|r|Ok(json!({"category":r.get::<_,String>(0)?,"duration_ms":r.get::<_,i64>(1)?,"quantity":r.get::<_,f64>(2)?,"records":r.get::<_,i64>(3)?}))).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)?;
-        let calendar:Vec<Value>=self.connection.prepare(&format!("SELECT date(start_time/1000,'unixepoch','localtime') AS day,SUM(CASE WHEN status='FINISHED' THEN duration_ms ELSE 0 END) FROM work_records WHERE {filter} AND date(start_time/1000,'unixepoch','localtime')>=date(COALESCE(?3,date('now','localtime')),'-89 days') GROUP BY day ORDER BY day")).map_err(db_error)?.query_map(args,|r|Ok(json!([r.get::<_,String>(0)?,r.get::<_,i64>(1)?]))).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)?;
-        let page = i64::from(q.page.max(1)).min(((count + 49) / 50).max(1));
+        let mut trend:Vec<Value>=self.connection.prepare(&format!("SELECT {group} AS period,SUM(duration_ms),COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),COUNT(*) FROM work_records WHERE {report_filter} GROUP BY period ORDER BY period")).map_err(db_error)?.query_map(args,|r|Ok(json!({"date":r.get::<_,String>(0)?,"duration_ms":r.get::<_,i64>(1)?,"quantity":r.get::<_,f64>(2)?,"records":r.get::<_,i64>(3)?}))).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)?;
+        if range.period != "custom" {
+            let mut by_date: std::collections::BTreeMap<String, Value> = trend
+                .into_iter()
+                .map(|v| (v["date"].as_str().unwrap().to_string(), v))
+                .collect();
+            trend = range
+                .buckets(&self.connection)?
+                .into_iter()
+                .map(|date| {
+                    by_date.remove(&date).unwrap_or_else(
+                        || json!({"date":date,"duration_ms":0,"quantity":0,"records":0}),
+                    )
+                })
+                .collect();
+        }
+        let aggregated:Vec<Value>=self.connection.prepare(&format!("SELECT category,SUM(duration_ms),COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),COUNT(*),SUM(settlement_status='PENDING'),SUM(settlement_status='COMPLETE') FROM work_records WHERE {report_filter} GROUP BY category")).map_err(db_error)?.query_map(args,|r|Ok(json!({"category":r.get::<_,String>(0)?,"duration_ms":r.get::<_,i64>(1)?,"quantity":r.get::<_,f64>(2)?,"records":r.get::<_,i64>(3)?,"pending":r.get::<_,i64>(4)?,"complete":r.get::<_,i64>(5)?}))).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)?;
+        let categories:Vec<Value>=crate::presentation::CATEGORIES.into_iter().filter(|key|q.category.as_deref().is_none_or(|selected|selected==*key)).map(|key|aggregated.iter().find(|v|v["category"]==key).cloned().unwrap_or_else(||json!({"category":key,"duration_ms":0,"quantity":0,"records":0,"pending":0,"complete":0}))).collect();
+        let calendar:Vec<Value>=self.connection.prepare(&format!("SELECT date(start_time/1000,'unixepoch','localtime') AS day,SUM(duration_ms) FROM work_records WHERE {report_filter} AND date(start_time/1000,'unixepoch','localtime')>=date(COALESCE(?3,date('now','localtime')),'-89 days') GROUP BY day ORDER BY day")).map_err(db_error)?.query_map(args,|r|Ok(json!([r.get::<_,String>(0)?,r.get::<_,i64>(1)?]))).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)?;
+        let page = i64::from(q.page.max(1)).min(((record_count + 49) / 50).max(1));
         let rows:Vec<Value>=self.connection.prepare(&format!("SELECT {COLUMNS},is_demo,demo_batch FROM work_records WHERE {filter} ORDER BY start_time DESC,id DESC LIMIT 50 OFFSET ?6")).map_err(db_error)?.query_map(params![scope,q.start_date,q.end_date,q.category,q.status,(page-1)*50],tagged).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)?;
         tx.commit().map_err(db_error)?;
         Ok(
-            json!({"totals":{"records":count,"duration_ms":duration,"quantity":quantity,"pending":pending},"trend":trend,"monthly":months,"categories":categories,"calendar":calendar,"records":rows,"page":page,"pages":((count+49)/50).max(1),"scope":scope}),
+            json!({"range":range,"totals":{"records":count,"duration_ms":duration,"quantity":quantity,"pending":pending},"record_count":record_count,"trend":trend,"monthly":months,"categories":categories,"calendar":calendar,"records":rows,"page":page,"pages":((record_count+49)/50).max(1),"scope":scope}),
         )
     }
     pub fn dashboard_detail(&self, id: i64) -> Result<Value> {
@@ -257,7 +266,8 @@ mod tests {
         assert_eq!(demo["totals"]["records"], n);
         assert!(demo["totals"]["pending"].as_i64().unwrap() > 0);
         let real = s.dashboard_query(DashboardQuery::default()).unwrap();
-        assert_eq!(real["totals"]["records"], 1);
+        assert_eq!(real["totals"]["records"], 0);
+        assert_eq!(real["record_count"], 1);
         assert_eq!(real["totals"]["quantity"], 0.0);
         let history = s
             .query_history(super::super::HistoryQuery {
@@ -362,3 +372,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "report_tests.rs"]
+mod report_tests;

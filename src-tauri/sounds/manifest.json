@@ -1,0 +1,100 @@
+{
+  "source": "https://kenney.nl/assets/interface-sounds",
+  "license": "CC0-1.0",
+  "sample_rate": 22050,
+  "channels": 1,
+  "bits": 16,
+  "processing": "trim silence; resample; soft lowpass 2800Hz; normalize gain; fade in 5ms/out 40ms; cap 850ms",
+  "sounds": [
+    {
+      "theme": "soft",
+      "cue": "start",
+      "source": "source/confirmation_002.ogg",
+      "file": "start.wav",
+      "duration_ms": 539,
+      "sha256": "b2b95674cf0c61ff817ad9a19e140c8bae097ae78a3ae3dabeedf1a1a5c9a6a3",
+      "source_sha256": "33b17a9a9a2397c62b285c52c33a907fdffb476909c99e42dde603f6a7a8b12c"
+    },
+    {
+      "theme": "soft",
+      "cue": "pause",
+      "source": "source/minimize_001.ogg",
+      "file": "pause.wav",
+      "duration_ms": 258,
+      "sha256": "42ae833612216eb4156daa773554f49d5672cfb5061ceb9238e64abcf5e01043",
+      "source_sha256": "8481912bc7fa5828924a00ef15b6cd613b994956e0817bd3122065c9b2896d2d"
+    },
+    {
+      "theme": "soft",
+      "cue": "resume",
+      "source": "source/maximize_001.ogg",
+      "file": "resume.wav",
+      "duration_ms": 258,
+      "sha256": "cd910613dbe73a1a578a37dd14228c195309b8b4e7ef827ffd9678e164030c06",
+      "source_sha256": "fd3e75e1de2f2fda90aceeacaeb0427ac8bddd3b07a6ce2a8f9ba923df3771f9"
+    },
+    {
+      "theme": "soft",
+      "cue": "end",
+      "source": "source/confirmation_001.ogg",
+      "file": "end.wav",
+      "duration_ms": 290,
+      "sha256": "80f847ad6e60ecc58a09fd9d88a645c729d7c92c31ce7510438c48848c5d6a98",
+      "source_sha256": "063564703b6094d70718a3e787a55cc9141611e4ecd6b6637f8828f79b4a8c3a"
+    },
+    {
+      "theme": "soft",
+      "cue": "warning",
+      "source": "source/question_001.ogg",
+      "file": "warning.wav",
+      "duration_ms": 491,
+      "sha256": "83efbfa8dd75a0e082b4d07a4b85725f7c342e37db07194322d12b1ac2ea92ad",
+      "source_sha256": "abb8f9e4eb2071491b0b15f84ee302386b1847609310c1b000ae174639a6cc5a"
+    },
+    {
+      "theme": "crisp",
+      "cue": "start",
+      "source": "source/glass_001.ogg",
+      "file": "crisp/start.wav",
+      "duration_ms": 276,
+      "sha256": "33d9332f89076fd1832900e42fe17069a732d2bf31a562deadc76dce7917eb99",
+      "source_sha256": "183eebee20eb0a532b0b85104d139cbf2673eb66d95c3cc733ac9ea98362e7e8"
+    },
+    {
+      "theme": "crisp",
+      "cue": "pause",
+      "source": "source/back_002.ogg",
+      "file": "crisp/pause.wav",
+      "duration_ms": 68,
+      "sha256": "1934a71d3d71dc25273e62d6754e37bb8037a019462ebe13523f7a89417ee7c0",
+      "source_sha256": "61581c58194e3f19f531072edabbc344204c7e0a2887b8ededce4357bcf09195"
+    },
+    {
+      "theme": "crisp",
+      "cue": "resume",
+      "source": "source/select_002.ogg",
+      "file": "crisp/resume.wav",
+      "duration_ms": 40,
+      "sha256": "6cce61ab41c1a230a1bce8f06d69f336c626dfa97a71f490160b6b31f26fb7bb",
+      "source_sha256": "4cc6ac5341b9b2c86fef80c347de028e9ab9f2e037586ac7d9fa59a403a1c012"
+    },
+    {
+      "theme": "crisp",
+      "cue": "end",
+      "source": "source/confirmation_004.ogg",
+      "file": "crisp/end.wav",
+      "duration_ms": 490,
+      "sha256": "ecda546a157f298d52ab3105a682c63b35879d00fea21517b3c0955b2709b450",
+      "source_sha256": "568967a3d9f8a8f6af54ea01729c4882284308f2a27d78c07ffd7ee0d6951661"
+    },
+    {
+      "theme": "crisp",
+      "cue": "warning",
+      "source": "source/question_002.ogg",
+      "file": "crisp/warning.wav",
+      "duration_ms": 333,
+      "sha256": "8fffe9b384395bb039ab29ad60dccdba8b3129c6a2613f50d91768521224bdf7",
+      "source_sha256": "46056f10c70dda860e93bd27b66f4d33c0b7154eff28def06471b50028efa5b3"
+    }
+  ]
+}

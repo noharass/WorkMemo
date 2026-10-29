@@ -145,6 +145,7 @@ export function LayoutPanel() {
         input: {
           density: current.density,
           sound_enabled: current.sound_enabled,
+          sound_theme: current.sound_theme,
           font_size: current.font_size,
           font_weight: current.font_weight,
           line_spacing: current.line_spacing,
@@ -173,7 +174,7 @@ export function LayoutPanel() {
   }
   return (
     <Surface
-      title="布局与字体"
+      title="布局、字体与音效"
       actions={
         <button
           disabled={busy || !layout.loaded || !isTauri()}
@@ -187,7 +188,13 @@ export function LayoutPanel() {
     >
       <div className="layout-form">
         <label className="monitor-toggle"><input type="checkbox" checked={current.sound_enabled} disabled={busy} onChange={e => field("sound_enabled", e.target.checked)}/>关键状态提示音</label>
-        <button type="button" className="secondary" disabled={!isTauri() || busy} onClick={() => { void invoke("preview_sound").catch(e => setError(String(e))); }}>试听提示音</button>
+        <label>提示音套装<select aria-label="提示音套装" value={current.sound_theme??"soft"} disabled={busy} onChange={event=>field("sound_theme",event.target.value as LayoutSettings["sound_theme"])}>
+          <option value="soft">柔和轻提示</option><option value="crisp">清脆短提示</option>
+        </select></label>
+        <div className="sound-preview-buttons" aria-label="分别试听提示音">
+          {([["start","开始"],["pause","暂停"],["resume","恢复"],["end","结束"],["warning","空闲提醒"]] as const).map(([cue,label])=><button key={cue} type="button" className="secondary" disabled={!isTauri()||busy} onClick={()=>{void invoke("preview_sound",{theme:current.sound_theme??"soft",cue}).catch(e=>setError(String(e)));}}>试听{label}</button>)}
+        </div>
+        <p className="hint">试听当前选择，保存布局后应用。试听不受提示音开关限制；日常只在状态变化时响一次。</p>
         <label>
           界面模式
           <select

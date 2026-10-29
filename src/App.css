@@ -422,3 +422,5 @@ button.nav-button:hover:not(:disabled),button.text-button:hover:not(:disabled),b
 .monitor-work-urls { display:grid; gap:10px; padding:0 12px 12px; min-width:0; }
 
 .category-names-editor { display: grid; gap: 12px; margin-block: 16px; padding-block: 16px; border-block: 1px solid var(--border); }
+
+.sound-preview-buttons { display: flex; flex-wrap: wrap; gap: 8px; }

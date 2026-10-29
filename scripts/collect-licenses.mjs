@@ -44,6 +44,8 @@ for (const [path, entry] of Object.entries(lock.packages).filter(([path, entry])
   const pkg = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'));
   collect(`npm ${pkg.name} ${entry.version}`, directory, pkg.license, pkg.repository, supplemental[`${pkg.name}@${entry.version}`]);
 }
+const audioManifest=JSON.parse(readFileSync(join(root,'src-tauri','sounds','manifest.json'),'utf8'));
+sections.push('=== Audio: Kenney Interface Sounds 1.0 ===','Declared license: CC0-1.0',`Source: ${audioManifest.source}`,`Processing: ${audioManifest.processing}`, ...audioManifest.sounds.map(item=>`${item.theme}/${item.cue}: ${item.source} -> ${item.file}`),readFileSync(join(root,'src-tauri','sounds','source','LICENSE.txt'),'utf8'),'');
 mkdirSync(dirname(destination), { recursive: true });
 const output = `${sections.join('\n')}\n`;
 if (!existsSync(destination) || readFileSync(destination, 'utf8') !== output) writeFileSync(destination, output, 'utf8');

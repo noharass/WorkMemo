@@ -503,15 +503,16 @@ fn observe_sound(store: &mut Store, enabled: bool) {
         let cues = store
             .sounds
             .observe(state, store.monitor.status.idle_warning);
-        if enabled
-            && store
+        if enabled {
+            if let Some(layout) = store
                 .sound_config
                 .as_ref()
                 .and_then(|p| crate::windows::load(p).ok())
-                .is_some_and(|layout| layout.sound_enabled)
-        {
-            for cue in cues {
-                let _ = crate::sound::play(cue);
+                .filter(|layout| layout.sound_enabled)
+            {
+                if let Some(cue) = cues.first() {
+                    let _ = crate::sound::play(*cue, layout.sound_theme);
+                }
             }
         }
     }

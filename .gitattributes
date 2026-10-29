@@ -7,3 +7,8 @@ scripts/third-party-licenses/*.txt -text -whitespace
 *.png binary
 *.ico binary
 *.icns binary
+
+# Preserve the original CC0 audio license from the Kenney archive.
+src-tauri/sounds/source/LICENSE.txt -text -whitespace
+*.ogg binary
+*.wav binary

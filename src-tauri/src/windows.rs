@@ -15,6 +15,7 @@ pub struct Layout {
     pub density: String,
     pub revision: u64,
     pub sound_enabled: bool,
+    pub sound_theme: crate::sound::SoundTheme,
     pub font_size: u8,
     pub font_weight: u16,
     pub line_spacing: String,
@@ -26,6 +27,7 @@ impl Default for Layout {
             density: "comfortable".into(),
             revision: 0,
             sound_enabled: true,
+            sound_theme: crate::sound::SoundTheme::Soft,
             font_size: 14,
             font_weight: 400,
             line_spacing: "standard".into(),
@@ -320,6 +322,7 @@ pub fn set_layout_density(app: tauri::AppHandle, density: String) -> Result<(), 
         LayoutInput {
             density,
             sound_enabled: current.sound_enabled,
+            sound_theme: current.sound_theme,
             font_size: current.font_size,
             font_weight: current.font_weight,
             line_spacing: current.line_spacing,
@@ -401,6 +404,20 @@ mod tests {
         assert!(decode_layout(br#"{"density":"unknown","windows":{}}"#).is_err());
     }
     #[test]
+    fn sound_theme_defaults_persists_and_rejects_invalid_values() {
+        assert_eq!(
+            decode_layout(br#"{"sound_enabled":false}"#)
+                .unwrap()
+                .sound_theme,
+            crate::sound::SoundTheme::Soft
+        );
+        let crisp = decode_layout(br#"{"sound_enabled":false,"sound_theme":"crisp"}"#).unwrap();
+        let loaded = decode_layout(&serde_json::to_vec(&crisp).unwrap()).unwrap();
+        assert_eq!(loaded.sound_theme, crate::sound::SoundTheme::Crisp);
+        assert!(!loaded.sound_enabled);
+        assert!(decode_layout(br#"{"sound_theme":"unknown"}"#).is_err());
+    }
+    #[test]
     fn typography_migrates_defaults_and_validates_saved_options() {
         let legacy = decode_layout(br#"{"density":"compact","windows":{}}"#).unwrap();
         assert!(legacy.sound_enabled);
@@ -443,6 +460,8 @@ pub fn reload(app: &tauri::AppHandle) -> Result<(), String> {
 pub struct LayoutInput {
     pub density: String,
     pub sound_enabled: bool,
+    #[serde(default)]
+    pub sound_theme: crate::sound::SoundTheme,
     pub font_size: u8,
     pub font_weight: u16,
     pub line_spacing: String,
@@ -465,6 +484,7 @@ pub fn set_layout_options(app: tauri::AppHandle, input: LayoutInput) -> Result<L
         let mut next = d.clone();
         next.density = input.density;
         next.sound_enabled = input.sound_enabled;
+        next.sound_theme = input.sound_theme;
         next.font_size = input.font_size;
         next.font_weight = input.font_weight;
         next.line_spacing = input.line_spacing;

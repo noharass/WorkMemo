@@ -627,6 +627,8 @@ fn real_loopback_bridge_rejects_bad_auth_and_replay_before_changing_page_state()
     send(&mut valid, endpoint.token, 1, false);
     rejected(reader.read_line(&mut line));
     assert!(line.is_empty());
+    // Rejecting a replay may already have cleared the disconnected page.
+    // A replay must never publish the supplied focused=false state.
     assert!(
         shared
             .lock()
@@ -636,8 +638,7 @@ fn real_loopback_bridge_rejects_bad_auth_and_replay_before_changing_page_state()
             .monitor
             .page
             .as_ref()
-            .unwrap()
-            .focused
+            .is_none_or(|page| page.focused)
     );
     drop(reader);
     drop(valid);

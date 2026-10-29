@@ -110,7 +110,7 @@ try {
     if(endpoint==='detail')return route.fulfill({json:{record:dashboardRecord,segments:[],revisions:[]}});
     if(endpoint==='query'){
       queries.push(JSON.parse(route.request().postData()));
-      return route.fulfill({json:{totals:{duration_ms:10000,quantity:0,records:1,pending:0},trend:[],monthly:false,categories:[{category:'开发',duration_ms:10000,quantity:0,records:1}],calendar:[],records:[dashboardRecord],page:1,pages:1,scope:'real'}});
+      return route.fulfill({json:{range:{period:'day',anchor_date:'2026-10-29',start_date:'2026-10-29',end_date:'2026-10-29',trend_unit:'hour'},record_count:1,totals:{duration_ms:10000,quantity:0,records:1,pending:0},trend:[],monthly:false,categories:[{category:'开发',duration_ms:10000,quantity:0,records:1,complete:1,pending:0}],calendar:[],records:[dashboardRecord],page:1,pages:1,scope:'real'}});
     }
     return route.fulfill({json:{saved:true}});
   });

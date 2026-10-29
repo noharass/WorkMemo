@@ -4,6 +4,8 @@
 
 <h1 align="center">WorkMemo</h1>
 
+> v0.2.3 源码开发进度：空闲暂停、四类改名、日／周／月分类报表和两套提示音已实现，实际检查及原生验收限制见 [第 2 阶段记录](docs/UPDATE-0.2.3-PHASE-2.md)。Windows 正式成品待下一阶段，下面公开下载仍为 v0.2.2。
+
 <p align="center"><strong>让忙过的一天，有迹可循。</strong></p>
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 

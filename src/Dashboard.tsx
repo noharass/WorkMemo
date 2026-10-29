@@ -1,3 +1,4 @@
+import { shiftPeriod, reportRangeLabel, type ReportPeriod, type ReportRange } from "./reportPeriod";
 import { useCategoryNames, type CategoryNames } from "./categoryNames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { init, use as registerCharts } from "echarts/core";
@@ -73,6 +74,8 @@ registerCharts([
 ]);
 type Row = WorkRecord & { is_demo: boolean; demo_batch: string | null };
 type Query = {
+  period: ReportPeriod;
+  anchor_date: string | null;
   start_date: string | null;
   end_date: string | null;
   category: string | null;
@@ -81,6 +84,8 @@ type Query = {
   page: number;
 };
 type Data = {
+  range: ReportRange;
+  record_count: number;
   totals: {
     duration_ms: number;
     quantity: number;
@@ -95,6 +100,8 @@ type Data = {
   }[];
   monthly: boolean;
   categories: {
+    complete: number;
+    pending: number;
     category: string;
     duration_ms: number;
     quantity: number;
@@ -148,15 +155,11 @@ function daysAgo(days: number) {
   return localDate(d);
 }
 function initialQuery(): Query {
-  const view = entry.get("view");
-  return {
-    start_date: view === "pending" ? null : daysAgo(view === "today" ? 0 : entry.get("scope")==="demo"?89:29),
-    end_date: view === "pending" ? null : daysAgo(0),
-    category: null,
+  const pending = entry.get("view") === "pending";
+  return { period: pending ? "custom" : "day", anchor_date: null,
+    start_date: null, end_date: null, category: null,
     scope: entry.get("scope") === "demo" ? "demo" : "real",
-    status: view === "pending" ? "pending" : "all",
-    page: 1,
-  };
+    status: pending ? "pending" : "all", page: 1 };
 }
 async function api<T>(path: string, body?: unknown): Promise<T> {
   if (!sessionToken)
@@ -254,13 +257,7 @@ function statusName(row: Row) {
 export default function Dashboard() {
   const [query, setQuery] = useState<Query>(initialQuery);
   const [filters, setFilters] = useState<Query>(initialQuery);
-  const [range, setRange] = useState(
-    entry.get("view") === "today"
-      ? "today"
-      : entry.get("view") === "pending"
-        ? "all"
-        : entry.get("scope")==="demo"?"90":"30",
-  );
+  const [auxiliaryOpen, setAuxiliaryOpen] = useState(false);
   const [data, setData] = useState<Data | null>(null);
   const { name, accept: acceptCategoryNames } = useCategoryNames();
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -297,6 +294,8 @@ export default function Dashboard() {
   useEffect(() => {
     let stopped = false;
     let reading = false;
+    setLoading(true);
+    setData(null);
     async function load() {
       if (reading) return;
       reading = true;
@@ -338,17 +337,17 @@ export default function Dashboard() {
       window.removeEventListener("focus", focus);
     };
   }, [query, refresh, acceptCategoryNames]);
-  function selectRange(value: string) {
-    setRange(value);
-    const n = value === "today" ? 0 : Number(value) - 1;
-    const update = {
-      ...filters,
-      start_date: value === "all" ? null : daysAgo(n),
-      end_date: value === "all" ? null : daysAgo(0),
-      page: 1,
-    };
-    setFilters(update);
-    setQuery(update);
+  function applyQuery(update: Query) { setFilters(update); setQuery(update); }
+  function selectPeriod(period: ReportPeriod) {
+    applyQuery({ ...filters, period, anchor_date: period === "custom" ? null : (filters.anchor_date || data?.range.anchor_date || null),
+      start_date: period === "custom" ? data?.range.start_date ?? null : null,
+      end_date: period === "custom" ? data?.range.end_date ?? null : null, page: 1 });
+  }
+  function movePeriod(direction: number) {
+    const anchor = data?.range.anchor_date;
+    if (!anchor) return;
+    const shifted = shiftPeriod(query.period, anchor, direction);
+    if (shifted) applyQuery({ ...query, anchor_date: shifted, page: 1 });
   }
   async function openDetail(row: Row, edit = false) {
     if (busyRef.current) return;
@@ -483,67 +482,34 @@ export default function Dashboard() {
       setBusy(false);
     }
   }
-  const trend = useMemo<EChartsOption>(
-    () => ({
-      animationDuration: 300,
-      tooltip: { ...tooltip, trigger: "axis" },
-      legend: { top: 0, right: 12, data: ["工作量", "有效工时"] },
-      // Axis units occupy their own row below the legend.
-      grid: { left: 52, right: 52, top: 64, bottom: 28, containLabel: true },
-      xAxis: {
-        type: "category",
-        data: data?.trend.map((x) => x.date) ?? [],
-        axisLine: { lineStyle: { color: "#dbe3ec" } },
-        axisLabel: { color: "#64748b", hideOverlap: true, showMinLabel: true, showMaxLabel: true, formatter: (value: string) => value.slice(5) },
-      },
-      yAxis: [
-        {
-          type: "value",
-          name: "数量",
-          splitLine: { lineStyle: { color: "#eef2f7" } },
-          axisLabel: { color: "#64748b" },
-        },
-        {
-          type: "value",
-          name: "小时",
-          splitLine: { show: false },
-          axisLabel: { color: "#64748b" },
-        },
-      ],
-      series: [
-        {
-          name: "工作量",
-          type: "bar",
-          data: data?.trend.map((x) => x.quantity) ?? [],
-          barMaxWidth: 26,
-          itemStyle: { color: "#335ed4", borderRadius: [4, 4, 0, 0] },
-        },
-        {
-          name: "有效工时",
-          type: "line",
-          yAxisIndex: 1,
-          smooth: true,
-          symbolSize: 6,
-          data:
-            data?.trend.map((x) =>
-              Number((x.duration_ms / 3600000).toFixed(2)),
-            ) ?? [],
-          lineStyle: { width: 3, color: "#19a798" },
-          itemStyle: { color: "#19a798" },
-        },
-      ],
-    }),
-    [data],
-  );
+  const trend = useMemo<EChartsOption>(() => ({
+    animationDuration: 250,
+    tooltip: { ...tooltip, trigger: "axis", valueFormatter: (value: unknown) => `${Number(value).toLocaleString("zh-CN", {maximumFractionDigits:4})} 小时` },
+    legend: { top: 0, right: 16, data: ["有效工时"] },
+    // Preserve a separate row for axis units below the legend.
+    grid: { left: 22, right: 24, top: 64, bottom: 20, containLabel: true },
+    xAxis: { type: "category", boundaryGap: false,
+      data: data?.trend.map(x => x.date) ?? [],
+      axisLine: { lineStyle: { color: "#dce7e0" } }, axisTick: { show: false },
+      axisLabel: { color: "#718078", hideOverlap: true, showMinLabel: true, showMaxLabel: true,
+        formatter: (value: string) => data?.range.trend_unit === "hour" ? value : value.slice(5) } },
+    yAxis: { type: "value", name: "小时", min: 0,
+      splitLine: { lineStyle: { color: "#edf2ef", type: "dashed" } }, axisLabel: { color: "#718078" } },
+    series: [{ name: "有效工时", type: "line", smooth: false, symbolSize: 5,
+      data: data?.trend.map(x => x.duration_ms / 3600000) ?? [],
+      lineStyle: { width: 2.5, color: "#287b63" }, itemStyle: { color: "#287b63" },
+      areaStyle: { color: "#eaf3ee", opacity: 0.7 } }],
+  }), [data]);
   const categoryOption = useMemo<EChartsOption>(
     () => ({
       animationDuration: 300,
       tooltip: { ...tooltip, trigger: "axis" },
-      grid: { left: 56, right: 22, top: 25, bottom: 28 },
+      grid: { left: 12, right: 22, top: 25, bottom: 28, containLabel: true },
       xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef2f7" } } },
       yAxis: {
         type: "category",
         data: data?.categories.map((x) => name(x.category)) ?? [],
+        axisLabel: { width: 100, overflow: "truncate" },
         axisTick: { show: false },
         axisLine: { show: false },
       },
@@ -569,9 +535,10 @@ export default function Dashboard() {
     [data, categoryMetric, presentation, name],
   );
   const calendarOption = useMemo<EChartsOption>(() => {
-    const end = query.end_date ?? daysAgo(0);
+    const end = data?.range.end_date ?? daysAgo(0);
     const start = new Date(end + "T12:00:00");
     start.setDate(start.getDate() - 89);
+    const startDate = data?.range.start_date && data.range.start_date > localDate(start) ? data.range.start_date : localDate(start);
     return {
       tooltip: {
         ...tooltip,
@@ -590,7 +557,7 @@ export default function Dashboard() {
         ],
       },
       calendar: {
-        range: [localDate(start), end],
+        range: [startDate, end],
         cellSize: [16, 16],
         left: "center",
         top: 32,
@@ -608,7 +575,7 @@ export default function Dashboard() {
         },
       ],
     };
-  }, [data, query.end_date]);
+  }, [data]);
   const totals = data?.totals;
   return (
     <div className="data-center">
@@ -663,8 +630,9 @@ export default function Dashboard() {
         <main className="dc-main">
           <div className="dc-heading">
             <div>
+              <span className="dc-eyebrow">WORK REPORT</span>
               <h1>工作总览</h1>
-              <p>工作量、有效工时和每一段记录，都在这里。</p>
+              <p>按类型看清工作量，按周期回顾投入。</p>
             </div>
 
           </div>
@@ -697,112 +665,34 @@ export default function Dashboard() {
             </div>
           )}
           <section className="dc-filters" aria-label="筛选工作数据">
-            <div className="dc-ranges">
-              {[
-                ["today", "今天"],
-                ["7", "近7天"],
-                ["30", "近30天"],
-                ["90", "近90天"],
-                ["all", "全部"],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  aria-pressed={range === id}
-                  className="dc-range"
-                  onClick={() => selectRange(id)}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="dc-period-bar">
+              <div className="dc-period-tabs" aria-label="统计周期">
+                {([["day","日"],["week","周"],["month","月"],["custom","自定义"]] as const).map(([id,label]) =>
+                  <button key={id} className="dc-range" aria-pressed={filters.period===id} onClick={() => selectPeriod(id)}>{label}</button>)}
+              </div>
+              {query.period !== "custom" && <div className="dc-period-nav">
+                <button className="dc-icon-button" aria-label="上一周期" disabled={!data?.range.anchor_date || !shiftPeriod(query.period,data.range.anchor_date,-1)} onClick={() => movePeriod(-1)}>‹</button>
+                <strong>{data ? reportRangeLabel(data.range) : "正在读取周期…"}</strong>
+                <button className="dc-icon-button" aria-label="下一周期" disabled={!data?.range.anchor_date || !shiftPeriod(query.period,data.range.anchor_date,1)} onClick={() => movePeriod(1)}>›</button>
+                <button className="dc-button subtle" onClick={() => applyQuery({...query,anchor_date:null,page:1})}>{({day:"今天",week:"本周",month:"本月",custom:"当前"})[query.period]}</button>
+              </div>}
             </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setQuery({ ...filters, page: 1 });
-                setRange("custom");
-              }}
-            >
-              <label>
-                开始日期
-                <input
-                  type="date"
-                  value={filters.start_date ?? ""}
-                  onChange={(e) =>
-                    setFilters((p) => ({
-                      ...p,
-                      start_date: e.target.value || null,
-                    }))
-                  }
-                />
-              </label>
-              <span className="dc-date-separator">—</span>
-              <label>
-                结束日期
-                <input
-                  type="date"
-                  value={filters.end_date ?? ""}
-                  onChange={(e) =>
-                    setFilters((p) => ({
-                      ...p,
-                      end_date: e.target.value || null,
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                类别
-                <select
-                  value={filters.category ?? ""}
-                  onChange={(e) =>
-                    setFilters((p) => ({
-                      ...p,
-                      category: e.target.value || null,
-                    }))
-                  }
-                >
-                  <option value="">全部类别</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{name(c)}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                状态
-                <select
-                  value={filters.status}
-                  onChange={(e) =>
-                    setFilters((p) => ({ ...p, status: e.target.value }))
-                  }
-                >
-                  <option value="all">全部状态</option>
-                  <option value="pending">待补全</option>
-                  <option value="complete">已确认</option>
-                  <option value="working">进行中</option>
-                </select>
-              </label>
-            <label className="dc-scope">
-              数据范围
-              <select
-                value={filters.scope}
-                onChange={(e) => {
-                  const updated = {
-                    ...filters,
-                    scope: e.target.value as Query["scope"],
-                    page: 1,
-                  };
-                  setFilters(updated);
-                  setQuery(updated);
-                }}
-              >
-                <option value="real">真实数据</option>
-                <option value="demo">演示数据</option>
-                <option value="all">全部数据</option>
-              </select>
-            </label>
-              <button type="submit" className="dc-button">
-                <Icon name="search" />
-                应用筛选
-              </button>
+            <form onSubmit={e => { e.preventDefault(); applyQuery({...filters,page:1}); }}>
+              {filters.period === "custom" ? <>
+                <label>开始日期<input type="date" min="1970-01-01" max="9999-12-31" value={filters.start_date??""} onChange={e=>setFilters({...filters,start_date:e.target.value||null})}/></label>
+                <label>结束日期<input type="date" min="1970-01-01" max="9999-12-31" value={filters.end_date??""} onChange={e=>setFilters({...filters,end_date:e.target.value||null})}/></label>
+                <button type="button" className="dc-button subtle" onClick={()=>applyQuery({...filters,start_date:null,end_date:null,page:1})}>全部日期</button>
+              </> : <label>基准日期<input type="date" required min="1970-01-01" max="9999-12-31" value={filters.anchor_date??data?.range.anchor_date??daysAgo(0)} onChange={e=>setFilters({...filters,anchor_date:e.target.value})}/></label>}
+              <label>类别<select aria-label="筛选工作类别" value={filters.category??""} onChange={e=>setFilters({...filters,category:e.target.value||null})}>
+                <option value="">全部类别</option>{CATEGORIES.map(c=><option key={c} value={c}>{name(c)}</option>)}
+              </select></label>
+              <label>状态<select aria-label="筛选记录状态" value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})}>
+                <option value="all">全部状态</option><option value="pending">待补全</option><option value="complete">已确认</option><option value="working">进行中</option>
+              </select></label>
+              <label className="dc-scope">数据范围<select value={filters.scope} onChange={e=>setFilters({...filters,scope:e.target.value as Query["scope"]})}>
+                <option value="real">真实数据</option><option value="demo">演示数据</option><option value="all">全部数据</option>
+              </select></label>
+              <button type="submit" className="dc-button"><Icon name="search"/>应用筛选</button>
             </form>
           </section>
           <section className="dc-kpis" aria-label="工作数据汇总">
@@ -817,18 +707,11 @@ export default function Dashboard() {
                 caption: "已结束记录的有效时间",
               },
               {
-                label: "已确认工作量",
-                value: totals ? formatQuantity(totals.quantity) : "—",
-                unit: "",
-                icon: "checkSquare" as const,
-                caption: "仅汇总已确认的数量",
-              },
-              {
-                label: "工作记录",
+                label: "已结束记录",
                 value: totals ? String(totals.records) : "—",
                 unit: "条",
                 icon: "list" as const,
-                caption: "当前筛选范围内的记录",
+                caption: "进行中的任务单独保留",
               },
               {
                 label: "待补全",
@@ -851,31 +734,40 @@ export default function Dashboard() {
               </article>
             ))}
           </section>
-          {loading && !data && (
-            <p role="status" className="dc-loading">
-              正在读取本机工作数据…
-            </p>
-          )}
-          {data && data.totals.records === 0 && (
-            <div className="dc-empty">
-              <Icon name="clock" />
-              <h2>这个范围里还没有记录</h2>
-              <p>调整筛选，或回到 WorkMemo 开始一段工作。数据会自动更新。</p>
-            </div>
-          )}
+          <section className="dc-card dc-category-report" aria-label="按类型汇总工作量">
+            <div className="dc-card-title"><div><h2>分类工作量</h2><p>{data ? reportRangeLabel(data.range) : "正在读取…"} · 数量按类型分别合计</p></div><span className="dc-chip">自动汇总</span></div>
+            {loading && !data ? <p role="status" className="dc-loading">正在读取本机工作数据…</p> : data ? <>
+              <table className="dc-report-table">
+                <thead><tr><th scope="col">工作类型</th><th scope="col">已确认工作量</th><th scope="col">有效工时</th><th scope="col">已结束记录</th><th scope="col">待补填</th></tr></thead>
+                <tbody>{data.categories.map(row=><tr key={row.category}>
+                  <th scope="row"><WorkBadge category={row.category} presentation={presentation}/></th>
+                  <td data-label="已确认工作量" className="dc-report-quantity"><strong>{row.complete>0 ? formatQuantity(row.quantity) : row.pending>0 ? "待补填" : "—"}</strong><small>{row.complete>0 ? `已确认 ${row.complete} 条` : row.pending>0 ? "尚未确认产出" : "暂无已结束记录"}</small></td>
+                  <td data-label="有效工时" className="tabular">{formatDuration(row.duration_ms/1000)}</td>
+                  <td data-label="已结束记录" className="tabular">{row.records} 条</td>
+                  <td data-label="待补填"><span className={row.pending>0?"dc-pending-count":"dc-muted"}>{row.pending} 条</span></td>
+                </tr>)}</tbody>
+              </table>
+              <p className="dc-report-note">按记录开始日期归属周期。未补填不视为 0；当前任务不计入此报表。</p>
+              {data.totals.records===0 && <p className="dc-report-empty">这个范围还没有已结束记录。结束工作后会在这里自动汇总。</p>}
+            </> : <p className="dc-loading">暂无统计结果，请检查连接后重试。</p>}
+          </section>
           <section className="dc-chart-grid">
             <article className="dc-card dc-trend">
               <div className="dc-card-title">
                 <div>
                   <h2>工作趋势</h2>
                   <p>
-                    {data?.monthly ? "按月汇总" : "按日汇总"} · 工作量与有效工时
+                    {data?.range.trend_unit === "hour" ? "按开始小时汇总" : data?.range.trend_unit === "month" ? "按开始月份汇总" : "按开始日期汇总"} · 已结束记录的有效工时
                   </p>
                 </div>
                 <span className="dc-chip">时间视角</span>
               </div>
-              <Chart option={trend} label="工作量与有效工时趋势" />
+              <Chart option={trend} label="有效工时趋势" />
             </article>
+          </section>
+          <details className="dc-auxiliary" onToggle={event => setAuxiliaryOpen(event.currentTarget.open)}>
+            <summary>辅助分析<span>类别分布与工作日历</span></summary>
+            {auxiliaryOpen && <div className="dc-auxiliary-grid">
             <article className="dc-card dc-category">
               <div className="dc-card-title">
                 <div>
@@ -908,20 +800,21 @@ export default function Dashboard() {
             <div className="dc-card-title">
               <div>
                 <h2>工作的节奏</h2>
-                <p>所选结束日之前的90天 · 颜色深浅表示有效工时</p>
+                <p>已应用筛选范围 · 最多展示近90天有效工时</p>
               </div>
             </div>
-            <Chart option={calendarOption} label="近90天有效工时工作日历" />
+            <Chart option={calendarOption} label="筛选范围内的有效工时工作日历" />
             <div className="dc-heat-legend" aria-label="工时由少到多">少 {["#ebedf0","#9be9a8","#40c463","#30a14e","#216e39"].map(color=><i key={color} style={{background:color}}/>)} 多</div>
             </article>
-          </section>
+            </div>}
+          </details>
           <section className="dc-card dc-records" id="records">
             <div className="dc-card-title">
               <div>
                 <h2>每一段工作，都有来处</h2>
                 <p>查看计时区间、补填工作量，或回顾修正记录。</p>
               </div>
-              <span className="dc-chip">{totals?.records ?? 0} 条记录</span>
+              <span className="dc-chip">{data?.record_count ?? 0} 条记录</span>
             </div>
             <div className="dc-table-scroll">
               <table>

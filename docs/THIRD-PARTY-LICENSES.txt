@@ -45675,3 +45675,40 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+=== Audio: Kenney Interface Sounds 1.0 ===
+Declared license: CC0-1.0
+Source: https://kenney.nl/assets/interface-sounds
+Processing: trim silence; resample; soft lowpass 2800Hz; normalize gain; fade in 5ms/out 40ms; cap 850ms
+soft/start: source/confirmation_002.ogg -> start.wav
+soft/pause: source/minimize_001.ogg -> pause.wav
+soft/resume: source/maximize_001.ogg -> resume.wav
+soft/end: source/confirmation_001.ogg -> end.wav
+soft/warning: source/question_001.ogg -> warning.wav
+crisp/start: source/glass_001.ogg -> crisp/start.wav
+crisp/pause: source/back_002.ogg -> crisp/pause.wav
+crisp/resume: source/select_002.ogg -> crisp/resume.wav
+crisp/end: source/confirmation_004.ogg -> crisp/end.wav
+crisp/warning: source/question_002.ogg -> crisp/warning.wav
+	
+
+	Interface Sounds (1.0)
+
+	Created/distributed by Kenney (www.kenney.nl)
+	Creation date: 11-02-2020
+
+			------------------------------
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	This content is free to use in personal, educational and commercial projects.
+	Support us by crediting Kenney or www.kenney.nl (this is not mandatory)
+
+			------------------------------
+
+	Donate:   http://support.kenney.nl
+	Patreon:  http://patreon.com/kenney/
+
+	Follow on Twitter for updates:
+	http://twitter.com/KenneyNL
+
