@@ -171,6 +171,7 @@ impl Store {
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(db_error)?;
             let tables = [
+                "category_names",
                 "import_sources",
                 "end_reminders",
                 "record_revisions",
@@ -596,6 +597,11 @@ fn merge_options(target: &mut Store, source: &Store, include_config: bool) -> Re
     } else {
         None
     };
+    let names = if include_config {
+        Some(source.category_names()?)
+    } else {
+        None
+    };
     let mut r = report(source)?;
     let active = target.active()?.is_some();
     let ids: Vec<i64> = source
@@ -675,7 +681,22 @@ fn merge_options(target: &mut Store, source: &Store, include_config: bool) -> Re
             )
             .map_err(db_error)?;
         }
-        tx.execute("UPDATE monitoring_settings SET enabled=0,revision=revision+1,idle_warning_seconds=?1,idle_end_seconds=?2,away_pause_seconds=?3,hold_seconds=?4,poll_interval_seconds=?5,auto_resume_manual=?6,browsing_only=?7 WHERE id=1",params![c.times.idle_warning_seconds,c.times.idle_end_seconds,c.times.away_pause_seconds,c.times.hold_seconds,c.poll_interval_seconds,c.auto_resume_manual,c.browsing_only]).map_err(db_error)?;
+        tx.execute("UPDATE monitoring_settings SET enabled=0,revision=revision+1,idle_warning_seconds=?1,idle_end_seconds=?2,away_pause_seconds=?3,hold_seconds=?4,poll_interval_seconds=?5,auto_resume_manual=?6,browsing_only=?7,idle_pause_seconds=?8 WHERE id=1",params![c.times.idle_warning_seconds,c.times.idle_end_seconds,c.times.away_pause_seconds,c.times.hold_seconds,c.poll_interval_seconds,c.auto_resume_manual,c.browsing_only,c.times.idle_pause_seconds]).map_err(db_error)?;
+    }
+    if let Some(names) = names {
+        // Temporarily use unique names so swaps never violate the UNIQUE constraint.
+        tx.execute(
+            "UPDATE category_names SET display_name=category||char(1)",
+            [],
+        )
+        .map_err(db_error)?;
+        for (category, name) in names.names {
+            tx.execute(
+                "UPDATE category_names SET display_name=?1,revision=revision+1 WHERE category=?2",
+                params![name, category],
+            )
+            .map_err(db_error)?;
+        }
     }
     tx.commit().map_err(db_error)?;
     target.monitor.config = target.monitor_config()?;
@@ -769,6 +790,37 @@ mod tests {
         assert_eq!(b.record(1).unwrap().remark, "original");
     }
     #[test]
+    fn backup_restore_keeps_names_and_idle_threshold_while_records_only_import_keeps_local_names() {
+        let d = TestDirectory::new();
+        let dir = d.db();
+        let dir = dir.parent().unwrap();
+        let mut source = empty();
+        start(&mut source);
+        source.finish(1).unwrap();
+        let mut names = source.category_names().unwrap();
+        names.names.insert("开发".into(), "编程任务".into());
+        source.save_category_names(names).unwrap();
+        source
+            .connection
+            .execute("UPDATE monitoring_settings SET idle_pause_seconds=25", [])
+            .unwrap();
+        let archive = source.archive(dir).unwrap();
+        let image = checked_image(&archive, dir).unwrap();
+        let mut target = empty();
+        merge(&mut target, &source).unwrap();
+        assert_eq!(target.category_names().unwrap().names["开发"], "开发");
+        target.apply_image(&image.0).unwrap();
+        assert_eq!(
+            target.category_names().unwrap(),
+            source.category_names().unwrap()
+        );
+        assert_eq!(
+            target.monitor_config().unwrap().times.idle_pause_seconds,
+            25
+        );
+        assert_eq!(target.record(1).unwrap().category, "开发");
+    }
+    #[test]
     fn legacy_schema_backup_and_new_rule_modes_restore() {
         let d = TestDirectory::new();
         let dir = d.db().parent().unwrap().to_path_buf();
@@ -781,7 +833,7 @@ mod tests {
             target.monitor_config().unwrap().rules[0].match_mode,
             "domain_suffix"
         );
-        source.connection.execute_batch("DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); PRAGMA user_version=7;").unwrap();
+        source.connection.execute_batch("DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
         let image = checked_image(&source.archive(&dir).unwrap(), &dir).unwrap();
         target.apply_image(&image.0).unwrap();
         assert_eq!(
@@ -906,14 +958,20 @@ mod tests {
     }
     #[test]
     fn migration_preserves_config_by_default_and_imports_options_only_when_requested() {
-        let source = empty();
-        source.connection.execute("UPDATE monitoring_settings SET poll_interval_seconds=5,auto_resume_manual=0,enabled=1",[]).unwrap();
+        let mut source = empty();
+        let mut names = source.category_names().unwrap();
+        names.names.insert("开发".into(), "编程".into());
+        source.save_category_names(names).unwrap();
+        source.connection.execute("UPDATE monitoring_settings SET poll_interval_seconds=5,auto_resume_manual=0,enabled=1,idle_pause_seconds=15",[]).unwrap();
         let mut target = empty();
         merge(&mut target, &source).unwrap();
         assert_eq!(target.monitor_config().unwrap().poll_interval_seconds, 1);
+        assert_eq!(target.category_names().unwrap().names["开发"], "开发");
         merge_options(&mut target, &source, true).unwrap();
         let config = target.monitor_config().unwrap();
         assert_eq!(config.poll_interval_seconds, 5);
+        assert_eq!(config.times.idle_pause_seconds, 15);
+        assert_eq!(target.category_names().unwrap().names["开发"], "编程");
         assert!(!config.auto_resume_manual);
         assert!(!config.enabled);
         start(&mut target);

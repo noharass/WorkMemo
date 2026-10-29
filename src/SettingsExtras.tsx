@@ -1,3 +1,5 @@
+import { CategoryNamesEditor } from "./CategoryNamesEditor";
+import { useCategoryNames } from "./categoryNames";
 import { useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { Surface, useDraft } from "./Drafts";
@@ -34,6 +36,7 @@ export function VisualSettings({
 }: {
   presentation: PresentationController;
 }) {
+  const { name } = useCategoryNames();
   const { current, setVisual } = presentation;
   const compact = useLayout().current.density === "compact";
   useDraft(
@@ -45,7 +48,7 @@ export function VisualSettings({
   );
   return (
     <Surface
-      title="工作图标与颜色"
+      title="工作名称、图标与颜色"
       actions={
         <>
           <button
@@ -69,6 +72,7 @@ export function VisualSettings({
       <p className="hint">
         同一类别在主页、状态岛和数据中心使用相同的图标与颜色。
       </p>
+      <CategoryNamesEditor />
       {CATEGORIES.map((category) => {
         const visual = current.categories[category];
         return (
@@ -79,7 +83,7 @@ export function VisualSettings({
             <label className="color-field">
               类别颜色
               <input
-                aria-label={`${category}颜色`}
+                aria-label={`${name(category)}颜色`}
                 type="color"
                 value={visual.color}
                 disabled={presentation.busy}
@@ -97,7 +101,7 @@ export function VisualSettings({
                     key={icon}
                     type="button"
                     title={iconLabels[icon]}
-                    aria-label={`${category}使用${iconLabels[icon]}图标`}
+                    aria-label={`${name(category)}使用${iconLabels[icon]}图标`}
                     aria-pressed={visual.icon === icon}
                     className="secondary"
                     disabled={presentation.busy}

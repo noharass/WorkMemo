@@ -110,6 +110,8 @@ pub fn run() {
             service::get_pending_records,
             service::settle_record,
             service::get_monitor_config,
+            service::get_category_names,
+            service::save_category_names,
             service::save_monitor_config,
             sound::preview_sound,
             service::get_notice,

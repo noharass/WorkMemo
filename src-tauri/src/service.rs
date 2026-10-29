@@ -372,6 +372,25 @@ pub async fn get_monitor_config(state: State<'_, Backend>) -> Result<MonitorConf
     access(state.inner.clone(), |store| store.monitor_config()).await
 }
 #[tauri::command]
+pub async fn get_category_names(
+    state: State<'_, Backend>,
+) -> Result<crate::database::categories::CategoryNames> {
+    access(state.inner.clone(), |store| store.category_names()).await
+}
+#[tauri::command]
+pub async fn save_category_names(
+    app: tauri::AppHandle,
+    state: State<'_, Backend>,
+    input: crate::database::categories::CategoryNames,
+) -> Result<crate::database::categories::CategoryNames> {
+    let saved = access(state.inner.clone(), move |store| {
+        store.save_category_names(input)
+    })
+    .await?;
+    let _ = app.emit("workmemo:categories-changed", ());
+    Ok(saved)
+}
+#[tauri::command]
 pub async fn save_monitor_config(
     state: State<'_, Backend>,
     input: ConfigInput,

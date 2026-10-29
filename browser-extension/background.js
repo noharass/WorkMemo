@@ -84,7 +84,7 @@ function connect() {
       if (message.app && (message.app.protocol !== 1 || typeof message.app.identifier !== 'string')) {
         drop('本机通信协议不兼容，请完整更新 WorkMemo 和扩展'); return;
       }
-      connected = true; config = message.config; app = message.app ?? null; connectionError = '';
+      connected = true; config = { ...message.config, category_names: message.category_names ?? {} }; app = message.app ?? null; connectionError = '';
       setPollingInterval(config.poll_interval_seconds);
       void syncActivityScript();
       if (pendingEvent) void poll();

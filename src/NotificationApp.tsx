@@ -1,3 +1,4 @@
+import { useCategoryNames } from "./categoryNames";
 import { usePresentation, WorkBadge, useDashboard } from "./desktopPreferences";
 import { Icon } from "./Icon";
 import { useEffect, useState } from "react";
@@ -11,6 +12,7 @@ import "./App.css";
 
 export function NotificationApp() {
   const appearance = useAppearance();
+  const { name } = useCategoryNames();
   const presentation = usePresentation();
   const dashboard = useDashboard();
   const [notice, setNotice] = useState<WorkNotice | null>(null);
@@ -130,7 +132,7 @@ export function NotificationApp() {
         ? "上次工作待恢复"
         : active?.pause_reason === "MANUAL"
           ? "手动暂停 · 已停表"
-          : active?.pause_reason === "AWAY"
+          : active?.pause_reason === "IDLE_PAUSE" ? "键鼠空闲暂停" : active?.pause_reason === "AWAY"
             ? "离页暂停 · 已停表"
             : active?.pause_reason === "MONITOR"
               ? "监测中断 · 已停表"
@@ -181,7 +183,7 @@ export function NotificationApp() {
               )}
               <span className="island-info">
                 <strong>
-                  {candidate?.category ?? active?.category ?? "仅浏览"}
+                  {candidate?.category || active?.category ? name(candidate?.category ?? active!.category) : "仅浏览"}
                 </strong>
                 <small>{snapshot ? state : "状态不可用"}</small>
               </span>
@@ -294,7 +296,7 @@ export function NotificationApp() {
                 到达 {formatDuration(notice.idle_end_seconds)}{" "}
                 时将结束本次计时，最后一次输入后的尾段不计入有效工时。恢复操作后会取消此提醒。
               </p>
-              <p>当前暂计 {formatDuration(notice.record.duration_seconds)}</p>
+              <p>{notice.record.pause_reason === "IDLE_PAUSE" ? "键鼠空闲已暂停，有效工时" : "当前暂计"} {formatDuration(notice.record.duration_seconds)}</p>
               <button
                 type="button"
                 disabled={busy}

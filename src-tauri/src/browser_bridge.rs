@@ -160,7 +160,7 @@ fn serve(
             if frame.page_activity && compatible {
                 store.observe_browser_activity(client);
             }
-            serde_json::json!({"connected":true,"config":config,"app":{"identifier":env!("WORKMEMO_IDENTIFIER"),"version":env!("CARGO_PKG_VERSION"),"protocol":1,"page_activity":true,"match_modes":true,"update_required":!compatible}})
+            serde_json::json!({"connected":true,"config":config,"category_names":store.category_names()?.names,"app":{"identifier":env!("WORKMEMO_IDENTIFIER"),"version":env!("CARGO_PKG_VERSION"),"protocol":1,"page_activity":true,"match_modes":true,"update_required":!compatible}})
         };
         let mut response = serde_json::to_vec(&reply).map_err(|e| e.to_string())?;
         response.push(b'\n');

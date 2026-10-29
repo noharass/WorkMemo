@@ -15,6 +15,7 @@ pub struct WorkUrl {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct TrackingTimes {
+    pub idle_pause_seconds: i64,
     pub idle_warning_seconds: i64,
     pub idle_end_seconds: i64,
     pub away_pause_seconds: i64,
@@ -23,6 +24,7 @@ pub struct TrackingTimes {
 impl Default for TrackingTimes {
     fn default() -> Self {
         Self {
+            idle_pause_seconds: 120,
             idle_warning_seconds: 300,
             idle_end_seconds: 420,
             away_pause_seconds: 120,
@@ -33,6 +35,7 @@ impl Default for TrackingTimes {
 impl TrackingTimes {
     pub fn validate(&self) -> Result<(), String> {
         if [
+            self.idle_pause_seconds,
             self.idle_warning_seconds,
             self.idle_end_seconds,
             self.away_pause_seconds,
@@ -42,6 +45,9 @@ impl TrackingTimes {
         .any(|v| !(1..=86400).contains(v))
         {
             return Err("计时参数必须为 1 到 86400 秒的整数。".into());
+        }
+        if self.idle_pause_seconds >= self.idle_end_seconds {
+            return Err("空闲暂停时间必须早于空闲结束时间。".into());
         }
         if self.idle_warning_seconds >= self.idle_end_seconds {
             return Err("空闲提醒时间必须早于空闲结束时间。".into());
@@ -117,6 +123,7 @@ pub struct MonitorStatus {
     pub idle_warning: bool,
     pub message: String,
     pub revision: i64,
+    pub idle_pause_seconds: i64,
     pub idle_warning_seconds: i64,
     pub idle_end_seconds: i64,
     pub away_pause_remaining_seconds: Option<i64>,

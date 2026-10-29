@@ -167,7 +167,7 @@ fn serve(
                 let guard = shared.lock().map_err(|_| "数据库锁异常")?;
                 let store = guard.as_ref().map_err(|e| e.clone())?;
                 return Ok(
-                    json!({"version":env!("CARGO_PKG_VERSION"),"presentation":presentation,"active":store.active()?}),
+                    json!({"version":env!("CARGO_PKG_VERSION"),"presentation":presentation,"active":store.active()?,"category_names":store.category_names()?}),
                 );
             }
             if !write {

@@ -238,3 +238,18 @@ test('匹配能力只发送给声明支持的软件，旧协议不增加未知�
     assert.equal(messages.at(-1).match_modes,true);
   });
 });
+
+
+test('工作改名只更新扩展显示元数据，不改变规则身份或发送输入内容', async () => {
+  await backgroundScenario(async ({native, status, messages, tick}) => {
+    const config = {enabled:true,revision:7,rules:[{id:1,url_prefix:'https://work.example.test/',category:'开发'}]};
+    native.onMessage.emit({connected:true,config,category_names:{'开发':'编程任务'}});
+    assert.equal(status().config.category_names['开发'],'编程任务');
+    assert.equal(status().config.rules[0].category,'开发');
+    assert.equal(status().config.revision,7);
+    await tick();
+    assert.ok(messages.every(frame=>!('category_names' in frame)));
+    native.onMessage.emit({connected:true,config});
+    assert.deepEqual(status().config.category_names,{});
+  });
+});

@@ -1,3 +1,4 @@
+import { useCategoryNames } from "./categoryNames";
 import { useId, useRef, useState, type FormEvent } from "react";
 import { CATEGORIES, type StartInput } from "./types";
 import { validateWorkInput, type InputErrors } from "./workInput";
@@ -18,6 +19,7 @@ export function WorkForm({
   starting = false,
   onStart,
 }: Props) {
+  const { name } = useCategoryNames();
   const [category, setCategory] = useState("");
   const [quantity, setQuantity] = useState("");
   const [remark, setRemark] = useState("");
@@ -81,7 +83,7 @@ export function WorkForm({
             <option value="">请选择类别</option>
             {CATEGORIES.map((value) => (
               <option key={value} value={value}>
-                {value}
+                {name(value)}
               </option>
             ))}
           </select>

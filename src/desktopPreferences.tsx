@@ -8,6 +8,7 @@ import {
 import { invoke, isTauri, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { CATEGORIES, type Category } from "./types";
+import { useCategoryNames } from "./categoryNames";
 import { Icon, type IconName } from "./Icon";
 
 export type CategoryVisual = { icon: IconName; color: string };
@@ -90,6 +91,7 @@ export function WorkBadge({
   presentation: Presentation;
   showName?: boolean;
 }) {
+  const { name } = useCategoryNames();
   const visual =
     presentation.categories[category] ??
     DEFAULT_PRESENTATION.categories["开发"];
@@ -101,7 +103,7 @@ export function WorkBadge({
       <span className="work-symbol">
         <Icon name={visual.icon} />
       </span>
-      {showName && <span>{category}</span>}
+      {showName && <span>{name(category)}</span>}
     </span>
   );
 }

@@ -1,3 +1,4 @@
+import { useCategoryNames } from "./categoryNames";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {emit} from "@tauri-apps/api/event";
 import { invoke, isTauri } from "@tauri-apps/api/core";
@@ -8,6 +9,7 @@ import { Surface, useDraft } from "./Drafts";
 type ConnectionStatus = { state: string; message: string; identifier: string; version: string; host_name: string; manifest_path: string | null; extension_path: string | null };
 
 export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+  const { name } = useCategoryNames();
   const compact=useLayout().current.density==="compact";
   const [connection, setConnection] = useState<ConnectionStatus | null>(null);
   const [repairing, setRepairing] = useState(false);
@@ -83,11 +85,12 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
         {([
           ["away_pause_seconds", "离开工作页面后继续计时"],
           ["hold_seconds", "暂停后保留记录"],
+          ["idle_pause_seconds", "键鼠无操作后暂停"],
           ["idle_warning_seconds", "无输入后提醒"],
           ["idle_end_seconds", "无输入后结束"],
         ] as const).map(([key, label]) => <label key={key}>{label}<input type="number" min={1} max={86400} step={1} required disabled={busy}
           value={config.times[key]} onChange={event => setConfig({ ...config, times: { ...config.times, [key]: event.target.valueAsNumber } })} /></label>)}
-        <p className="hint">每项 1 至 86400 秒；空闲提醒须早于空闲结束。离页宽限后暂停，再等待保留期结束记录。连接中断时不计入无法确认的时间；保留期同样适用。空闲结束可能更早发生。</p>
+        <p className="hint">每项 1 至 86400 秒；空闲暂停、空闲提醒均须早于空闲结束。空闲暂停扣除最后输入后的尾段；手动任务有新输入即恢复，自动任务须返回工作页面操作。离页宽限后暂停，再等待保留期结束记录。连接中断时不计入无法确认的时间；保留期同样适用。空闲结束可能更早发生。</p>
       </fieldset>
       </details>
       <section className="monitor-work-sites" aria-label="每项工作的多个网址">
@@ -95,8 +98,8 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
         <p className="hint">同一项工作可添加多个 URL，命中其中任意一个网站都属于工作页面。计时中切换这些网站会保留同一条记录，不重复开工。</p>
         {CATEGORIES.map(category => {
           const rules = config.rules.filter(rule => rule.category === category);
-          return <details key={category} className="monitor-work-group" open={rules.length > 0} aria-label={`${category}工作网址`}>
-            <summary><strong>{category}</strong><span>{rules.length} 个 URL</span></summary>
+          return <details key={category} className="monitor-work-group" open={rules.length > 0} aria-label={`${name(category)}工作网址`}>
+            <summary><strong>{name(category)}</strong><span>{rules.length} 个 URL</span></summary>
             <div className="monitor-work-urls">
               {rules.length === 0 && <p className="hint">还没有网址，添加这项工作需要使用的网站。</p>}
               {rules.map((rule, index) => <fieldset key={rule.id} className="monitor-rule">
@@ -107,11 +110,11 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
                 <label>{rule.match_mode === "domain_suffix" ? "域名后缀" : "工作 URL"}<input type={rule.match_mode === "domain_suffix" ? "text" : "url"} required maxLength={2048} disabled={busy} value={rule.url_prefix}
                   placeholder={rule.match_mode === "domain_suffix" ? ".cn-beijing-vpc.fcapp.run" : "https://工作站点/路径"} onChange={event => setConfig({ ...config, rules: config.rules.map(item => item.id === rule.id ? { ...item, url_prefix: event.target.value } : item) })} /></label>
                 <label>归属工作<select value={rule.category} disabled={busy} onChange={event => setConfig({ ...config, rules: config.rules.map(item => item.id === rule.id ? { ...item, category: event.target.value } : item) })}>
-                  {CATEGORIES.map(value => <option key={value}>{value}</option>)}
+                  {CATEGORIES.map(value => <option key={value} value={value}>{name(value)}</option>)}
                 </select></label>
                 <button type="button" className="text-button" disabled={busy} onClick={() => setConfig({ ...config, rules: config.rules.filter(item => item.id !== rule.id) })}>移除此 URL</button>
               </fieldset>)}
-              <button type="button" className="secondary" disabled={busy || config.rules.length >= 50} onClick={() => addRule(category)}>为{category}添加 URL</button>
+              <button type="button" className="secondary" disabled={busy || config.rules.length >= 50} onClick={() => addRule(category)}>为{name(category)}添加 URL</button>
             </div>
           </details>;
         })}

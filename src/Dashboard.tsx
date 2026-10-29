@@ -1,3 +1,4 @@
+import { useCategoryNames, type CategoryNames } from "./categoryNames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { init, use as registerCharts } from "echarts/core";
 import { BarChart, LineChart, HeatmapChart } from "echarts/charts";
@@ -123,6 +124,7 @@ type Detail = {
 };
 type Meta = {
   version: string;
+  category_names: CategoryNames;
   presentation: Presentation;
   active: WorkRecord | null;
 };
@@ -260,6 +262,7 @@ export default function Dashboard() {
         : entry.get("scope")==="demo"?"90":"30",
   );
   const [data, setData] = useState<Data | null>(null);
+  const { name, accept: acceptCategoryNames } = useCategoryNames();
   const [meta, setMeta] = useState<Meta | null>(null);
   const [error, setError] = useState("");
   const [online, setOnline] = useState(false);
@@ -301,6 +304,7 @@ export default function Dashboard() {
         const metadata = await api<Meta>("meta");
         if (stopped) return;
         setMeta(metadata);
+        acceptCategoryNames(metadata.category_names);
         setOnline(true);
         {
           const rows = await api<Data>("query", query);
@@ -333,7 +337,7 @@ export default function Dashboard() {
       clearInterval(timer);
       window.removeEventListener("focus", focus);
     };
-  }, [query, refresh]);
+  }, [query, refresh, acceptCategoryNames]);
   function selectRange(value: string) {
     setRange(value);
     const n = value === "today" ? 0 : Number(value) - 1;
@@ -538,7 +542,7 @@ export default function Dashboard() {
       xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef2f7" } } },
       yAxis: {
         type: "category",
-        data: data?.categories.map((x) => x.category) ?? [],
+        data: data?.categories.map((x) => name(x.category)) ?? [],
         axisTick: { show: false },
         axisLine: { show: false },
       },
@@ -548,7 +552,7 @@ export default function Dashboard() {
           barMaxWidth: 24,
           data:
             data?.categories.map((x) => ({
-              name: x.category,
+              name: name(x.category),
               value:
                 categoryMetric === "duration"
                   ? Number((x.duration_ms / 3600000).toFixed(2))
@@ -561,7 +565,7 @@ export default function Dashboard() {
         },
       ],
     }),
-    [data, categoryMetric, presentation],
+    [data, categoryMetric, presentation, name],
   );
   const calendarOption = useMemo<EChartsOption>(() => {
     const end = query.end_date ?? daysAgo(0);
@@ -757,7 +761,7 @@ export default function Dashboard() {
                 >
                   <option value="">全部类别</option>
                   {CATEGORIES.map((c) => (
-                    <option key={c}>{c}</option>
+                    <option key={c} value={c}>{name(c)}</option>
                   ))}
                 </select>
               </label>
@@ -889,9 +893,10 @@ export default function Dashboard() {
               <Chart
                 option={categoryOption}
                 label="按类别汇总的工作分布"
-                onCategory={(name) => {
-                  if (CATEGORIES.some((c) => c === name)) {
-                    const update = { ...query, category: name, page: 1 };
+                onCategory={(label) => {
+                  const key = CATEGORIES.find(c => name(c) === label);
+                  if (key) {
+                    const update = { ...query, category: key, page: 1 };
                     setQuery(update);
                     setFilters(update);
                   }
@@ -1102,7 +1107,7 @@ export default function Dashboard() {
                       }
                     >
                       {CATEGORIES.map((c) => (
-                        <option key={c}>{c}</option>
+                        <option key={c} value={c}>{name(c)}</option>
                       ))}
                     </select>
                   </label>
@@ -1188,7 +1193,7 @@ export default function Dashboard() {
                         第{r.revision}次 · {formatTime(r.changed_at)}
                       </strong>
                       <p>
-                        {r.before?.category} → {r.after?.category} · 数量{" "}
+                        {name(r.before?.category)} → {name(r.after?.category)} · 数量{" "}
                         {formatQuantity(r.before?.quantity)} →{" "}
                         {formatQuantity(r.after?.quantity)}
                       </p>
@@ -1239,7 +1244,7 @@ export default function Dashboard() {
           <section className="dc-confirm">
             <h2 id="delete-title">删除这条记录？</h2>
             <p>
-              {deleting.category} · {formatTime(deleting.start_time)}
+              {name(deleting.category)} · {formatTime(deleting.start_time)}
               {deleting.is_demo ? " · 演示数据" : ""}
             </p>
             <p>删除后不可撤销，计时区间和修正记录也会一同删除。</p>

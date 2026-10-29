@@ -1,3 +1,4 @@
+import { useCategoryNames } from "./categoryNames";
 import { Surface, useDraft } from "./Drafts";
 import { Icon } from "./Icon";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ export function SettlementForm({
   busy: boolean;
   onSave: (input: SettleInput) => Promise<boolean>;
 }) {
+  const { name } = useCategoryNames();
   const [category, setCategory] = useState(record.category);
   const [quantity, setQuantity] = useState(
     record.quantity === null ? "" : String(record.quantity),
@@ -88,7 +90,7 @@ export function SettlementForm({
             onChange={(event) => setCategory(event.target.value)}
           >
             {CATEGORIES.map((value) => (
-              <option key={value}>{value}</option>
+              <option key={value} value={value}>{name(value)}</option>
             ))}
           </select>
         </label>
@@ -147,6 +149,7 @@ export function SettlementPanel({
   onSave: (input: SettleInput) => Promise<boolean>;
   beforeChange?: (action: () => void) => void;
 }) {
+  const { name } = useCategoryNames();
   const [records, setRecords] = useState<WorkRecord[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -204,7 +207,7 @@ export function SettlementPanel({
           >
             {records.map((r) => (
               <option value={r.id} key={r.id}>
-                {r.category} · {formatTime(r.start_time)} ·{" "}
+                {name(r.category)} · {formatTime(r.start_time)} ·{" "}
                 {formatDuration(r.duration_seconds)}
               </option>
             ))}

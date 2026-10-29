@@ -12,11 +12,12 @@ try {
   page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(()=>{
     window.isTauri=true;
-    const initial={enabled:true,revision:3,times:{away_pause_seconds:120,hold_seconds:600,idle_warning_seconds:300,idle_end_seconds:420},poll_interval_seconds:1,auto_resume_manual:true,rules:[{id:1,category:'评测',match_mode:'origin',url_prefix:'https://moonshot.feishu.cn/'}]};
+    const initial={enabled:true,revision:3,times:{idle_pause_seconds:120,away_pause_seconds:120,hold_seconds:600,idle_warning_seconds:300,idle_end_seconds:420},poll_interval_seconds:1,auto_resume_manual:true,rules:[{id:1,category:'评测',match_mode:'origin',url_prefix:'https://moonshot.feishu.cn/'}]};
     window.qaConfig=JSON.parse(sessionStorage.getItem('qa-config')??JSON.stringify(initial));
     window.qaFail=false;window.qaSaves=[];
     window.__TAURI_EVENT_PLUGIN_INTERNALS__={unregisterListener(){}};
     window.__TAURI_INTERNALS__={metadata:{currentWindow:{label:'settings'},currentWebview:{label:'settings'}},transformCallback(){return 1;},unregisterCallback(){},invoke:async(command,args)=>{
+      if(command==='get_category_names') return {revision:0,names:Object.fromEntries(['评测','质检','开发','文档'].map(key=>[key,key]))};
       if(command==='get_appearance') return {version:1,theme:'cream',opacity:94};
       if(command==='get_layout_settings') return {density:'compact',revision:0,sound_enabled:true,font_size:14,font_weight:400,line_spacing:'standard'};
       if(command==='get_presentation') return {version:1,categories:{'评测':{icon:'checkSquare',color:'#447cba'},'质检':{icon:'safety',color:'#e6a23c'},'开发':{icon:'code',color:'#8b5cf6'},'文档':{icon:'note',color:'#44aa88'}},background:null};

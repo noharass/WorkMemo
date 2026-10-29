@@ -376,7 +376,7 @@ export function PanelApp({ panel }: { panel: string }) {
             <nav className="settings-tabs">
               {[
                 ["appearance", "外观"],
-                ["visuals", "工作外观"],
+                ["visuals", "工作名称与外观"],
                 ["monitor", "监测"],
                 ["layout", "布局"],
                 ["data", "数据管理"],

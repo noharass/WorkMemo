@@ -1,3 +1,4 @@
+import { useCategoryNames } from "./categoryNames";
 import { Surface } from "./Drafts";
 import { Icon } from "./Icon";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -28,6 +29,7 @@ function StatsTable({ label, rows }: { label: string; rows: { name: string; tota
 }
 
 export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }: Props) {
+  const { name } = useCategoryNames();
   const history = useHistory(open, refreshKey, onDeleted);
   const { query, result, target } = history;
   const confirmation = useRef<HTMLDialogElement>(null);
@@ -67,7 +69,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
         <label>工作类别<select value={draft.category ?? ""} disabled={!history.native || history.deleting}
           onChange={(event) => { setFilterError(""); setDraft({ ...draft, category: event.target.value || null }); }}>
           <option value="">全部类别</option>
-          {CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+          {CATEGORIES.map((category) => <option key={category} value={category}>{name(category)}</option>)}
         </select></label>
         <button type="submit" disabled={!history.native || history.loading || history.deleting}>
           <Icon name="search" />{history.loading ? "正在查询…" : "查询"}</button>
@@ -89,7 +91,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
     {result && <div aria-busy={history.loading}>
       <p className="history-overview">全部已结束：{result.overview.records} 条 · 待补全 {result.overview.pending_records} 条 · 已结算数量 {formatQuantity(result.overview.quantity)}
         <br />累计有效时长 {formatDuration(result.overview.duration_ms / 1000)}</p>
-      <p className="hint">当前范围：{query.start_date} 至 {query.end_date} · {query.category ?? "全部类别"}</p>
+      <p className="hint">当前范围：{query.start_date} 至 {query.end_date} · {query.category ? name(query.category) : "全部类别"}</p>
       <dl className="summary-grid">
         <div><dt>结束记录</dt><dd>{result.filtered.records}<small> 条（待补全 {result.filtered.pending_records}）</small></dd></div>
         <div><dt>工作数量</dt><dd>{formatQuantity(result.filtered.quantity)}</dd></div>
@@ -99,18 +101,18 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
         : tab === "records" ? <>
           <ol className="history-records">
             {result.records.map((record) => <li key={record.id}>
-              <div className="record-heading"><strong>{record.category} · {formatQuantity(record.quantity)} · {record.settlement_status === "PENDING" ? "待补全" : "已结算"}</strong>
+              <div className="record-heading"><strong>{name(record.category)} · {formatQuantity(record.quantity)} · {record.settlement_status === "PENDING" ? "待补全" : "已结算"}</strong>
                 <span>{formatDuration(record.duration_seconds)}</span></div>
               <p className="hint">工作日期 {localDate(new Date(record.start_time))}<br />
                 开始 {formatTime(record.start_time)}<br />结束 {record.end_time !== null ? formatTime(record.end_time) : "—"}</p>
               <p className="record-remark">{record.remark || "未填写备注"}</p>
               <button type="button" className="text-button delete-link" disabled={history.loading || history.deleting}
-                aria-label={`删除 ${record.category} 记录 ${record.id}`} onClick={() => history.chooseDelete(record)}><Icon name="delete" />删除记录</button>
+                aria-label={`删除 ${name(record.category)} 记录 ${record.id}`} onClick={() => history.chooseDelete(record)}><Icon name="delete" />删除记录</button>
             </li>)}
           </ol>
 
         </> : <>
-          <StatsTable label="按类别汇总" rows={result.categories.map((row) => ({ name: row.category, totals: row.totals }))} />
+          <StatsTable label="按类别汇总" rows={result.categories.map((row) => ({ name: name(row.category), totals: row.totals }))} />
           <StatsTable label="每日汇总" rows={result.daily.map((row) => ({ name: row.date, totals: row.totals }))} />
           <p className="hint">汇总覆盖当前全部筛选结果，不限于当前页。数量直接相加；时长先合计毫秒再显示到秒。</p>
         </>}
@@ -121,7 +123,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
       <h2 id="delete-title">删除这条记录？</h2>
       <p id="delete-description">将永久删除这条已完成记录，并重新计算统计。此操作不能撤销。</p>
       {target && <div className="delete-record-detail">
-        <strong>{target.category} · {formatQuantity(target.quantity)}</strong>
+        <strong>{name(target.category)} · {formatQuantity(target.quantity)}</strong>
         <p>开始 {formatTime(target.start_time)}<br />结束 {target.end_time !== null ? formatTime(target.end_time) : "—"}
           <br />有效时长 {formatDuration(target.duration_seconds)}</p>
         <p className="record-remark">{target.remark || "未填写备注"}</p>

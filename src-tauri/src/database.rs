@@ -141,7 +141,7 @@ impl Store {
             .map_err(db_error)?;
         connection
             .execute_batch(
-                "PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;",
+                "PRAGMA foreign_keys=OFF; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;",
             )
             .map_err(db_error)?;
         let tx = connection
@@ -155,7 +155,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1..=8 => {}
+            1..=9 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -200,6 +200,23 @@ impl Store {
             tx.pragma_update(None, "user_version", 8)
                 .map_err(db_error)?;
         }
+        if version < 9 {
+            tx.execute_batch(include_str!("../migrations/009_idle_categories.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 9)
+                .map_err(db_error)?;
+        }
+        let invalid: Option<String> = tx
+            .query_row(
+                "SELECT [table] FROM pragma_foreign_key_check LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(db_error)?;
+        if invalid.is_some() {
+            return Err("数据库关联校验失败，迁移未提交。".into());
+        }
         // Never infer work while the application was closed from wall-clock time.
         tx.execute("UPDATE work_segments SET state='RECOVERED',end_time=checkpoint_time WHERE state='OPEN'", [])
             .map_err(db_error)?;
@@ -210,6 +227,9 @@ impl Store {
         )
         .map_err(db_error)?;
         tx.commit().map_err(db_error)?;
+        connection
+            .pragma_update(None, "foreign_keys", true)
+            .map_err(db_error)?;
         let now = clock.now();
         let mut store = Self {
             sounds: crate::sound::Tracker::default(),
@@ -229,6 +249,7 @@ impl Store {
             monitor: Runtime::default(),
         };
         store.monitor.config = store.monitor_config()?;
+        store.category_names()?;
         Ok(store)
     }
 
@@ -621,3 +642,6 @@ pub mod data_center;
 
 #[path = "data_tools.rs"]
 pub mod data_tools;
+
+#[path = "categories.rs"]
+pub mod categories;

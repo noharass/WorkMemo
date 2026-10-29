@@ -1,3 +1,4 @@
+import { useCategoryNames } from "./categoryNames";
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -23,6 +24,7 @@ import { workloadLabel, type TodayWorkload as Today } from "./workload";
 export default function App() {
   const session = useWorkSession();
   const appearance = useAppearance();
+  const { name } = useCategoryNames();
   const presentation = usePresentation();
   const layout = useLayout();
   const dashboard = useDashboard();
@@ -418,8 +420,8 @@ export default function App() {
           {switchRequest && (
             <>
               <p>
-                结束并保存当前暂停的“{switchRequest.category}”，再开始“
-                {switchRequest.input.category}”。原记录保留在待补全列表。
+                结束并保存当前暂停的“{name(switchRequest.category)}”，再开始“
+                {name(switchRequest.input.category)}”。原记录保留在待补全列表。
               </p>
               <div className="settings-actions">
                 <button
@@ -454,7 +456,7 @@ export default function App() {
           {record && (
             <>
               <p>
-                {record.category} · 数量 {formatQuantity(record.quantity)}
+                {name(record.category)} · 数量 {formatQuantity(record.quantity)}
               </p>
               <p className="hint">开始 {formatTime(record.start_time)}</p>
               <p className="task-remark">

@@ -16,9 +16,9 @@ impl Store {
         let (enabled, revision, times, poll_interval_seconds, auto_resume_manual, browsing_only) = self
             .connection
             .query_row(
-                "SELECT enabled,revision,idle_warning_seconds,idle_end_seconds,away_pause_seconds,hold_seconds,poll_interval_seconds,auto_resume_manual,browsing_only FROM monitoring_settings WHERE id=1",
+                "SELECT enabled,revision,idle_warning_seconds,idle_end_seconds,away_pause_seconds,hold_seconds,poll_interval_seconds,auto_resume_manual,browsing_only,idle_pause_seconds FROM monitoring_settings WHERE id=1",
                 [],
-                |r| Ok((r.get(0)?, r.get(1)?, TrackingTimes { idle_warning_seconds: r.get(2)?, idle_end_seconds: r.get(3)?, away_pause_seconds: r.get(4)?, hold_seconds: r.get(5)? }, r.get(6)?, r.get(7)?, r.get(8)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, TrackingTimes { idle_pause_seconds: r.get(9)?, idle_warning_seconds: r.get(2)?, idle_end_seconds: r.get(3)?, away_pause_seconds: r.get(4)?, hold_seconds: r.get(5)? }, r.get(6)?, r.get(7)?, r.get(8)?)),
             )
             .map_err(db_error)?;
         let mut statement = self
@@ -100,8 +100,8 @@ impl Store {
             .map_err(db_error)?;
         }
         tx.execute(
-            "UPDATE monitoring_settings SET enabled=?1,revision=revision+1,idle_warning_seconds=?2,idle_end_seconds=?3,away_pause_seconds=?4,hold_seconds=?5,poll_interval_seconds=?6,auto_resume_manual=?7 WHERE id=1",
-            params![input.enabled,input.times.idle_warning_seconds,input.times.idle_end_seconds,input.times.away_pause_seconds,input.times.hold_seconds,input.poll_interval_seconds,input.auto_resume_manual],
+            "UPDATE monitoring_settings SET enabled=?1,revision=revision+1,idle_warning_seconds=?2,idle_end_seconds=?3,away_pause_seconds=?4,hold_seconds=?5,poll_interval_seconds=?6,auto_resume_manual=?7,idle_pause_seconds=?8 WHERE id=1",
+            params![input.enabled,input.times.idle_warning_seconds,input.times.idle_end_seconds,input.times.away_pause_seconds,input.times.hold_seconds,input.poll_interval_seconds,input.auto_resume_manual,input.times.idle_pause_seconds],
         )
         .map_err(db_error)?;
         tx.commit().map_err(db_error)?;
@@ -110,6 +110,7 @@ impl Store {
             self.monitor.monitor_pause_since = Some(now.ticks_ms);
         }
         self.monitor.config = self.monitor_config()?;
+        self.monitor.status.idle_pause_seconds = self.monitor.config.times.idle_pause_seconds;
         self.monitor.status.idle_warning_seconds = self.monitor.config.times.idle_warning_seconds;
         self.monitor.status.idle_end_seconds = self.monitor.config.times.idle_end_seconds;
         self.monitor.page = None;
@@ -126,6 +127,7 @@ impl Store {
         self.monitor.status.browsing_only = self.monitor.config.browsing_only;
         self.monitor.input_floor = self.clock.now().ticks_ms;
         self.monitor.status.enabled = self.monitor.config.enabled;
+        self.monitor.status.idle_pause_seconds = self.monitor.config.times.idle_pause_seconds;
         self.monitor.status.idle_warning_seconds = self.monitor.config.times.idle_warning_seconds;
         self.monitor.status.idle_end_seconds = self.monitor.config.times.idle_end_seconds;
     }
@@ -145,6 +147,7 @@ impl Store {
             })
             || self.monitor.last_input.is_some_and(|last| {
                 [
+                    self.monitor.config.times.idle_pause_seconds * 1000,
                     self.monitor.config.times.idle_warning_seconds * 1000,
                     self.monitor.config.times.idle_end_seconds * 1000,
                 ]
@@ -229,6 +232,37 @@ impl Store {
         Ok(())
     }
 
+    fn tracking_deadlines(&self, last: Option<i64>) -> Vec<(i64, u8, &'static str, i64)> {
+        let times = &self.monitor.config.times;
+        let mut deadlines = Vec::new();
+        if let Some(last) = last {
+            deadlines.push((
+                last.saturating_add(times.idle_end_seconds * 1000),
+                0,
+                "IDLE",
+                last,
+            ));
+        }
+        if let Some(away) = self.monitor.away_since {
+            deadlines.push((
+                away.saturating_add((times.away_pause_seconds + times.hold_seconds) * 1000),
+                1,
+                "AWAY",
+                away.saturating_add(times.away_pause_seconds * 1000),
+            ));
+        }
+        if let Some(pause) = self.monitor.monitor_pause_since {
+            deadlines.push((
+                pause.saturating_add(times.hold_seconds * 1000),
+                2,
+                "RECOVERY",
+                pause,
+            ));
+        }
+        deadlines.sort_by_key(|d| (d.0, d.1));
+        deadlines
+    }
+
     pub fn system_unavailable(&mut self, at: TimePoint) -> Result<()> {
         self.close_at(at.ticks_ms, "MONITOR", false, self.clock.now())?;
         self.monitor.monitor_pause_since.get_or_insert(at.ticks_ms);
@@ -251,6 +285,7 @@ impl Store {
                 wall_ms: now.wall_ms.saturating_sub(now.ticks_ms - last).max(0),
             })?;
         }
+        let previous_native = self.monitor.native;
         self.monitor.native = Some(sample);
         let native_ok = sample.reliable
             && sample.unlocked
@@ -271,17 +306,29 @@ impl Store {
         let protected = |record: &WorkRecord| {
             record.recovery_pending || record.pause_reason.as_deref() == Some("MANUAL")
         };
-        // A restored input arriving after an expired idle deadline starts a new
-        // record; it must not silently extend the old one.
+        // Resolve old deadlines before fresh input resets inactivity. This also
+        // catches a pause crossed between two samples without counting the gap.
         if let (Some(old), Some(new)) = (old_input, new_input) {
-            if new > old
-                && new >= old.saturating_add(self.monitor.config.times.idle_end_seconds * 1000)
-                && self.active()?.is_some_and(|r| !protected(&r))
-            {
-                self.close_at(old, "IDLE", true, now)?;
-                self.monitor.input_floor = old
-                    .saturating_add(self.monitor.config.times.idle_end_seconds * 1000)
-                    .saturating_sub(1);
+            if new > old && self.active()?.is_some_and(|r| !protected(&r)) {
+                if let Some((deadline, _, reason, cutoff)) = self
+                    .tracking_deadlines(Some(old))
+                    .into_iter()
+                    .find(|d| d.0 <= new)
+                {
+                    self.close_at(cutoff, reason, true, now)?;
+                    self.monitor.input_floor = deadline.saturating_sub(1);
+                } else if new
+                    >= old.saturating_add(self.monitor.config.times.idle_pause_seconds * 1000)
+                    // A delta between two last-input values alone cannot prove
+                    // inactivity: multiple inputs can happen between samples.
+                    // Require an observed quiet interval (or a protected scheduler gap).
+                    && (previous_native.is_some_and(|s| s.at.ticks_ms.saturating_sub(old) >= 1_000)
+                        || last_tick.is_some_and(|last| now.ticks_ms.saturating_sub(last) > 10_000))
+                    && self.active()?.is_some_and(|r| r.pause_reason.as_deref() != Some("IDLE_PAUSE"))
+                {
+                    self.close_at(old, "IDLE_PAUSE", false, now)?;
+                    self.monitor.input_floor = self.monitor.input_floor.max(old);
+                }
             }
         }
         self.monitor.last_input = new_input;
@@ -414,79 +461,95 @@ impl Store {
                     self.monitor.monitor_pause_since = Some(cutoff);
                 }
             }
-            let mut deadlines = Vec::new();
-            if let Some(last) = new_input {
-                deadlines.push((
-                    last.saturating_add(self.monitor.config.times.idle_end_seconds * 1000),
-                    0,
-                    "IDLE",
-                    last,
-                ));
-            }
-            if let Some(away) = self.monitor.away_since {
-                deadlines.push((
-                    away.saturating_add(
-                        self.monitor.config.times.away_pause_seconds * 1000
-                            + self.monitor.config.times.hold_seconds * 1000,
-                    ),
-                    1,
-                    "AWAY",
-                    away.saturating_add(self.monitor.config.times.away_pause_seconds * 1000),
-                ));
-            }
-            if let Some(pause) = self.monitor.monitor_pause_since {
-                deadlines.push((
-                    pause.saturating_add(self.monitor.config.times.hold_seconds * 1000),
-                    2,
-                    "RECOVERY",
-                    pause,
-                ));
-            }
-            deadlines.sort_by_key(|d| (d.0, d.1));
+            let deadlines = self.tracking_deadlines(new_input);
             if let Some((deadline, _, reason, cutoff)) =
                 deadlines.first().copied().filter(|d| d.0 <= now.ticks_ms)
             {
                 self.close_at(cutoff, reason, true, now)?;
                 self.monitor.input_floor = deadline;
-            } else if record.control_mode == "AUTO" && native_ok && page_known {
-                if matched {
-                    self.monitor.away_since = None;
-                    let fresh = candidate_input.is_some_and(|last| {
-                        last >= self.monitor.entered_at.unwrap_or(now.ticks_ms)
-                            && last > self.monitor.input_floor
-                            && now.ticks_ms - last <= RECENT_INPUT_MS
-                    });
-                    if record.is_paused
-                        && matches!(record.pause_reason.as_deref(), Some("AWAY" | "MONITOR"))
-                        && fresh
+            } else {
+                if native_ok
+                    && new_input.is_some_and(|last| {
+                        now.ticks_ms.saturating_sub(last)
+                            >= self.monitor.config.times.idle_pause_seconds * 1000
+                    })
+                    && self
+                        .active()?
+                        .is_some_and(|r| !r.is_paused || r.pause_reason.as_deref() == Some("AWAY"))
+                {
+                    let last = new_input.unwrap();
+                    self.close_at(last, "IDLE_PAUSE", false, now)?;
+                    self.monitor.input_floor = self.monitor.input_floor.max(last);
+                }
+                // Re-read after close_at: its transaction may have just paused the record.
+                if let Some(current) = self.active()? {
+                    if current.control_mode == "AUTO" && native_ok && page_known {
+                        if matched {
+                            self.monitor.away_since = None;
+                            let fresh = candidate_input.is_some_and(|last| {
+                                last >= self.monitor.entered_at.unwrap_or(now.ticks_ms)
+                                    && last > self.monitor.input_floor
+                                    && now.ticks_ms - last <= RECENT_INPUT_MS
+                            });
+                            if current.is_paused
+                                && matches!(
+                                    current.pause_reason.as_deref(),
+                                    Some("AWAY" | "MONITOR" | "IDLE_PAUSE")
+                                )
+                                && fresh
+                                && !self.monitor.config.browsing_only
+                            {
+                                let last = candidate_input.unwrap();
+                                self.resume_at(
+                                    current.id,
+                                    TimePoint {
+                                        ticks_ms: last,
+                                        wall_ms: now
+                                            .wall_ms
+                                            .saturating_sub(now.ticks_ms - last)
+                                            .max(current.start_time),
+                                    },
+                                    "AUTO",
+                                )?;
+                            }
+                        } else {
+                            let away = *self.monitor.away_since.get_or_insert(now.ticks_ms);
+                            if now.ticks_ms
+                                >= away.saturating_add(
+                                    self.monitor.config.times.away_pause_seconds * 1000,
+                                )
+                                && !current.is_paused
+                            {
+                                self.close_at(
+                                    away.saturating_add(
+                                        self.monitor.config.times.away_pause_seconds * 1000,
+                                    ),
+                                    "AWAY",
+                                    false,
+                                    now,
+                                )?;
+                            }
+                        }
+                    } else if current.control_mode == "MANUAL"
+                        && native_ok
+                        && current.pause_reason.as_deref() == Some("IDLE_PAUSE")
                         && !self.monitor.config.browsing_only
+                        && new_input.is_some_and(|last| {
+                            last > self.monitor.input_floor
+                                && now.ticks_ms - last <= RECENT_INPUT_MS
+                        })
                     {
-                        let last = candidate_input.unwrap();
+                        let last = new_input.unwrap();
                         self.resume_at(
-                            record.id,
+                            current.id,
                             TimePoint {
                                 ticks_ms: last,
                                 wall_ms: now
                                     .wall_ms
                                     .saturating_sub(now.ticks_ms - last)
-                                    .max(record.start_time),
+                                    .max(current.start_time),
                             },
-                            "AUTO",
-                        )?;
-                    }
-                } else {
-                    let away = *self.monitor.away_since.get_or_insert(now.ticks_ms);
-                    if now.ticks_ms
-                        >= away.saturating_add(self.monitor.config.times.away_pause_seconds * 1000)
-                        && !record.is_paused
-                    {
-                        self.close_at(
-                            away.saturating_add(
-                                self.monitor.config.times.away_pause_seconds * 1000,
-                            ),
-                            "AWAY",
-                            false,
-                            now,
+                            "MANUAL",
                         )?;
                     }
                 }

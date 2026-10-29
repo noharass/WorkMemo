@@ -33,7 +33,7 @@ async function refresh() {
     status.textContent = state?.message ?? '连接状态不可用';
     list.replaceChildren();
     for (const rule of state?.config?.rules ?? []) {
-      const item = document.createElement('li'); item.textContent = `${rule.category} · ${{path_prefix:"路径前缀",origin:"整个站点",domain_suffix:"域名后缀"}[rule.match_mode ?? "path_prefix"]} · ${rule.url_prefix}`; list.append(item);
+      const item = document.createElement('li'); item.textContent = `${state.config.category_names?.[rule.category] ?? rule.category} · ${{path_prefix:"路径前缀",origin:"整个站点",domain_suffix:"域名后缀"}[rule.match_mode ?? "path_prefix"]} · ${rule.url_prefix}`; list.append(item);
     }
     origins = permissionOrigins(state?.config?.rules ?? []);
     grant.disabled = !state?.connected || origins.length === 0;

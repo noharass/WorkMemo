@@ -140,6 +140,7 @@ fn idle_thresholds_use_input_time_warning_cancels_and_seven_minutes_are_removed(
     assert!(h.store.current_notice().unwrap().is_none());
     h.step(1000, true);
     assert!(!h.store.monitor.status.idle_warning);
+    h.advance(10_000, true);
     let last = h.clock.now();
     h.advance(420_000, false);
     let record = h.saved(id);
@@ -147,7 +148,7 @@ fn idle_thresholds_use_input_time_warning_cancels_and_seven_minutes_are_removed(
     assert_eq!(record.end_reason.as_deref(), Some("IDLE"));
     assert_eq!(record.end_time, Some(last.wall_ms));
     assert_eq!(record.confirmed_end_time, Some(last.wall_ms + 420_000));
-    assert_eq!(record.duration_ms, last.ticks_ms - 1000);
+    assert_eq!(record.duration_ms, 20_000);
     assert_eq!(h.store.current_notice().unwrap().unwrap().kind, "ended");
     h.step(5000, false);
     assert_eq!(
@@ -171,7 +172,7 @@ fn idle_end_wins_over_away_and_rolls_back_the_two_minute_grace() {
     h.matched = false;
     h.tick();
     h.advance(120_000, false);
-    assert_eq!(h.saved(id).pause_reason.as_deref(), Some("AWAY"));
+    assert_eq!(h.saved(id).pause_reason.as_deref(), Some("IDLE_PAUSE"));
     h.advance(300_000, false);
     let record = h.saved(id);
     assert_eq!(record.end_reason.as_deref(), Some("IDLE"));
@@ -769,6 +770,7 @@ fn configured_deadlines_control_work_and_status() {
     let mut h = Harness::new();
     let mut cfg = h.store.monitor_config().unwrap();
     cfg.times = TrackingTimes {
+        idle_pause_seconds: 10,
         idle_warning_seconds: 20,
         idle_end_seconds: 30,
         away_pause_seconds: 4,
@@ -821,6 +823,7 @@ fn configured_idle_deadline_and_notice_are_consistent() {
             enabled: true,
             expected_revision: cfg.revision,
             times: TrackingTimes {
+                idle_pause_seconds: 1,
                 idle_warning_seconds: 2,
                 idle_end_seconds: 4,
                 ..TrackingTimes::default()
@@ -867,6 +870,7 @@ fn schema_three_migrates_defaults_and_settings_persist_with_validation() {
         c.execute_batch("PRAGMA user_version=3; INSERT INTO work_urls(url_prefix,category) VALUES('https://work.example/','开发'); UPDATE monitoring_settings SET enabled=1,revision=8 WHERE id=1;").unwrap();
     }
     let chosen = TrackingTimes {
+        idle_pause_seconds: 10,
         idle_warning_seconds: 12,
         idle_end_seconds: 23,
         away_pause_seconds: 34,
@@ -1128,6 +1132,7 @@ fn schema_four_migrates_options_without_changing_records_or_existing_thresholds(
         assert_eq!(
             cfg.times,
             TrackingTimes {
+                idle_pause_seconds: 22,
                 idle_warning_seconds: 12,
                 idle_end_seconds: 23,
                 away_pause_seconds: 34,
@@ -1472,7 +1477,7 @@ fn schema_seven_rules_migrate_and_modes_round_trip_without_touching_active_work(
     let h = Harness::new();
     h.store
         .connection
-        .execute_batch("ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; UPDATE sqlite_sequence SET seq=99 WHERE name='work_urls'; PRAGMA user_version=7;")
+        .execute_batch("ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; UPDATE sqlite_sequence SET seq=99 WHERE name='work_urls'; ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;")
         .unwrap();
     let c = h.store.connection;
     let mut store = Store::initialize(c, Box::new(h.clock), None).unwrap();
@@ -1587,3 +1592,6 @@ fn multiple_sites_for_one_work_keep_one_record_and_continuous_time() {
     assert_eq!(h.saved(id).duration_ms, 11_000);
     assert_eq!(h.store.pending_records().unwrap().len(), 1);
 }
+
+#[path = "idle_pause_tests.rs"]
+mod idle_pause_tests;

@@ -16,7 +16,7 @@ export interface WorkRecord {
   recovery_pending: boolean;
   settlement_status: "IN_PROGRESS" | "PENDING" | "COMPLETE";
   source: "AUTO" | "MANUAL_START" | "MANUAL_ENTRY";
-  pause_reason: "MANUAL" | "APP_CLOSE" | "RECOVERY" | "AWAY" | "MONITOR" | null;
+  pause_reason: "MANUAL" | "APP_CLOSE" | "RECOVERY" | "AWAY" | "MONITOR" | "IDLE_PAUSE" | null;
   confirmed_end_time: number | null;
   last_input_time: number | null;
   end_reason: string | null;
@@ -51,12 +51,13 @@ export interface MonitorStatus {
   idle_warning: boolean;
   message: string;
   revision: number;
+  idle_pause_seconds: number;
   idle_warning_seconds: number;
   idle_end_seconds: number;
   away_pause_remaining_seconds: number | null;
 }
 export interface WorkUrl { id: number; url_prefix: string; category: string; match_mode: "path_prefix" | "origin" | "domain_suffix" }
-export interface TrackingTimes { idle_warning_seconds: number; idle_end_seconds: number; away_pause_seconds: number; hold_seconds: number }
+export interface TrackingTimes { idle_pause_seconds: number; idle_warning_seconds: number; idle_end_seconds: number; away_pause_seconds: number; hold_seconds: number }
 export interface MonitorConfig { enabled: boolean; revision: number; rules: WorkUrl[]; times: TrackingTimes; poll_interval_seconds: number; auto_resume_manual: boolean }
 export interface WorkNotice { kind: "idle" | "ended"; record: WorkRecord; idle_warning_seconds: number; idle_end_seconds: number }
 
