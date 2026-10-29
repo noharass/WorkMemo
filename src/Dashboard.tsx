@@ -488,7 +488,8 @@ export default function Dashboard() {
       animationDuration: 300,
       tooltip: { ...tooltip, trigger: "axis" },
       legend: { top: 0, right: 12, data: ["工作量", "有效工时"] },
-      grid: { left: 52, right: 52, top: 40, bottom: 28, containLabel: true },
+      // Axis units occupy their own row below the legend.
+      grid: { left: 52, right: 52, top: 64, bottom: 28, containLabel: true },
       xAxis: {
         type: "category",
         data: data?.trend.map((x) => x.date) ?? [],
