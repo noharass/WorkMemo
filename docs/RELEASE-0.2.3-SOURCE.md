@@ -183,7 +183,7 @@ npm.cmd run tauri -- build --ci --no-binary-patching
 
 ## 2026-10-29 v0.2.3 第 3 阶段：正式成品与发行
 
-用户明确要求「发版吧」，进入成品及公开发布阶段。已统一 0.2.3 版本并更新中文文档；49 项 Node、144 项 Rust、格式检查、生产构建及四组隔离浏览器回归通过，中文 NSIS 与完整 ZIP 构建完成，安装器与 ZIP 的主程序／浏览器资源逐字节一致。继续执行本轮公开上传及下载核对，实际摘要和原生验收限制见 [RELEASE-0.2.3.md](RELEASE-0.2.3.md)。前两阶段等待确认是历史状态，本次「发版吧」已授权进入第 3 阶段；不结束或删除真实任务。
+用户明确要求「发版吧」，进入成品及公开发布阶段。已统一 0.2.3 版本并更新中文文档；49 项 Node、144 项 Rust、格式检查、生产构建及四组隔离浏览器回归通过，中文 NSIS 与完整 ZIP 构建完成，安装器与 ZIP 的主程序／浏览器资源逐字节一致。已公开为 Latest，四项资产均匿名下载并复核 SHA256；构建提交及标签为 83a2e2cfbbd3cb254de397d148c995082c1b4210。实际摘要和原生验收限制见 [RELEASE-0.2.3.md](RELEASE-0.2.3.md)。前两阶段等待确认是历史状态，本次「发版吧」已授权进入第 3 阶段；不结束或删除真实任务。
 
 ## 2026-10-29 v0.2.3 第 2 阶段
 
@@ -380,7 +380,7 @@ README 与使用说明更新为公开入口，完整回执、校验值与未完�
 
 统一应用、Cargo、Tauri、Chrome 扩展版本为 0.2.3，更新中文说明、构建中文 NSIS 安装器和完整免安装 ZIP，提供第三方许可、SHA256、完整源码清单及公开下载。
 
-当前成品构建、包内容和校验检查完成；本轮继续执行上传及公开下载复核，完成后将实际结果写回本页。v0.2.3 标签应指向最终构建源码，后续发布回执文档独立提交，不移动构建标签。
+[WorkMemo v0.2.3 正式 Release](https://github.com/noharass/WorkMemo/releases/tag/v0.2.3) 已公开、非预发布并设为 Latest（release ID 427455584，发布时间 2026-10-29T04:06:18Z／北京时间 12:06:18）。最终构建源码为 `83a2e2cfbbd3cb254de397d148c995082c1b4210`，公开标签 v0.2.3 指向此提交。四项资产均已匿名重新下载并通过 SHA256 核对；发布回执文档另行提交 main，不移动构建标签。
 
 - [Windows x64 安装版](https://github.com/noharass/WorkMemo/releases/download/v0.2.3/WorkMemo_0.2.3_x64-setup.exe)
 - [完整免安装 ZIP](https://github.com/noharass/WorkMemo/releases/download/v0.2.3/WorkMemo_0.2.3_windows_x64.zip)
@@ -402,6 +402,14 @@ README 与使用说明更新为公开入口，完整回执、校验值与未完�
 - 保留原有未跟踪 docs/DYNAMIC-ISLAND-PLAN.md；未结束、删除或生成用户真实任务，未读取或替换真实工作数据库，也未执行安装或替换 Downloads 中旧程序。
 
 前两阶段的独立 Windows 启动、schema 9 空库接口、十条 WinMM 播放检查不冒充本轮成品 GUI 验收。原生设置窗口点击及截图曾受自动化工具限制；原生透明／多屏 DPI／焦点、完整安装卸载、长时间真实键鼠空闲和听感仍未全部实机覆盖。发布不改变这些验收状态。
+
+## 实际发布与公开复核
+
+- 使用现有 Git 凭据管理器完成认证，凭据只存在发布进程内存，未写入文件、URL、Git 配置或日志。
+- 先创建 draft，上传四项资产并逐项核对 GitHub 返回的字节数及 sha256 摘要，然后公开、设置 Latest。最终 public API 的 tag、非 draft、非 prerelease、Latest 与四资产名单通过；公开标签与构建提交一致。
+- 草稿阶段的下载地址带临时标签；第一次过早要求正式地址导致核对中断。恢复时按 tag 读取不到 draft，曾多建一份草稿；已删除本轮确认归属的旧草稿 427455300，只保留正式 Release 427455584，没有删除或移动标签、旧版本或正式资产。
+- 四项资产用不带认证头的普通下载 URL 实际下载，大小及 SHA256 与本地一致；匿名 /releases/latest 也确认 v0.2.3。公开副本位于 E:\WorkMemo\artifacts\0.2.3\qa\public-downloads，公开元数据回执为同目录上级 RELEASE-RECEIPT.json。
+- README 的安装版、ZIP 和更新说明入口均对应 v0.2.3；完整源码由标签归档提供，原有 Releases 与用户本机程序保持。
 
 ## 成品与摘要
 
@@ -467,7 +475,16 @@ git ls-remote origin refs/heads/main refs/tags/v0.2.3
 git status --short --branch
 ```
 
-发布后另行提交本页回执及完整源码记录，比较本地与 origin/main 提交；无需移动已发布的 v0.2.3 标签。
+构建提交 83a2e2c 已推送 main，v0.2.3 标签已推送并核对为相同完整提交。发布后仅更新本页、PHASE-8、完整源码和清单，并单独提交同步；最终本地／origin/main 对照保存在 artifacts/0.2.3/qa/git-sync-release.txt，标签保持指向构建源码。
+
+```powershell
+$release = Invoke-RestMethod 'https://api.github.com/repos/noharass/WorkMemo/releases/latest'
+$release | Select-Object tag_name,draft,prerelease,html_url
+$release.assets | Select-Object name,size,digest,browser_download_url
+git ls-remote origin refs/heads/main refs/tags/v0.2.3
+```
+
+预期 v0.2.3、draft=false、prerelease=false，四项资产均可公开下载，摘要与本页相同；标签对应 83a2e2cfbbd3cb254de397d148c995082c1b4210。匿名 API 可能有访问频率限制，不应误报为 Release 不存在。
 
 ## 兼容性与使用
 
