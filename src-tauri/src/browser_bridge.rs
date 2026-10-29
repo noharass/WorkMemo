@@ -139,11 +139,11 @@ fn serve(
             let compatible = crate::monitor::supports_match_modes(frame.match_modes, &config.rules);
             if !compatible {
                 store.warning = Some(
-                    "浏览器扩展不支持新网址匹配模式，请更新配套扩展至 0.2.2 并同步站点授权。"
+                    "浏览器扩展不支持新网址匹配模式，请更新当前版本的配套扩展并同步站点授权。"
                         .into(),
                 );
             } else if store.warning.as_deref()
-                == Some("浏览器扩展不支持新网址匹配模式，请更新配套扩展至 0.2.2 并同步站点授权。")
+                == Some("浏览器扩展不支持新网址匹配模式，请更新当前版本的配套扩展并同步站点授权。")
             {
                 store.warning = None;
             }

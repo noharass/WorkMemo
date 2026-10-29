@@ -4,17 +4,15 @@
 
 <h1 align="center">WorkMemo</h1>
 
-> v0.2.3 源码开发进度：空闲暂停、四类改名、日／周／月分类报表和两套提示音已实现，实际检查及原生验收限制见 [第 2 阶段记录](docs/UPDATE-0.2.3-PHASE-2.md)。Windows 正式成品待下一阶段，下面公开下载仍为 v0.2.2。
-
 <p align="center"><strong>让忙过的一天，有迹可循。</strong></p>
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.2/WorkMemo_0.2.2_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.3/WorkMemo_0.2.3_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.2/WorkMemo_0.2.2_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.3/WorkMemo_0.2.3_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.2">v0.2.2 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.3">v0.2.3 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -40,15 +38,15 @@
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## 这次更新：多个工作网站，一份连续记录
+## 这次更新：空闲自动停表，工作量按周期看
 
-**v0.2.2** 可以为同一工作添加多个 URL，分别使用路径前缀、整个站点或域名后缀。匹配站点之间切换时保留同一条计时记录；开工仍由你确认，想先看看就选「仅浏览」。
+**v0.2.3** 默认键鼠无操作 2 分钟自动暂停，扣除空闲尾段；有新工作操作后继续同一任务。暂停阈值可调整，保留较长时间空闲自动结束规则。
 
-状态岛缩为约 320×56，暂停、继续和开始入口更顺手。新增轻提示音，可在布局设置关闭或试听；四种主题的按钮悬浮反馈也统一调整。
+四类工作可以改名，历史记录和同组多个网址保持原有归属。新的总览按自然日、周、月分别汇总每类数量和有效工时；0、待补填和没有记录清楚区分。分类报表优先展示，趋势和明细放在下方。
 
-工作总览重新排成响应式网格：桌面左侧趋势、右侧类别与工作节奏；平板和手机自动换排，明细紧接图表。热力图色阶更清楚，趋势底部灰条移除，详情中的「编辑工作量」入口也已修复。
+提示音提供柔和、清脆两套，五种状态可分别试听，原有静音选择保留。此前的多 URL、三种网址匹配模式、紧凑状态岛和四皮肤继续可用。
 
-[查看 v0.2.2 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.2) · [发布校验与实测范围](docs/RELEASE-0.2.2.md)
+[查看 v0.2.3 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.3) · [发布校验与实测范围](docs/RELEASE-0.2.3.md)
 
 ## 从旧版本过来
 

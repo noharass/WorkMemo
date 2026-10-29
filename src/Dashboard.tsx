@@ -610,7 +610,7 @@ export default function Dashboard() {
           {online ? "本机连接正常" : "等待本机连接"}
           <small>
             记录保存在你的电脑中
-            <br />v{meta?.version ?? "0.2.2"}
+            <br />v{meta?.version ?? "0.2.3"}
           </small>
         </div>
       </aside>
