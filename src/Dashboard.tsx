@@ -547,7 +547,7 @@ function DashboardContent() {
         />
         <div className="dc-sidebar-bottom">
           <Tooltip
-            title={`${online ? "本机连接正常" : "等待本机连接"} · v${meta?.version ?? "0.2.3"}`}
+            title={`${online ? "本机连接正常" : "等待本机连接"} · v${meta?.version ?? "0.2.4"}`}
             placement="right"
           >
             <span

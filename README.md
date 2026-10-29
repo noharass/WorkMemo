@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.3/WorkMemo_0.2.3_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.4/WorkMemo_0.2.4_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.3/WorkMemo_0.2.3_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.4/WorkMemo_0.2.4_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.3">v0.2.3 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.4">v0.2.4 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -38,19 +38,17 @@
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## 这次更新：空闲自动停表，工作量按周期看
+## 这次更新：网页更顺畅，桌面顶部更简洁
 
-**v0.2.3** 默认键鼠无操作 2 分钟自动暂停，扣除空闲尾段；有新工作操作后继续同一任务。暂停阈值可调整，保留较长时间空闲自动结束规则。
+**v0.2.4** 统一数据中心的筛选、表格、分页和状态反馈。工作详情从底部浮出，打开弹窗时背景保持原位；保存工作量和定时刷新原位更新，减少背景闪动，失败时保留输入或明确显示上次结果。
 
-四类工作可以改名，历史记录和同组多个网址保持原有归属。新的总览按自然日、周、月分别汇总每类数量和有效工时；0、待补填和没有记录清楚区分。分类报表优先展示，趋势和明细放在下方。
+主窗口左上角只保留设置，外观、布局等仍可在设置中切换。顶部留白可拖动窗口，当天工作量胶囊和右侧窗口操作保留，小窗口更清楚。
 
-提示音提供柔和、清脆两套，五种状态可分别试听，原有静音选择保留。此前的多 URL、三种网址匹配模式、紧凑状态岛和四皮肤继续可用。
+此前的空闲自动暂停、四类改名、自然日／周／月报表、两套提示音、多 URL、紧凑状态岛和四皮肤继续可用。数据库格式仍为 schema 9，沿用原来的记录和设置。
 
-[查看 v0.2.3 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.3) · [发布校验与实测范围](docs/RELEASE-0.2.3.md)
+[查看 v0.2.4 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.4) · [发布校验与实测范围](docs/RELEASE-0.2.4.md)
 
-源码阶段已完成网页数据中心优化：统一 Ant Design、底部浮窗、背景滚动锁定及平滑刷新。此项尚未公开发行，已发布 v0.2.3 下载保持原样。实现与验收说明见 [网页优化交付](docs/WEB-UI-UPDATE.md)。
-
-主窗口源码的顶部快捷入口已收为一个设置，并预留拖动空间、限制工作量胶囊宽度；见[顶部空间规划与验收](docs/TITLEBAR-UPDATE.md)。同样尚未替换公开安装包。
+实现细节和分阶段检查见[网页优化交付](docs/WEB-UI-UPDATE.md)与[顶部空间规划](docs/TITLEBAR-UPDATE.md)；旧版下载继续保留。
 
 ## 从旧版本过来
 
