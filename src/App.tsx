@@ -116,34 +116,8 @@ export default function App() {
         <nav className="main-nav" aria-label="主导航">
           <button
             className="nav-button"
-            title="工作数据中心"
-            aria-label="历史与统计"
-            onClick={() => {
-              void dashboard.open();
-            }}
-          >
-            <Icon name="chart" />
-          </button>
-          <button
-            className="nav-button"
-            title="外观"
-            aria-label="外观设置"
-            onClick={() => panel("appearance")}
-          >
-            <Icon name="palette" />
-          </button>
-          <button
-            className="nav-button"
-            title="布局"
-            aria-label="布局设置"
-            onClick={() => panel("layout")}
-          >
-            <Icon name="layout" />
-          </button>
-          <button
-            className="nav-button"
-            title="监测设置"
-            aria-label="监测设置"
+            title="设置"
+            aria-label="设置"
             onClick={() => panel("monitor")}
           >
             <Icon name="settings" />

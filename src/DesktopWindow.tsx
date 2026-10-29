@@ -49,13 +49,15 @@ export function DesktopWindow({ children, appearanceStyle, navigation, categorie
     <div className="desktop-frame" data-density={density} style={appearanceStyle}>
       <div className="app-shell">
         {background&&<div aria-hidden="true" className="window-background" style={backgroundStyle(background)}/>}
-        <header className="titlebar">
+        <header className={`titlebar${categories ? " titlebar-main" : ""}`}>
           <div className="titlebar-drag" title={native ? "按住这里移动窗口" : "请在桌面应用中移动窗口"}
             onMouseDown={(event) => { void drag(event); }}>
             <img className="brand-mark" src="/workmemo.png" alt="" aria-hidden="true" draggable={false} />
             <span className="brand-name">WorkMemo</span>
           </div>
           {navigation}
+          {categories && <div className="titlebar-drag titlebar-space" title={native ? "按住这里移动窗口" : "请在桌面应用中移动窗口"}
+            onMouseDown={(event) => { void drag(event); }} />}
           {categories}
           <div className="window-controls" aria-label="窗口操作">
             <button type="button" className="window-control" aria-label="最小化窗口"
