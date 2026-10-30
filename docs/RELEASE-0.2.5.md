@@ -6,9 +6,19 @@
 
 沿用原有布局、透明悬浮及 Glass／Cream／Dark／Neon 四皮肤，发布 0.2.5 中文 NSIS 安装器、完整免安装 ZIP、第三方许可与 SHA256。正式标识、数据目录、扩展固定 key、权限和 SQLite schema 9 保持；不为检查结束、删除或暂停真实任务。
 
-本地正式构建与成品核对已完成；等待推送本次构建提交和标签，随后按已授权流程公开 Release 并记录公开下载回执。
+本地正式构建与成品核对已完成，GitHub Release 已公开为正式 Latest。四项资产的服务端大小与 SHA256 全部一致，匿名重新下载后字节数和 SHA256 再次全部一致。
 
 发布入口：[WorkMemo v0.2.5](https://github.com/noharass/WorkMemo/releases/tag/v0.2.5)。本地目录：`E:\WorkMemo\artifacts\0.2.5`。
+
+## 公开发布回执
+
+- Release ID：`428941478`；服务端发布时间：2026-10-30 19:15:48（Asia/Shanghai）。`draft=false`、`prerelease=false`，实际匿名 Latest 查询返回 v0.2.5。
+- 构建源码、远程 main（发布时）和轻量标签 `v0.2.5`：`80beca896ceafcbbfe2320707dd3c763e4bb98e7`；推送后已核对一致。发布回执另行提交，构建标签保持在该提交，不移动。
+- [WorkMemo_0.2.5_x64-setup.exe](https://github.com/noharass/WorkMemo/releases/download/v0.2.5/WorkMemo_0.2.5_x64-setup.exe)：服务端摘要与本地一致，公开地址已实际匿名下载，字节数和 SHA256 复算一致。
+- [WorkMemo_0.2.5_windows_x64.zip](https://github.com/noharass/WorkMemo/releases/download/v0.2.5/WorkMemo_0.2.5_windows_x64.zip)：服务端摘要与本地一致，公开地址已实际匿名下载，字节数和 SHA256 复算一致。
+- [THIRD-PARTY-LICENSES.txt](https://github.com/noharass/WorkMemo/releases/download/v0.2.5/THIRD-PARTY-LICENSES.txt)：服务端摘要与本地一致，公开地址已实际匿名下载，字节数和 SHA256 复算一致。
+- [SHA256SUMS.txt](https://github.com/noharass/WorkMemo/releases/download/v0.2.5/SHA256SUMS.txt)：服务端摘要与本地一致，公开地址已实际匿名下载，字节数和 SHA256 复算一致。
+- 本地完整回执：`E:\WorkMemo\artifacts\0.2.5\qa\RELEASE-RECEIPT.json`；匿名下载副本：`E:\WorkMemo\artifacts\0.2.5\qa\public-downloads`。这些内容、凭据和构建输出不提交 Git。旧发布资产保持。
 
 ## 本版变化
 
