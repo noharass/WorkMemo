@@ -1,4 +1,7 @@
 !include "LogicLib.nsh"
+!ifndef WM_STARTUP_REGISTRY_ROOT
+  !define WM_STARTUP_REGISTRY_ROOT "Software\Microsoft\Windows\CurrentVersion\Run"
+!endif
 !ifndef WM_BRIDGE_REGISTRY_ROOT
   !define WM_BRIDGE_REGISTRY_ROOT "Software\Google\Chrome\NativeMessagingHosts"
 !endif
@@ -56,6 +59,15 @@
   ${EndIf}
 !macroend
 !macro NSIS_HOOK_POSTUNINSTALL
+  ; Only remove the login entry owned by this installation.
+  ; Portable or newer installations may have registered a different path.
+  Push $R0
+  SetRegView 64
+  ReadRegStr $R0 HKCU "${WM_STARTUP_REGISTRY_ROOT}" "WorkMemo"
+  ${If} $R0 == '$\"$INSTDIR\workmemo.exe$\" --autostart'
+    DeleteRegValue HKCU "${WM_STARTUP_REGISTRY_ROOT}" "WorkMemo"
+  ${EndIf}
+  Pop $R0
   !insertmacro WM_BRIDGE_CONSTANTS
   Push $R0
   Push $R1

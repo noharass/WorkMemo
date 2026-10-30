@@ -16,6 +16,7 @@ mod presentation;
 mod registration;
 mod service;
 mod sound;
+mod startup;
 mod windows;
 
 /// A real IPC round trip verifies that the desktop backend is available.
@@ -35,7 +36,21 @@ fn app_info() -> AppInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(windows)]
+    let builder = builder
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if !args.iter().any(|arg| arg == "--autostart") {
+                let _ = desktop::show_main(app, false);
+            }
+        }))
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .arg("--autostart")
+                .app_name("WorkMemo")
+                .build(),
+        );
+    builder
         .register_uri_scheme_protocol("background", |context, request| {
             presentation::background_response(context.app_handle(), request.uri().path())
         })
@@ -51,6 +66,10 @@ pub fn run() {
             app.manage(presentation::initialize(app)?);
             app.manage(dashboard::initialize(app)?);
             desktop::setup(app)?;
+            app.manage(startup::initialize(app)?);
+            if !std::env::args().any(|arg| arg == "--autostart") {
+                desktop::show_main(app.handle(), false)?;
+            }
             if std::env::args().any(|a| a == "--demo") {
                 let handle = app.handle().clone();
                 tauri::async_runtime::spawn_blocking(move || {
@@ -72,6 +91,12 @@ pub fn run() {
         .on_window_event(service::handle_window_event)
         .invoke_handler(tauri::generate_handler![
             app_info,
+            desktop::get_island_viewport,
+            desktop::fit_island_position,
+            desktop::set_island_region,
+            desktop::hold_island,
+            startup::get_startup_status,
+            startup::set_startup_enabled,
             presentation::get_presentation,
             presentation::save_presentation,
             presentation::import_background,

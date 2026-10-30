@@ -9,15 +9,17 @@ interface Props {
   minimal?: boolean;
   switching?: boolean;
   starting?: boolean;
+  onCancel?: () => void;
   onStart: (input: StartInput) => Promise<boolean>;
 }
 
 export function WorkForm({
-  minimal = false,
+  minimal: _minimal = false,
   disabled,
   switching = false,
   starting = false,
   onStart,
+  onCancel,
 }: Props) {
   const { name } = useCategoryNames();
   const [category, setCategory] = useState("");
@@ -28,7 +30,6 @@ export function WorkForm({
   const categoryRef = useRef<HTMLSelectElement>(null);
   const quantityRef = useRef<HTMLInputElement>(null);
   const remarkRef = useRef<HTMLTextAreaElement>(null);
-  const remarkDetails = useRef<HTMLDetailsElement>(null);
 
   function clearError(field: keyof StartInput) {
     setErrors((current) => ({ ...current, [field]: undefined }));
@@ -40,11 +41,6 @@ export function WorkForm({
     const result = validateWorkInput(category, quantity, remark);
     if (!result.ok) {
       setErrors(result.errors);
-      if (
-        (result.errors.remark || result.errors.quantity) &&
-        remarkDetails.current
-      )
-        remarkDetails.current.open = true;
       (result.errors.category
         ? categoryRef
         : result.errors.quantity
@@ -66,10 +62,12 @@ export function WorkForm({
       }}
       noValidate
     >
-      <div className={`field-row grid gap-3 grid-cols-1`}>
+      <div className="category-field">
+        <span className="category-field-symbol" aria-hidden="true"><Icon name="list" /></span>
         <label>
-          工作类别
+          <span className="sr-only">工作类别</span>
           <select
+            aria-label="工作类别"
             ref={categoryRef}
             value={category}
             disabled={disabled}
@@ -80,7 +78,7 @@ export function WorkForm({
               clearError("category");
             }}
           >
-            <option value="">请选择类别</option>
+            <option value="">选择工作类别</option>
             {CATEGORIES.map((value) => (
               <option key={value} value={value}>
                 {name(value)}
@@ -94,11 +92,7 @@ export function WorkForm({
           )}
         </label>
       </div>
-      <details className="form-note" ref={remarkDetails} open={!minimal}>
-        <summary>
-          <Icon name="note" />
-          工作量与备注 <span className="optional">选填</span>
-        </summary>
+      <div className="work-input-row">
         <label>
           工作量（可稍后填写）
           <input
@@ -125,12 +119,12 @@ export function WorkForm({
           )}
         </label>
         <label>
-          <span className="sr-only">工作备注</span>
+          <span>备注（选填）</span>
           <textarea
             ref={remarkRef}
             rows={1}
             maxLength={4000}
-            placeholder="记下这次工作的内容…"
+            placeholder="添加备注（可选）"
             value={remark}
             disabled={disabled}
             aria-invalid={Boolean(errors.remark)}
@@ -149,25 +143,13 @@ export function WorkForm({
             </span>
           )}
         </label>
-      </details>
-      <p className="hint auxiliary">
-        先记录时间，结束后在待补全列表确认工作量。
-      </p>
-      {switching && (
-        <p className="hint">
-          开始后将结束并保存当前已暂停的任务，工作量稍后结算。
-        </p>
-      )}
-      <button type="submit" disabled={disabled}>
-        {starting
-          ? switching
-            ? "正在保存并开始…"
-            : "正在开始…"
-          : switching
-            ? "保存上一项，开始新工作"
-            : "手动开始工作"}
-        <Icon name="open" />
+      </div>
+      {switching && <p className="switch-hint">开始后会保存上一项为待补全记录。</p>}
+      <button type="submit" className="start-work" disabled={disabled}>
+        <Icon name="play" />
+        <span>{starting ? "正在开始…" : "开始工作"}</span>
       </button>
+      {onCancel && <button type="button" className="cancel-switch" disabled={starting} onClick={onCancel}><Icon name="left" />取消切换</button>}
     </form>
   );
 }

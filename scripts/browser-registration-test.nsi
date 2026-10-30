@@ -7,6 +7,7 @@ OutFile "${TEST_SETUP}"
 InstallDir "${TEST_INSTALL}"
 !define WM_BRIDGE_REGISTRY_ROOT "${TEST_REGISTRY}"
 !define WM_BRIDGE_DATA_ROOT "${TEST_DATA}"
+!define WM_STARTUP_REGISTRY_ROOT "${TEST_STARTUP_REGISTRY}"
 !include "${TEST_HOOK}"
 ; Tauri includes hooks before BUNDLEID is defined, too.
 !define BUNDLEID "${TEST_PROFILE}"

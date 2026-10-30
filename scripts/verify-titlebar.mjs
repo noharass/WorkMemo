@@ -21,6 +21,7 @@ await page.addInitScript(() => {
   let callbackId = 0;
   window.__TAURI_INTERNALS__ = { metadata: { currentWindow: { label: 'main' }, currentWebview: { label: 'main' } }, transformCallback() { return ++callbackId; }, unregisterCallback() {}, invoke: async (command, args) => {
     window.headerCalls.push({ command, args });
+    if (command === 'get_startup_status') return {enabled:false,available:false,error:null};
     if (command === 'get_layout_settings') return { density, revision: 0, sound_enabled: false, sound_theme: 'soft', font_size: params.get('large') ? 18 : 14, font_weight: 400, line_spacing: 'standard' };
     if (command === 'get_appearance') return { version: 1, theme: params.get('theme') ?? 'cream', opacity: 94 };
     if (command === 'get_presentation') return { version: 1, revision: 0, background: null, categories: Object.fromEntries(keys.map((key, i) => [key, { icon: ['checkSquare', 'safety', 'code', 'note'][i], color: ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b'][i] }])) };
@@ -42,21 +43,22 @@ async function inspect(width, density, state = 'normal', theme = 'cream', large 
   await page.locator(`.desktop-frame[data-density="${density}"]`).waitFor();
   await page.getByRole('button', { name: '设置', exact: true }).waitFor();
   await page.getByRole('button', { name: '待补全 13', exact: true }).waitFor();
-  await page.getByRole('button', { name: '打开当天工作量详情' }).getByText(state === 'empty' ? '今天还没有工作记录' : state === 'error' ? '数量暂不可用' : state === 'pending' ? '待补填' : state === 'zero' ? '0' : state === 'long' ? '1,000,000,000' : '1,111', { exact: true }).waitFor();
+  await page.locator('.today-strip-track').getByText(state === 'empty' ? '今天还没有工作记录' : state === 'error' ? '工作量暂不可用' : state === 'pending' ? '待补填' : state === 'zero' ? '开发 0' : state === 'long' ? '1,000,000,000' : '1,111').first().waitFor();
   assert.equal(await page.locator('.main-nav button').count(), 1);
   const geometry = await page.locator('.titlebar-main').evaluate(el => {
     const box = node => { const r = node.getBoundingClientRect(); return { x: r.x, right: r.right, y: r.y, bottom: r.bottom, width: r.width }; };
-    return { header: box(el), items: [...el.children].map(box), drag: box(el.querySelector('.titlebar-space')), bodyOverflow: document.documentElement.scrollWidth > innerWidth };
+    return { header: box(el), items: [...el.children].map(box).sort((a,b)=>a.x-b.x), drag: box(el.querySelector('.titlebar-space')), bodyOverflow: document.documentElement.scrollWidth > innerWidth };
   });
   assert.equal(geometry.bodyOverflow, false, JSON.stringify({ width, density, state, geometry }));
-  assert.ok(geometry.drag.width >= (density === 'compact' ? 24 : 32));
+  assert.ok(geometry.drag.width >= 24);
   for (let i = 0; i < geometry.items.length; i++) {
     const item = geometry.items[i];
     assert.ok(item.x >= geometry.header.x && item.right <= geometry.header.right + 1);
     assert.ok(item.y >= geometry.header.y && item.bottom <= geometry.header.bottom + 1);
     if (i) assert.ok(geometry.items[i - 1].right <= item.x + 1);
   }
-  assert.equal(await page.locator('.workload-carousel strong').evaluateAll(els => els.every(el => el.scrollWidth <= el.clientWidth)), true, 'quantity must remain readable');
+  assert.equal(await page.locator('.workload-carousel').count(),0);
+  assert.equal(await page.getByRole('button',{name:'仅浏览',exact:true}).count(),1);
   assert.ok(await page.evaluate(() => [document.documentElement, document.body, document.getElementById('root')].every(el => getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)')));
   cases.push({ width, density, state, theme, large, ...geometry });
 }

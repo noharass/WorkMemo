@@ -28,11 +28,14 @@ $taskRegistry = 'Software\WorkMemo\RegistrationTests\' + $taskNonce
 $taskData = Join-Path $taskDirectory '用户数据'
 $taskNsis = Join-Path $env:LOCALAPPDATA 'tauri\NSIS\makensis.exe'
 $taskUtf8 = New-Object Text.UTF8Encoding($false)
-function Read-Key([string]$Path) {
+function Read-Key([string]$Path, [string]$Name = '') {
     $taskKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path)
     if ($null -eq $taskKey) { return $null }
-    try { return $taskKey.GetValue('') } finally { $taskKey.Dispose() }
+    try { return $taskKey.GetValue($Name) } finally { $taskKey.Dispose() }
 }
+$taskStartupRegistry = $taskRegistry + '\Startup'
+$taskRealStartupPath = 'Software\Microsoft\Windows\CurrentVersion\Run'
+$taskRealStartupBefore = Read-Key $taskRealStartupPath 'WorkMemo'
 $taskRealBefore = @((Read-Key 'Software\Google\Chrome\NativeMessagingHosts\com.workmemo.browser_bridge'),(Read-Key 'Software\Google\Chrome\NativeMessagingHosts\com.workmemo.browser_bridge_test')) | ConvertTo-Json -Compress
 $taskOldRegistry = $env:WORKMEMO_TEST_REGISTRY_ROOT; $taskOldData = $env:WORKMEMO_TEST_DATA_ROOT
 try {
@@ -44,7 +47,7 @@ try {
         $taskProfileFile = Join-Path $taskDirectory ($taskProfile + '.json')
         [IO.File]::WriteAllText($taskProfileFile, (@{identifier=$taskProfile} | ConvertTo-Json -Compress), $taskUtf8)
         $taskSetup = Join-Path $taskDirectory ($taskProfile + '-setup.exe')
-        $taskValues = @{TEST_SETUP=$taskSetup;TEST_INSTALL=$taskInstall;TEST_REGISTRY=$taskRegistry;TEST_DATA=$taskData;TEST_HOOK=(Join-Path $taskRoot 'src-tauri\installer\browser-bridge.nsh');TEST_PROFILE=$taskProfile;TEST_HOST=$taskHost;TEST_PROFILEFILE=$taskProfileFile}
+        $taskValues = @{TEST_SETUP=$taskSetup;TEST_INSTALL=$taskInstall;TEST_REGISTRY=$taskRegistry;TEST_STARTUP_REGISTRY=$taskStartupRegistry;TEST_DATA=$taskData;TEST_HOOK=(Join-Path $taskRoot 'src-tauri\installer\browser-bridge.nsh');TEST_PROFILE=$taskProfile;TEST_HOST=$taskHost;TEST_PROFILEFILE=$taskProfileFile}
         $taskDefines = @($taskValues.GetEnumerator() | ForEach-Object { '/D' + $_.Key + '=' + $_.Value })
         & $taskNsis /V2 /INPUTCHARSET UTF8 @taskDefines (Join-Path $PSScriptRoot 'browser-registration-test.nsi')
         if ($LASTEXITCODE -ne 0) { throw 'NSIS harness compilation failed.' }
@@ -62,17 +65,25 @@ try {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'register-preview-browser.cmd') -Destination $taskCmd
         $taskResult = Run-Process $env:ComSpec ('/d /s /c ""' + $taskCmd + '" /repair"')
         if ($taskResult.Code -ne 0) { throw ('CMD repair failed: ' + $taskResult.Error) }
+        $taskNewStartup = '"' + (Join-Path $taskPortable 'workmemo.exe') + '" --autostart'
+        $taskStartupKey = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($taskStartupRegistry)
+        try { $taskStartupKey.SetValue('WorkMemo', $taskNewStartup) } finally { $taskStartupKey.Dispose() }
         $taskResult = Run-Process (Join-Path $taskInstall 'uninstall.exe') '/S'
         Start-Sleep -Milliseconds 600
         if ($taskResult.Code -ne 0 -or (Read-Key $taskKeyPath) -ne $taskManifestPath) { throw 'Old uninstaller removed newer ZIP registration.' }
+        if ((Read-Key $taskStartupRegistry 'WorkMemo') -ne $taskNewStartup) { throw 'Old uninstaller removed newer startup ownership.' }
         $taskManifest = Get-Content -LiteralPath $taskManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
         if ($taskManifest.path -ne (Join-Path $taskPortable 'workmemo-browser.exe')) { throw 'ZIP relocation not repaired.' }
         $taskResult = Run-Process (Join-Path $taskPortable 'workmemo-browser.exe') '--unregister'
         if ($taskResult.Code -ne 0 -or (Read-Key $taskKeyPath) -or (Test-Path -LiteralPath $taskManifestPath)) { throw 'CLI owned unregister failed.' }
         $taskResult = Run-Process $taskSetup '/S'
+        $taskOwnedStartup = '"' + (Join-Path $taskInstall 'workmemo.exe') + '" --autostart'
+        $taskStartupKey = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($taskStartupRegistry)
+        try { $taskStartupKey.SetValue('WorkMemo', $taskOwnedStartup) } finally { $taskStartupKey.Dispose() }
         $taskResult = Run-Process (Join-Path $taskInstall 'uninstall.exe') '/S'
         Start-Sleep -Milliseconds 600
         if ($taskResult.Code -ne 0 -or (Read-Key $taskKeyPath) -or (Test-Path -LiteralPath $taskManifestPath)) { throw 'Owned installer uninstall failed.' }
+        if (Read-Key $taskStartupRegistry 'WorkMemo') { throw 'Owned startup entry was not removed.' }
         Write-Output ('PASS: ' + $taskProfile + ' install / ZIP-CMD repair / relocation / old uninstall protection / owned uninstall.')
     }
 } finally {
@@ -80,6 +91,8 @@ try {
 }
 $taskRealAfter = @((Read-Key 'Software\Google\Chrome\NativeMessagingHosts\com.workmemo.browser_bridge'),(Read-Key 'Software\Google\Chrome\NativeMessagingHosts\com.workmemo.browser_bridge_test')) | ConvertTo-Json -Compress
 if ($taskRealAfter -ne $taskRealBefore) { throw 'Real Chrome host registration was modified.' }
+if ((Read-Key $taskRealStartupPath 'WorkMemo') -ne $taskRealStartupBefore) { throw 'Real startup registration was modified.' }
 [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($taskRegistry,$false)
 Write-Output 'PASS: actual Chrome registrations unchanged. No work database was opened.'
+Write-Output 'PASS: actual startup registration unchanged; private owned/newer startup cleanup verified.'
 Write-Output ('Evidence: ' + $taskDirectory)

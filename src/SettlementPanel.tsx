@@ -17,7 +17,9 @@ export function SettlementForm({
   busy,
   onSave,
   externalActions = false,
+  compact = false,
 }: {
+  compact?: boolean;
   externalActions?: boolean;
   record: WorkRecord;
   busy: boolean;
@@ -69,7 +71,7 @@ export function SettlementForm({
       }}
       noValidate
     >
-      <p className="hint">
+      {compact ? <p className="hint">有效工时 {formatDuration(record.duration_seconds)} · 开始 {formatTime(record.start_time)}</p> : <p className="hint">
         开始 {formatTime(record.start_time)}
         <br />
         有效结束 {record.end_time === null ? "—" : formatTime(record.end_time)}
@@ -80,11 +82,12 @@ export function SettlementForm({
           : formatTime(record.confirmed_end_time)}
         <br />
         有效工时 {formatDuration(record.duration_seconds)}
-      </p>
+      </p>}
       <div className="field-row grid grid-cols-2 gap-3">
         <label>
           工作类别
           <select
+            aria-label="工作类别"
             value={category}
             disabled={busy}
             onChange={(event) => setCategory(event.target.value)}

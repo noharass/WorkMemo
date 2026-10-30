@@ -5,6 +5,7 @@
     "windows": [
       {
         "label": "main",
+        "visible": false,
         "title": "WorkMemo 自动记录预览版（独立数据）",
         "width": 780,
         "height": 560,

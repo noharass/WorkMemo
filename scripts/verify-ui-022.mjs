@@ -89,14 +89,16 @@ if(process.argv.includes('--dashboard-only')) { await browser.close();console.lo
 }
 // Mock IPC only in a fresh browser page. No native work commands are sent.
 const island=await browser.newPage({viewport:{width:320,height:56}});
+island.on('pageerror',e=>console.error('Island regression:',e.message));
 await island.addInitScript(({record})=>{
-  window.qaTheme='cream';window.qaState='working';window.qaCalls=[];
+  window.isTauri=true;window.qaTheme='cream';window.qaState='working';window.qaCalls=[];
   window.__TAURI_EVENT_PLUGIN_INTERNALS__={unregisterListener(){}};
   const snapshot=()=>({active:['browse','candidate'].includes(window.qaState)?null:{...record,status:'WORKING',is_paused:window.qaState==='paused',pause_reason:window.qaState==='paused'?'MANUAL':null,control_mode:'AUTO'},monitoring:{browsing_only:window.qaState==='browse',browse_ready:true,start_candidate:window.qaState==='candidate'?{id:7,category:'评测',rule_id:1}:null,away_pause_remaining_seconds:null},recent_records:[],pending_count:0});
   window.__TAURI_INTERNALS__={metadata:{currentWindow:{label:'notice'},currentWebview:{label:'notice'}},transformCallback(){return 1;},unregisterCallback(){},invoke:async(command,args)=>{
     window.qaCalls.push(command);
     if(command==='get_snapshot') return snapshot();
     if(command==='get_notice') return null;
+    if(command==='get_island_viewport') return innerHeight;
     if(command==='get_appearance') return {version:1,theme:window.qaTheme,opacity:94};
     if(command==='get_presentation') return {version:1,categories:{'评测':{icon:'checkSquare',color:'#447cba'},'开发':{icon:'code',color:'#8b5cf6'}},background:null};
     if(command==='pause_task'){window.qaState='paused';return snapshot();}
@@ -115,7 +117,7 @@ for(const theme of ['cream','glass','dark','neon']){
   const vars=await island.evaluate(async t=>(await import('/src/themes.ts')).themeStyle({version:1,theme:t,opacity:94}),theme);
   await island.locator('.island-frame').evaluate((el,v)=>{for(const [k,val] of Object.entries(v))el.style.setProperty(k,String(val));},vars);
   const button=island.getByRole('button',{name:'暂停记录'});
-  await button.waitFor();
+  await button.waitFor().catch(async error=>{await writeFile(new URL('island-failure.html',output),await island.content());throw error;});
   await button.hover();
   const bounds=await island.locator('.island-main-row').boundingBox();
   assert.ok(bounds.y+bounds.height<=56,`island height ${theme}`);
@@ -131,7 +133,7 @@ await island.getByRole('button',{name:'开始记录',exact:true}).click();
 await island.getByRole('button',{name:'暂停记录'}).waitFor();
 await island.evaluate(()=>window.qaState='paused');await island.waitForTimeout(1100);
 await island.getByRole('button',{name:'继续记录',exact:true}).click();
-await island.evaluate(()=>window.qaState='candidate');await island.setViewportSize({width:320,height:88});await island.waitForTimeout(1100);
+await island.evaluate(()=>window.qaState='candidate');await island.setViewportSize({width:320,height:420});await island.waitForTimeout(1100);
 await island.getByRole('button',{name:'开始记录',exact:true}).waitFor();
 await island.screenshot({path:new URL('island-confirm.png',output).pathname.replace(/^\/(\w:)/,'$1')});
 await writeFile(new URL('island-result.json',output),JSON.stringify({themes:islandResults,pauseBrowseStartResume:true,candidate:true,native:false},null,2));

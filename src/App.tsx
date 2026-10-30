@@ -20,7 +20,8 @@ import {
   WorkBadge,
 } from "./desktopPreferences";
 import "./App.css";
-import { workloadLabel, type TodayWorkload as Today } from "./workload";
+import { type TodayWorkload as Today } from "./workload";
+import { TodayWorkloadStrip } from "./TodayWorkloadStrip";
 export default function App() {
   const session = useWorkSession();
   const appearance = useAppearance();
@@ -36,10 +37,10 @@ export default function App() {
   } | null>(null);
   const [navigationError, setNavigationError] = useState("");
   const [migrationFound, setMigrationFound] = useState(false);
-  const [today, setToday] = useState<Today[]>([]);
+  const [today, setToday] = useState<Today[] | null>(null);
   const [todayError, setTodayError] = useState("");
-  const [slide, setSlide] = useState(0);
-  const [hover, setHover] = useState(false);
+  const [startupError, setStartupError] = useState("");
+  const [switchingFrom, setSwitchingFrom] = useState<number | null>(null);
   const workspace = useRef<HTMLElement>(null);
   const active = session.snapshot?.active;
   const view = workView(session);
@@ -48,6 +49,16 @@ export default function App() {
   const candidate = monitor?.start_candidate;
   const unavailable = !view.canOperate || session.busy;
   const compact = layout.current.density === "compact";
+  useEffect(() => {
+    if (!session.native) return;
+    let stopped = false;
+    const reload = () => { void invoke<{ error: string | null }>("get_startup_status")
+      .then(value => { if (!stopped) setStartupError(value.error ? `开机启动：${value.error}` : ""); })
+      .catch(e => { if (!stopped) setStartupError(`无法读取开机启动状态：${String(e)}`); }); };
+    reload();
+    const listener = listen("workmemo:startup-changed", reload);
+    return () => { stopped = true; void listener.then(fn => fn()); };
+  }, [session.native]);
   function panel(section: string) {
     void invoke("open_panel", { panel: "settings", section }).catch((e) =>
       setNavigationError(String(e)),
@@ -87,11 +98,6 @@ export default function App() {
     };
   }, [session.native]);
   useEffect(() => {
-    if (today.length < 2 || hover) return;
-    const timer = window.setInterval(() => setSlide((s) => s + 1), 4000);
-    return () => clearInterval(timer);
-  }, [today.length, hover]);
-  useEffect(() => {
     if (!session.native) return;
     void invoke<boolean>("detect_preview_data")
       .then(setMigrationFound)
@@ -103,7 +109,8 @@ export default function App() {
       void p.then((f) => f());
     };
   }, [session.native]);
-  const item = today.length ? today[slide % today.length] : null;
+  const switching = switchingFrom !== null;
+  const switchValid = !!active?.is_paused && active.id === switchingFrom;
   return (
     <DesktopWindow
       density={layout.current.density}
@@ -125,34 +132,11 @@ export default function App() {
         </nav>
       }
       categories={
-        <button
-          className="workload-carousel"
-          aria-label="打开当天工作量详情"
-          title={todayError || "点击查看当天全部工作详情"}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          onFocus={() => setHover(true)}
-          onBlur={() => setHover(false)}
-          onClick={() => {
-            void dashboard.open("today");
-          }}
-        >
-          {todayError ? (
-            <span>数量暂不可用</span>
-          ) : item ? (
-            <>
-              <WorkBadge
-                category={item.category}
-                presentation={presentation.current}
-              />
-              <strong>{workloadLabel(item).main}</strong>
-              {workloadLabel(item).pending && (
-                <small>{workloadLabel(item).pending}</small>
-              )}
-            </>
-          ) : (
-            <span>今天还没有工作记录</span>
-          )}
+        <button type="button" className="browse-toolbar" aria-label="仅浏览" aria-pressed={!!monitor?.browsing_only}
+          title={monitor?.browsing_only ? monitor.browse_ready ? "退出仅浏览，开始或继续记录" : "请先返回已匹配的工作页面操作" : "仅浏览，暂停计时"}
+          disabled={unavailable || (!!monitor?.browsing_only && (!monitor.browse_ready || !!active?.recovery_pending))}
+          onClick={() => { void (monitor?.browsing_only ? session.confirmWork(null) : session.browse()); }}>
+          <Icon name="eye" /><span>仅浏览</span><span className="browse-switch" aria-hidden="true" />
         </button>
       }
     >
@@ -164,6 +148,7 @@ export default function App() {
         {(session.connectionError ||
           session.commandError ||
           navigationError ||
+          startupError ||
           appearance.loadError ||
           presentation.error ||
           layout.error) && (
@@ -171,6 +156,7 @@ export default function App() {
             {session.connectionError ||
               session.commandError ||
               navigationError ||
+              startupError ||
               appearance.loadError ||
               presentation.error ||
               layout.error}
@@ -189,7 +175,7 @@ export default function App() {
             上次未结束的任务保持暂停。请确认后继续，软件关闭期间不计时。
           </p>
         )}
-        {candidate && !active && (
+        {candidate && !active && !switching && (
           <section className="start-prompt" aria-label="开工确认">
             <WorkBadge
               category={candidate.category}
@@ -206,38 +192,11 @@ export default function App() {
               >
                 开始记录
               </button>
-              <button
-                className="secondary"
-                disabled={session.busy}
-                onClick={() => {
-                  void session.browse();
-                }}
-              >
-                仅浏览
-              </button>
+
             </div>
           </section>
         )}
-        {monitor?.browsing_only && (
-          <section className="browse-banner" aria-label="仅浏览">
-            <span>
-              {monitor.browse_ready ? "工作页面已就绪" : "仅浏览 · 当前不计时"}
-            </span>
-            <button
-              disabled={
-                unavailable ||
-                !monitor.browse_ready ||
-                !!active?.recovery_pending
-              }
-              onClick={() => {
-                void session.confirmWork(null);
-              }}
-            >
-              {active ? "继续记录" : "开始记录"}
-            </button>
-          </section>
-        )}
-        {(!compact || active) && (
+        {!switching && active && (
           <section
             className="timer-card"
             aria-label="当前工作"
@@ -296,6 +255,10 @@ export default function App() {
                   <Icon name="note" />
                   <span>备注</span>
                 </button>
+                {active && <button className="quiet-action switch-action" disabled={unavailable || !active.is_paused || !!active.recovery_pending}
+                  title={active.is_paused ? "切换任务" : "请先暂停再切换任务"} onClick={() => setSwitchingFrom(active.id)}>
+                  <Icon name="swap" /><span>切换任务</span>
+                </button>}
                 {active && (
                   <button
                     className="quiet-action finish-action"
@@ -313,37 +276,20 @@ export default function App() {
             )}
           </section>
         )}
-        {!active &&
-          !candidate &&
-          !monitor?.browsing_only &&
-          (session.snapshot || !session.native) && (
-            <section className="form-card" aria-label="手动开始工作">
-              <WorkForm
-                minimal={compact}
-                disabled={unavailable}
-                starting={session.pending === "start_task"}
-                onStart={session.start}
-              />
-            </section>
-          )}
-        {!active && !candidate && monitor?.browsing_only && <details className="switch-panel"><summary>手动开始工作</summary><WorkForm minimal={compact} disabled={unavailable} starting={session.pending==="start_task"} onStart={session.start}/></details>}
-        {active?.is_paused && (
-          <details className="switch-panel">
-            <summary>开始另一项工作</summary>
-            <WorkForm
-              minimal={compact}
-              switching
-              disabled={unavailable}
-              onStart={async (input) => {
-                setSwitchRequest({
-                  input,
-                  id: active.id,
-                  category: active.category,
-                });
-                return false;
-              }}
-            />
-          </details>
+        {(switching || (!active && !candidate && (session.snapshot || !session.native))) && (
+          <section className="form-card new-task-page" aria-label={switching ? "切换任务" : "新建任务"}>
+            {switching && !switchValid && <p className="notice" role="status">原任务状态已变化，请返回当前任务确认。填写内容仍保留。</p>}
+            <WorkForm minimal={compact} switching={switching} disabled={unavailable || (switching && !switchValid)}
+              starting={session.pending === "start_task"} onCancel={switching ? () => { setSwitchingFrom(null); setSwitchRequest(null); } : undefined}
+              onStart={async input => {
+                if (switching) {
+                  if (!switchValid || !active) return false;
+                  setSwitchRequest({input, id: switchingFrom, category: active.category});
+                  return false;
+                }
+                return session.start(input);
+              }} />
+          </section>
         )}
         <div className="home-footer">
           <button
@@ -354,21 +300,11 @@ export default function App() {
           >
             待补全 {session.snapshot?.pending_count ?? "—"}
           </button>
-          {!monitor?.browsing_only && (
-            <button
-              className="text-button"
-              disabled={unavailable}
-              onClick={() => {
-                void session.browse();
-              }}
-            >
-              仅浏览
-            </button>
-          )}
           <span className="monitor-caption" title={monitor?.message}>
             {monitor?.message || "正在读取状态…"}
           </span>
         </div>
+        <TodayWorkloadStrip items={today} error={todayError} onOpen={() => { void dashboard.open("today"); }} />
         {monitor?.idle_warning && (
           <p className="notice" role="status">
             已连续 {monitor.idle_warning_seconds} 秒没有输入，
@@ -411,7 +347,7 @@ export default function App() {
                     void session
                       .start(switchRequest.input, switchRequest.id)
                       .then((ok) => {
-                        if (ok) setSwitchRequest(null);
+                        if (ok) { setSwitchRequest(null); setSwitchingFrom(null); }
                       });
                   }}
                 >

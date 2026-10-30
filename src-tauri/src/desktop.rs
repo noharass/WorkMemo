@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::{
     path::PathBuf,
-    sync::{Mutex, atomic::Ordering},
+    sync::{
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 use tauri::{
     Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
@@ -35,6 +38,8 @@ impl Default for IslandSettings {
 pub struct IslandState {
     path: Result<PathBuf, String>,
     data: Mutex<(IslandSettings, bool)>,
+    pub holding: AtomicBool,
+    viewport_height: Mutex<f64>,
 }
 impl IslandState {
     pub fn initialize(app: &tauri::App) -> Self {
@@ -71,6 +76,8 @@ impl IslandState {
         Self {
             path,
             data: Mutex::new((settings, false)),
+            holding: AtomicBool::new(false),
+            viewport_height: Mutex::new(420.0),
         }
     }
     pub fn enabled(&self) -> bool {
@@ -226,8 +233,8 @@ pub fn save_island_position(app: &tauri::AppHandle) -> Result<(), String> {
 pub fn present_notice(
     app: &tauri::AppHandle,
     visible: bool,
-    expanded: bool,
-    confirming: bool,
+    _expanded: bool,
+    _confirming: bool,
 ) -> Result<(), String> {
     if !visible {
         if let Some(window) = app.get_webview_window("notice") {
@@ -245,7 +252,7 @@ pub fn present_notice(
                 WebviewUrl::App("index.html?notice=1".into()),
             )
             .title("WorkMemo 工作提醒")
-            .inner_size(320.0, 56.0)
+            .inner_size(320.0, 420.0)
             .resizable(false)
             .transparent(true)
             .no_redirection_bitmap(true)
@@ -273,22 +280,55 @@ pub fn present_notice(
                     .set_position(tauri::PhysicalPosition::new(x, y))
                     .map_err(|e| e.to_string())?;
             }
+            fit_island(&window)?;
+            apply_island_region(&window.as_ref().window(), 56.0)?;
             window
         }
     };
     // Tao's creation-only focused(false) marker is cleared after creation;
     // a later generic show() may activate the window. Use the native no-activate
     // command consistently for both showing and hiding this auxiliary window.
-    let (width, height) = if expanded {
-        (420.0, 460.0)
-    } else if confirming {
-        (320.0, 88.0)
-    } else {
-        (320.0, 56.0)
-    };
-    window
-        .set_size(tauri::LogicalSize::new(width, height))
-        .map_err(|e| e.to_string())?;
+    set_visibility(&window.as_ref().window(), true, false)
+}
+
+// The WebView canvas is fixed; only this native region follows the lower reveal.
+fn apply_island_region(window: &tauri::Window, height: f64) -> Result<(), String> {
+    let maximum = *window
+        .state::<IslandState>()
+        .viewport_height
+        .lock()
+        .map_err(|_| "状态岛尺寸锁异常")?;
+    if !height.is_finite() || !(56.0..=maximum).contains(&height) {
+        return Err("状态岛显示范围无效".into());
+    }
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::{
+            Foundation::GetLastError,
+            Graphics::Gdi::{CreateRoundRectRgn, DeleteObject, SetWindowRgn},
+        };
+        let scale = window.scale_factor().map_err(|e| e.to_string())?;
+        let hwnd = window.hwnd().map_err(|e| e.to_string())?;
+        let p = |v: f64| (v * scale).round() as i32;
+        let region = unsafe {
+            CreateRoundRectRgn(p(3.0), p(3.0), p(317.0), p(height - 3.0), p(40.0), p(40.0))
+        };
+        if region.is_null() {
+            return Err("无法创建状态岛显示区域".into());
+        }
+        if unsafe { SetWindowRgn(hwnd.0 as _, region, 1) } == 0 {
+            let code = unsafe { GetLastError() };
+            unsafe {
+                DeleteObject(region as _);
+            }
+            return Err(format!("状态岛区域更新失败（Windows {code}）"));
+        }
+        // A successful SetWindowRgn transfers ownership of the HRGN to Windows.
+    }
+    Ok(())
+}
+
+fn fit_island(window: &tauri::WebviewWindow) -> Result<(), String> {
     let position = window.outer_position().map_err(|e| e.to_string())?;
     let monitors = window.available_monitors().map_err(|e| e.to_string())?;
     let monitor = monitors
@@ -300,23 +340,81 @@ pub fn present_notice(
                 && i64::from(position.x) < i64::from(a.position.x) + i64::from(a.size.width)
                 && i64::from(position.y) < i64::from(a.position.y) + i64::from(a.size.height)
         })
-        .or_else(|| monitors.first());
-    if let Some(monitor) = monitor {
-        let a = monitor.work_area();
-        let scale = monitor.scale_factor();
-        let max_x = (i64::from(a.position.x) + i64::from(a.size.width) - (width * scale) as i64)
-            .max(i64::from(a.position.x));
-        let max_y = (i64::from(a.position.y) + i64::from(a.size.height) - (height * scale) as i64)
-            .max(i64::from(a.position.y));
-        let x = i64::from(position.x).clamp(i64::from(a.position.x), max_x) as i32;
-        let y = i64::from(position.y).clamp(i64::from(a.position.y), max_y) as i32;
-        if (x, y) != (position.x, position.y) {
-            window
-                .set_position(tauri::PhysicalPosition::new(x, y))
-                .map_err(|e| e.to_string())?;
-        }
+        .or(monitors.first())
+        .ok_or("无法定位状态岛显示器")?;
+    let a = monitor.work_area();
+    let scale = monitor.scale_factor();
+    let height = (a.size.height as f64 / scale).clamp(56.0, 420.0);
+    let current_height = window
+        .inner_size()
+        .map_err(|e| e.to_string())?
+        .to_logical::<f64>(scale)
+        .height;
+    if (current_height - height).abs() > 0.5 {
+        window
+            .set_size(tauri::LogicalSize::new(320.0, height))
+            .map_err(|e| e.to_string())?;
     }
-    set_visibility(&window.as_ref().window(), true, false)
+    *window
+        .state::<IslandState>()
+        .viewport_height
+        .lock()
+        .map_err(|_| "状态岛尺寸锁异常")? = height;
+    let max_x = (i64::from(a.position.x) + i64::from(a.size.width) - (320.0 * scale) as i64)
+        .max(i64::from(a.position.x));
+    let max_y = (i64::from(a.position.y) + i64::from(a.size.height) - (height * scale) as i64)
+        .max(i64::from(a.position.y));
+    let x = i64::from(position.x).clamp(i64::from(a.position.x), max_x) as i32;
+    let y = i64::from(position.y).clamp(i64::from(a.position.y), max_y) as i32;
+    if (x, y) != (position.x, position.y) {
+        window
+            .set_position(tauri::PhysicalPosition::new(x, y))
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_island_viewport(window: tauri::Window) -> Result<f64, String> {
+    if window.label() != "notice" {
+        return Err("窗口不匹配".into());
+    }
+    let height = window
+        .inner_size()
+        .map_err(|e| e.to_string())?
+        .to_logical::<f64>(window.scale_factor().map_err(|e| e.to_string())?)
+        .height;
+    Ok(height)
+}
+
+#[tauri::command]
+pub fn fit_island_position(app: tauri::AppHandle, window: tauri::Window) -> Result<(), String> {
+    if window.label() != "notice" {
+        return Err("窗口不匹配".into());
+    }
+    let island = app.get_webview_window("notice").ok_or("状态岛不可用")?;
+    fit_island(&island)?;
+    save_island_position(&app)
+}
+
+#[tauri::command]
+pub fn set_island_region(window: tauri::Window, height: f64) -> Result<(), String> {
+    if window.label() != "notice" {
+        return Err("窗口不匹配".into());
+    }
+    apply_island_region(&window, height)
+}
+
+#[tauri::command]
+pub fn hold_island(window: tauri::Window, holding: bool) -> Result<(), String> {
+    if window.label() != "notice" {
+        return Err("窗口不匹配".into());
+    }
+    window
+        .state::<IslandState>()
+        .holding
+        .store(holding, Ordering::Relaxed);
+    Ok(())
 }
 
 pub fn set_visibility(window: &tauri::Window, visible: bool, activate: bool) -> Result<(), String> {

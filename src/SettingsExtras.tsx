@@ -1,4 +1,5 @@
 import { CategoryNamesEditor } from "./CategoryNamesEditor";
+import { StartupSetting } from "./StartupSetting";
 import { useCategoryNames } from "./categoryNames";
 import { useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
@@ -187,6 +188,7 @@ export function LayoutPanel() {
       }
     >
       <div className="layout-form">
+        <StartupSetting />
         <label className="monitor-toggle"><input type="checkbox" checked={current.sound_enabled} disabled={busy} onChange={e => field("sound_enabled", e.target.checked)}/>关键状态提示音</label>
         <label>提示音套装<select aria-label="提示音套装" value={current.sound_theme??"soft"} disabled={busy} onChange={event=>field("sound_theme",event.target.value as LayoutSettings["sound_theme"])}>
           <option value="soft">柔和轻提示</option><option value="crisp">清脆短提示</option>

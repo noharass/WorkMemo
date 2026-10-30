@@ -114,7 +114,7 @@ pub fn registry_root() -> String {
 }
 
 #[cfg(windows)]
-mod windows_registry {
+pub(crate) mod windows_registry {
     use windows_sys::Win32::System::Registry::*;
     fn wide(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(Some(0)).collect()

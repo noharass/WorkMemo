@@ -194,6 +194,13 @@ impl Backend {
                             .flatten()
                             .map(|id| format!("active:{id}"))
                     });
+                let key = key.or_else(|| {
+                    app_handle
+                        .state::<crate::desktop::IslandState>()
+                        .holding
+                        .load(Ordering::Relaxed)
+                        .then(|| "expanded".into())
+                });
                 if key != presented {
                     match crate::desktop::present_notice(
                         &app_handle,
@@ -445,6 +452,14 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
         }
         if window.label() == "notice" {
             api.prevent_close();
+            if window
+                .state::<crate::desktop::IslandState>()
+                .holding
+                .load(Ordering::Relaxed)
+            {
+                let _ = window.emit("workmemo:request-close", ());
+                return;
+            }
             let result = (|| -> Result<()> {
                 let mut guard = backend.inner.lock().map_err(|_| "本地服务锁异常。")?;
                 let store = guard.as_mut().map_err(|e| e.clone())?;

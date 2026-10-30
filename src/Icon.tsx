@@ -6,7 +6,7 @@ import {
   SettingOutlined, ClockCircleOutlined, SearchOutlined, DeleteOutlined,
   BarChartOutlined, UnorderedListOutlined, LeftOutlined, RightOutlined,
   CheckSquareOutlined, SafetyCertificateOutlined, CodeOutlined, StarOutlined,
-  RocketOutlined, BulbOutlined, ToolOutlined, ReadOutlined,
+  RocketOutlined, BulbOutlined, ToolOutlined, ReadOutlined, EyeOutlined, SwapOutlined,
 } from "@ant-design/icons";
 
 const icons = {
@@ -19,6 +19,7 @@ const icons = {
   settings: SettingOutlined, clock: ClockCircleOutlined, search: SearchOutlined,
   delete: DeleteOutlined, chart: BarChartOutlined, list: UnorderedListOutlined,
   left: LeftOutlined, right: RightOutlined,
+  eye: EyeOutlined, swap: SwapOutlined,
 } as const;
 
 export type IconName = keyof typeof icons;
