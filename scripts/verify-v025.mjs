@@ -30,7 +30,7 @@ await page.addInitScript(() => {
       if(command==='get_category_names') return {revision:0,names:Object.fromEntries(category.map(c=>[c,p.get('long')?c+'超长自定义工作名称用于布局检查':c]))};
       if(command==='get_layout_settings') return {density:p.get('density')||'comfortable',revision:0,sound_enabled:false,sound_theme:'soft',font_size:p.has('large')?18:14,font_weight:400,line_spacing:'standard'};
       if(command==='get_presentation') return {version:1,revision:0,background:null,categories:Object.fromEntries(category.map((c,i)=>[c,{icon:['checkSquare','safety','code','note'][i],color:['#3b82f6','#10b981','#8b5cf6','#f59e0b'][i]}]))};
-      if(command==='get_today_workload'){if(p.get('stats')==='loading')await new Promise(r=>setTimeout(r,1500));if(p.get('stats')==='error')throw Error('隔离统计读取失败');return q.stats;}
+      if(command==='get_today_workload'){if(p.get('stats')==='loading')await new Promise(r=>(q.releaseStats??=[]).push(r));if(p.get('stats')==='error')throw Error('隔离统计读取失败');return q.stats;}
       if(command==='detect_preview_data') return false;
       if(command==='pause_task'){q.active={...q.active,is_paused:true,pause_reason:'MANUAL'};return snapshot();}
       if(command==='resume_task'){q.active={...q.active,is_paused:false,pause_reason:null};return snapshot();}
@@ -56,7 +56,7 @@ await page.addInitScript(() => {
   };
 });
 const base=process.env.WORKMEMO_UI_URL||'http://127.0.0.1:1420/';
-const results=[];
+const results=[],measurements={};
 async function load(params={},width=780,height=560){
   await page.setViewportSize({width,height});
   await page.goto(`${base}?${new URLSearchParams(params)}`);
@@ -142,6 +142,7 @@ try {
   await record('stats loading/error states, overflow loop, static fit and reduced motion',async()=>{
     await load({stats:'loading'},780,560);
     await page.getByText('正在读取今日工作量…',{exact:true}).waitFor();
+    await page.evaluate(()=>window.qa.releaseStats.forEach(release=>release()));
     await page.locator('.today-strip-track').getByText(/评测 0/).first().waitFor();
     await load({stats:'error'},780,560);
     await page.getByText('工作量暂不可用',{exact:true}).waitFor();
@@ -225,6 +226,31 @@ try {
     assert.equal(await page.evaluate(()=>window.qa.calls.some(c=>c.command==='settle_record')),false);
     assert.ok(await page.evaluate(()=>window.qa.calls.some(c=>c.command==='defer_notice'&&c.args.id===6)));
   });
+  await record('desktop natural content height removes form/timer whitespace and preserves width',async()=>{
+    await load({state:'empty'},780,560);
+    await page.waitForFunction(()=>window.qa.calls.some(c=>c.command==='fit_main_content'));
+    const fit=()=>page.evaluate(()=>window.qa.calls.filter(c=>c.command==='fit_main_content').at(-1).args.height);
+    const formHeight=await fit();
+    assert.ok(formHeight>=280&&formHeight<480,`form height ${formHeight}`);
+    await page.setViewportSize({width:780,height:formHeight});
+    await page.waitForTimeout(120);
+    const gap=selector=>page.evaluate(selector=>{
+      const card=document.querySelector(selector).getBoundingClientRect(),footer=document.querySelector('.home-footer').getBoundingClientRect(),strip=document.querySelector('.today-strip').getBoundingClientRect();
+      return {gap:footer.y-card.bottom,bottom:innerHeight-strip.bottom,width:document.querySelector('.desktop-frame').getBoundingClientRect().width};
+    },selector);
+    const form=await gap('.new-task-page');assert.ok(form.gap<32&&form.bottom<36,JSON.stringify(form));assert.equal(form.width,780);
+    await screenshot('followup-desktop-new');
+    await page.getByLabel('工作类别',{exact:true}).selectOption('开发');
+    await page.getByRole('button',{name:'开始工作',exact:true}).click();
+    await page.getByRole('button',{name:'暂停',exact:true}).waitFor();
+    await page.waitForFunction(height=>window.qa.calls.filter(c=>c.command==='fit_main_content').at(-1).args.height!==height,formHeight);
+    const taskHeight=await fit();assert.ok(taskHeight>=280&&taskHeight<480);
+    await page.setViewportSize({width:780,height:taskHeight});await page.waitForTimeout(100);
+    const task=await gap('.timer-card');assert.ok(task.gap<32&&task.bottom<36,JSON.stringify(task));assert.equal(task.width,780);
+    await screenshot('followup-desktop-working');
+    assert.equal(await page.evaluate(()=>window.qa.calls.some(c=>['pause_task','finish_task'].includes(c.command))),false);
+    measurements.desktop={new:formHeight,working:taskHeight};
+  });
   await record('startup checkbox immediate save and failure keeps truthful status',async()=>{
     await load({panel:'settings',section:'layout'},900,800);
     await page.getByLabel('开机启动',{exact:true}).waitFor();
@@ -236,6 +262,6 @@ try {
     assert.equal(await page.getByLabel('开机启动',{exact:true}).isChecked(),false);
   });
   assert.deepEqual(errors,[]);
-  await writeFile(new URL('ui-result.json',output),JSON.stringify({isolated:true,native:false,results,errors},null,2));
+  await writeFile(new URL('ui-result.json',output),JSON.stringify({isolated:true,native:false,results,measurements,errors},null,2));
   console.log(`v0.2.5: ${results.length} interaction groups passed; 24 theme/density/width layouts; fixtures only.`);
 } catch(e) {await screenshot('failure');await writeFile(new URL('failure.json',output),JSON.stringify({errors,html:await page.content(),qa:await page.evaluate(()=>window.qa)},null,2));throw e;} finally {await browser.close();}

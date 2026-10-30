@@ -114,6 +114,7 @@ pub fn run() {
             database::data_tools::preview_migration,
             database::data_tools::import_preview,
             windows::open_panel,
+            windows::fit_main_content,
             windows::get_layout_settings,
             windows::set_layout_density,
             windows::set_layout_options,

@@ -22,6 +22,7 @@ import {
 import "./App.css";
 import { type TodayWorkload as Today } from "./workload";
 import { TodayWorkloadStrip } from "./TodayWorkloadStrip";
+import { useMainContentHeight } from "./useMainContentHeight";
 export default function App() {
   const session = useWorkSession();
   const appearance = useAppearance();
@@ -42,6 +43,7 @@ export default function App() {
   const [startupError, setStartupError] = useState("");
   const [switchingFrom, setSwitchingFrom] = useState<number | null>(null);
   const workspace = useRef<HTMLElement>(null);
+  const heightError = useMainContentHeight(workspace, !!session.snapshot);
   const active = session.snapshot?.active;
   const view = workView(session);
   const record = view.record;
@@ -149,6 +151,7 @@ export default function App() {
           session.commandError ||
           navigationError ||
           startupError ||
+          heightError ||
           appearance.loadError ||
           presentation.error ||
           layout.error) && (
@@ -157,6 +160,7 @@ export default function App() {
               session.commandError ||
               navigationError ||
               startupError ||
+              heightError ||
               appearance.loadError ||
               presentation.error ||
               layout.error}

@@ -134,7 +134,7 @@ try {
       JSON.stringify(geometry),
     );
     assert.ok(
-      Math.abs(1000 - geometry.y - geometry.height - 24) < 2,
+      Math.abs(geometry.y + geometry.height / 2 - 500) < 2 && Math.abs(geometry.x + geometry.width / 2 - 720) < 2,
       JSON.stringify(geometry),
     );
     const scrollY = await page.evaluate(() => scrollY);
@@ -523,7 +523,7 @@ try {
     const box = await sheet.boundingBox();
     assert.ok(box.x >= -1 && box.x + box.width <= width + 1);
     assert.ok(
-      Math.abs(1000 - box.y - box.height - (width <= 640 ? 0 : 24)) < 2,
+      Math.abs(box.y + box.height / 2 - 500) < 2 && Math.abs(box.x + box.width / 2 - width / 2) < 2,
       JSON.stringify({ width, ...box }),
     );
     await shot("sheet-" + width);
@@ -550,7 +550,7 @@ try {
       box.x >= 0 &&
         box.x + box.width <= 1281 &&
         box.y >= 0 &&
-        box.y + box.height <= 901,
+        box.y + box.height <= 901 && Math.abs(box.y + box.height / 2 - 450) < 2 && Math.abs(box.x + box.width / 2 - 640) < 2,
       JSON.stringify({ zoom, ...box }),
     );
     await shot("zoom-" + zoom);

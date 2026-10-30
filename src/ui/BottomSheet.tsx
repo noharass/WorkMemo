@@ -13,7 +13,7 @@ export function BottomSheet({
     <Drawer
       {...props}
       placement="bottom"
-      size={narrow ? "92%" : "min(760px, 88%)"}
+      size={narrow ? "calc(100% - 24px)" : "min(760px, 88%)"}
       rootClassName="dc-sheet-root"
       className="dc-sheet"
       destroyOnHidden={false}
@@ -58,15 +58,16 @@ export function BottomSheet({
       }}
       styles={{
         wrapper: {
-          width: narrow ? "100%" : "min(760px, calc(100% - 48px))",
+          width: narrow ? "calc(100% - 24px)" : "min(760px, calc(100% - 48px))",
           marginInline: "auto",
+          marginBlock: "auto",
           insetInline: 0,
-          bottom: narrow ? 0 : 24,
-          borderRadius: narrow ? "20px 20px 0 0" : 20,
+          insetBlock: 0,
+          borderRadius: 20,
           overflow: "hidden",
         },
         section: {
-          borderRadius: narrow ? "20px 20px 0 0" : 20,
+          borderRadius: 20,
           overflow: "hidden",
           boxShadow: "0 24px 90px #173c2b30",
         },

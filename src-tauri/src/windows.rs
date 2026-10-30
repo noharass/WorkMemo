@@ -231,6 +231,54 @@ fn restore(w: &tauri::WebviewWindow) -> Result<(), String> {
     Ok(())
 }
 #[tauri::command]
+pub fn fit_main_content(window: tauri::Window, height: f64) -> Result<(), String> {
+    if window.label() != "main" {
+        return Err("窗口不匹配".into());
+    }
+    let monitor = window
+        .current_monitor()
+        .map_err(|e| e.to_string())?
+        .ok_or("无法定位主窗口显示器")?;
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+    let area = monitor.work_area();
+    let position = window.outer_position().map_err(|e| e.to_string())?;
+    let state = window.state::<WindowState>();
+    let compact = state.data.lock().map_err(|_| "窗口设置锁异常")?.density == "compact";
+    let target = content_height(height, compact, area.size.height as f64 / scale)?;
+    let current = window
+        .inner_size()
+        .map_err(|e| e.to_string())?
+        .to_logical::<f64>(scale);
+    if (current.height - target).abs() > 1.0 {
+        window
+            .set_size(tauri::LogicalSize::new(current.width, target))
+            .map_err(|e| e.to_string())?;
+    }
+    let bottom = i64::from(area.position.y) + i64::from(area.size.height);
+    let maximum_y = (bottom - (target * scale).ceil() as i64).max(i64::from(area.position.y));
+    let y = i64::from(position.y).clamp(i64::from(area.position.y), maximum_y) as i32;
+    if y != position.y {
+        window
+            .set_position(tauri::PhysicalPosition::new(position.x, y))
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn content_height(requested: f64, compact: bool, work_area_height: f64) -> Result<f64, String> {
+    if !requested.is_finite()
+        || !(100.0..=10000.0).contains(&requested)
+        || !work_area_height.is_finite()
+        || work_area_height < 100.0
+    {
+        return Err("主窗口内容高度无效".into());
+    }
+    let maximum = (work_area_height - 16.0).max(100.0);
+    let minimum: f64 = if compact { 220.0 } else { 280.0 };
+    Ok(requested.ceil().clamp(minimum.min(maximum), maximum))
+}
+
+#[tauri::command]
 pub async fn open_panel(
     app: tauri::AppHandle,
     panel: String,
@@ -379,6 +427,18 @@ pub fn has_drafts(app: &tauri::AppHandle) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn content_height_handles_short_screens_and_rejects_invalid_values() {
+        assert_eq!(content_height(412.2, false, 900.0).unwrap(), 413.0);
+        assert_eq!(content_height(200.0, false, 900.0).unwrap(), 280.0);
+        assert_eq!(content_height(200.0, true, 900.0).unwrap(), 220.0);
+        assert_eq!(content_height(900.0, false, 300.0).unwrap(), 284.0);
+        assert_eq!(content_height(500.0, false, 200.0).unwrap(), 184.0);
+        assert_eq!(content_height(500.0, true, 200.0).unwrap(), 184.0);
+        assert!(content_height(f64::NAN, false, 900.0).is_err());
+        assert!(content_height(f64::INFINITY, false, 900.0).is_err());
+        assert!(content_height(20000.0, false, 900.0).is_err());
+    }
     #[test]
     fn geometry_clamps_removed_monitor_and_high_dpi() {
         assert_eq!(
