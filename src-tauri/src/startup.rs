@@ -60,6 +60,8 @@ fn register(app: &tauri::AppHandle, enabled: bool) -> Result<(), String> {
         .map(|key| key.read("WorkMemo"))
         .transpose()?
         .flatten();
+    // The plugin opens Run rather than creating it on a fresh Windows profile.
+    let _run_key = startup_key(true)?.ok_or("当前用户的开机启动目录不可用")?;
     if enabled {
         let result = manager
             .enable()

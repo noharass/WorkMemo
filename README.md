@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.4/WorkMemo_0.2.4_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.5/WorkMemo_0.2.5_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.4/WorkMemo_0.2.4_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.5/WorkMemo_0.2.5_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.4">v0.2.4 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.5">v0.2.5 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -33,28 +33,22 @@
 ## 第一次用
 
 1. 下载上面的安装版，或把 ZIP **完整解压**后运行 `WorkMemo/workmemo.exe`。不要只拿出主程序。
-2. 想先试试，直接选类别，点击「手动开始工作」；结束后到「待补全」填写工作量，填 `0` 也可以。
+2. 想先试试，直接选类别，点击「开始工作」；结束后到「待补全」填写工作量，填 `0` 也可以。
 3. 想用自动记录，打开「监测设置」，按[使用说明](docs/USER-GUIDE.md#使用-chrome-自动记录)装好配套扩展、添加工作网址并同步授权。
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## v0.2.5 源码阶段
+## 这次更新：紧凑桌面与连续补填
 
-2026-10-30：按现有布局及用户参考图完成顶部仅浏览、独立新建页、底部文字统计、固定主体状态岛与岛内结算，以及默认后台开机启动的源码改造。普通下载仍为 v0.2.4，尚未发布新版安装包。原生截图与后续窗口操作验收受限，详见[本阶段交付与限制](docs/UPDATE-0.2.5-PHASE-1.md)。
+**v0.2.5** 沿用透明悬浮和四种皮肤，把「仅浏览」收进顶部工具栏；暂停后可用双箭头进入独立新建页，主窗口按内容收紧高度，底部以横向文字展示当天工作量。
 
-补充反馈修正：分类待补填数量可直接进入连续补填，详情面板居中，桌面主窗口按内容收紧高度。检查、截图与完整源码见[反馈修正记录](docs/FIX-0.2.5-FEEDBACK.md)。
+状态岛主体保持固定，提醒和工作量表单在下方平滑展开，保存成功后收起。网页详情与补填面板居中，分类右侧的待补填数量可直接进入，并能保存后继续下一条。默认开启当前用户开机自启，登录后在托盘后台运行，可在布局设置关闭。
 
-## 这次更新：网页更顺畅，桌面顶部更简洁
+已有计时、暂停、历史、自然周期报表、工作改名、音效、多网址和备份继续保留；数据库仍为 schema 9。升级前请备份并从托盘正常退出旧版，完整安装或解压新版，并重新加载配套扩展。
 
-**v0.2.4** 统一数据中心的筛选、表格、分页和状态反馈。工作详情从底部浮出，打开弹窗时背景保持原位；保存工作量和定时刷新原位更新，减少背景闪动，失败时保留输入或明确显示上次结果。
+[查看 v0.2.5 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.5) · [构建校验与验收限制](docs/RELEASE-0.2.5.md)
 
-主窗口左上角只保留设置，外观、布局等仍可在设置中切换。顶部留白可拖动窗口，当天工作量胶囊和右侧窗口操作保留，小窗口更清楚。
-
-此前的空闲自动暂停、四类改名、自然日／周／月报表、两套提示音、多 URL、紧凑状态岛和四皮肤继续可用。数据库格式仍为 schema 9，沿用原来的记录和设置。
-
-[查看 v0.2.4 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.4) · [发布校验与实测范围](docs/RELEASE-0.2.4.md)
-
-实现细节和分阶段检查见[网页优化交付](docs/WEB-UI-UPDATE.md)与[顶部空间规划](docs/TITLEBAR-UPDATE.md)；旧版下载继续保留。
+完整实施记录见[桌面与状态岛](docs/UPDATE-0.2.5-PHASE-1.md)和[反馈修正](docs/FIX-0.2.5-FEEDBACK.md)。旧版下载与阶段记录保留。
 
 ## 从旧版本过来
 

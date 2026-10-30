@@ -210,7 +210,7 @@ export async function dashboardFixture(page) {
     if (endpoint === "meta")
       return route.fulfill({
         json: {
-          version: "0.2.4 · 隔离验收",
+          version: "0.2.5 · 隔离验收",
           category_names: names,
           presentation,
           active: state.active,
