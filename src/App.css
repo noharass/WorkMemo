@@ -456,6 +456,9 @@ button.browse-toolbar[aria-pressed=true] { color:var(--accent-text); }
 .workspace { display:flex; flex-direction:column; flex:0 0 auto; min-height:0; gap:12px; }
 .workspace.is-active { margin-block:0; }
 .workspace > .timer-card,.workspace > .form-card { width:100%; margin:0; border-color:var(--window-border); background:rgb(var(--surface-rgb)/calc(var(--window-opacity) * .72)); box-shadow:var(--panel-shadow); backdrop-filter:blur(12px); }
+.monitor-status-card h1 { margin:0 0 10px; font-size:1.15em; }
+.monitor-status-card p { overflow-wrap:anywhere; }
+.monitor-status-card > button { margin-top:12px; }
 .workspace .actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-top:1px solid var(--line); padding-top:18px; }
 .workspace .quiet-action { gap:7px; }
 .workspace .home-footer { margin-top:0; }

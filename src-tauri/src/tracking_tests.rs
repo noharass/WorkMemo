@@ -1323,6 +1323,93 @@ fn confirmation_deduplicates_and_counts_only_after_acceptance() {
     assert!(h.store.confirm_work(Some(candidate.id), false).is_err());
     assert_eq!(h.store.active().unwrap().unwrap().id, record.id);
 }
+
+#[test]
+fn manual_finish_rearms_same_or_other_rule_without_settling_the_previous_record() {
+    for other_rule in [false, true] {
+        let mut h = Harness::new();
+        if other_rule {
+            h.store.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode) VALUES('https://other.example.test/','文档','origin')", []).unwrap();
+            h.store.monitor.config = h.store.monitor_config().unwrap();
+        }
+        let id = h.start();
+        h.clock.advance(1000);
+        h.store.finish(id).unwrap();
+        let floor = h.clock.now();
+        h.tick_unconfirmed();
+        assert!(h.store.monitor.candidate.is_none());
+        assert!(h.store.active().unwrap().is_none());
+        // Browser heartbeats alone cannot reuse the input that ended the work.
+        h.clock.advance(1000);
+        h.tick_unconfirmed();
+        assert!(h.store.monitor.candidate.is_none());
+        h.input = h.clock.now().ticks_ms;
+        if other_rule {
+            h.store.monitor.config.rules.reverse();
+        }
+        h.tick_unconfirmed();
+        let candidate = h.store.monitor.candidate.clone().unwrap();
+        assert_eq!(candidate.category, if other_rule { "文档" } else { "开发" });
+        assert!(h.store.active().unwrap().is_none());
+        assert_eq!(h.store.current_notice().unwrap().unwrap().record.id, id);
+        assert_eq!(h.saved(id).settlement_status, "PENDING");
+        h.clock.advance(1000);
+        h.tick_unconfirmed();
+        h.store.confirm_work(Some(candidate.id), true).unwrap();
+        let active = h.store.active().unwrap().unwrap();
+        assert_ne!(active.id, id);
+        assert!(active.start_time > floor.wall_ms);
+        assert_eq!(active.duration_ms, 0);
+        assert_eq!(h.store.snapshot().unwrap().pending_count, 1);
+        assert!(h.store.confirm_work(Some(candidate.id), true).is_err());
+        assert_eq!(h.store.active().unwrap().unwrap().id, active.id);
+    }
+}
+
+#[test]
+fn automatic_finish_waits_for_fresh_input_and_explicit_confirmation() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.clock.advance(420_000);
+    h.tick_unconfirmed();
+    assert_eq!(h.saved(id).status, "FINISHED");
+    assert!(h.store.monitor.candidate.is_none());
+    h.clock.advance(1000);
+    h.tick_unconfirmed();
+    assert!(h.store.monitor.candidate.is_none());
+    h.input = h.clock.now().ticks_ms;
+    h.tick_unconfirmed();
+    let candidate = h.store.monitor.candidate.clone().unwrap();
+    assert!(h.store.active().unwrap().is_none());
+    h.clock.advance(2000);
+    h.tick_unconfirmed();
+    assert_eq!(h.store.monitor.candidate.as_ref().unwrap().id, candidate.id);
+    h.store.confirm_work(Some(candidate.id), true).unwrap();
+    assert_ne!(h.store.active().unwrap().unwrap().id, id);
+    assert_eq!(h.store.snapshot().unwrap().pending_count, 1);
+}
+
+#[test]
+fn failed_candidate_start_preserves_candidate_and_previous_pending_record() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.store.finish(id).unwrap();
+    h.clock.advance(1000);
+    h.input = h.clock.now().ticks_ms;
+    h.tick_unconfirmed();
+    let candidate = h.store.monitor.candidate.clone().unwrap();
+    h.store.connection.execute_batch("CREATE TRIGGER reject_start BEFORE INSERT ON work_records BEGIN SELECT RAISE(ABORT,'injected start failure'); END;").unwrap();
+    assert!(h.store.confirm_work(Some(candidate.id), true).is_err());
+    assert!(h.store.active().unwrap().is_none());
+    assert_eq!(h.store.monitor.candidate.as_ref().unwrap().id, candidate.id);
+    assert_eq!(h.saved(id).settlement_status, "PENDING");
+    h.store
+        .connection
+        .execute_batch("DROP TRIGGER reject_start")
+        .unwrap();
+    h.store.confirm_work(Some(candidate.id), true).unwrap();
+    assert_ne!(h.store.active().unwrap().unwrap().id, id);
+}
 #[test]
 fn confirmation_survives_own_window_focus_but_rejects_stale_page() {
     let mut h = Harness::new();

@@ -274,10 +274,10 @@ export function PanelApp({ panel }: { panel: string }) {
       );
   }, []);
   const change = useCallback((action: () => void) => {
-    if ([...registry.current.values()].some((d) => d.busy)) {
-      setError("正在保存，请稍候。");
+    if (drafts.current.busy) {
       return;
     }
+    if (next.current) return;
     if ([...registry.current.values()].some((d) => d.dirty)) {
       next.current = action;
       setDecision(true);
@@ -292,9 +292,14 @@ export function PanelApp({ panel }: { panel: string }) {
   );
   async function saveAll() {
     if (drafts.current.busy) return;
+    if (!drafts.current.dirty) {
+      const action = next.current; next.current = null; setDecision(false); action?.();
+      return;
+    }
     setSaving(true);
+    setError("");
     try {
-      if (!(await drafts.current.save())) return;
+      if (!(await drafts.current.save())) { setError("保存未完成，请继续编辑并查看表单错误。"); return; }
       setDecision(false);
       const action = next.current;
       next.current = null;
@@ -314,7 +319,7 @@ export function PanelApp({ panel }: { panel: string }) {
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        void saveAll();
+        if (!e.repeat) void saveAll();
       }
     };
     window.addEventListener("keydown", key);
@@ -333,14 +338,15 @@ export function PanelApp({ panel }: { panel: string }) {
         ),
       );
       unsubs.push(
-        listen("workmemo:data-changed", () => {
-          if (![...registry.current.values()].some((d) => d.dirty))
+        listen<{ source?: string } | null>("workmemo:data-changed", ({ payload }) => {
+          if (payload?.source === "monitor-settings") return;
+          if (!drafts.current.dirty && !drafts.current.busy && !next.current)
             setVersion((v) => v + 1);
         }),
       );
       unsubs.push(
         listen("workmemo:appearance-changed", () => {
-          if (![...registry.current.values()].some((d) => d.dirty))
+          if (!drafts.current.dirty && !drafts.current.busy && !next.current)
             void appearance.reload();
         }),
       );
@@ -410,10 +416,9 @@ export function PanelApp({ panel }: { panel: string }) {
             <VisualSettings presentation={presentation} />
           ) : section === "monitor" ? (
             <MonitoringSettings
-              key={version}
+              refreshVersion={version}
               open
               onClose={close}
-              onSaved={() => setVersion((v) => v + 1)}
             />
           ) : section === "layout" ? (
             <LayoutPanel />
@@ -422,7 +427,9 @@ export function PanelApp({ panel }: { panel: string }) {
           )}
           <UiDialog
             open={decision}
+            closeDisabled={saving}
             onClose={() => {
+              if (drafts.current.busy) return;
               next.current = null;
               setDecision(false);
             }}
@@ -430,6 +437,7 @@ export function PanelApp({ panel }: { panel: string }) {
             id="draft-decision"
           >
             <p>保存成功后再离开；放弃只撤销本次输入，不删除已保存记录。</p>
+            {error && <p className="error-banner" role="alert">{error}</p>}
             <div className="settings-actions">
               <button
                 disabled={saving}

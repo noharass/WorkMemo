@@ -5,6 +5,8 @@ import { validateWorkInput, type InputErrors } from "./workInput";
 import { Icon } from "./Icon";
 
 interface Props {
+  draft: WorkFormDraft;
+  onDraftChange: (draft: WorkFormDraft) => void;
   disabled: boolean;
   minimal?: boolean;
   switching?: boolean;
@@ -13,7 +15,12 @@ interface Props {
   onStart: (input: StartInput) => Promise<boolean>;
 }
 
+export interface WorkFormDraft { category: string; quantity: string; remark: string }
+export const emptyWorkDraft = (): WorkFormDraft => ({ category: "", quantity: "", remark: "" });
+
 export function WorkForm({
+  draft,
+  onDraftChange,
   minimal: _minimal = false,
   disabled,
   switching = false,
@@ -22,9 +29,7 @@ export function WorkForm({
   onCancel,
 }: Props) {
   const { name } = useCategoryNames();
-  const [category, setCategory] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [remark, setRemark] = useState("");
+  const { category, quantity, remark } = draft;
   const [errors, setErrors] = useState<InputErrors>({});
   const id = useId();
   const categoryRef = useRef<HTMLSelectElement>(null);
@@ -74,7 +79,7 @@ export function WorkForm({
             aria-invalid={Boolean(errors.category)}
             aria-describedby={errors.category ? `${id}-category` : undefined}
             onChange={(event) => {
-              setCategory(event.target.value);
+              onDraftChange({ ...draft, category: event.target.value });
               clearError("category");
             }}
           >
@@ -108,7 +113,7 @@ export function WorkForm({
             aria-invalid={Boolean(errors.quantity)}
             aria-describedby={errors.quantity ? `${id}-quantity` : undefined}
             onChange={(event) => {
-              setQuantity(event.target.value);
+              onDraftChange({ ...draft, quantity: event.target.value });
               clearError("quantity");
             }}
           />
@@ -130,7 +135,7 @@ export function WorkForm({
             aria-invalid={Boolean(errors.remark)}
             aria-describedby={`${id}-remark-count${errors.remark ? ` ${id}-remark` : ""}`}
             onChange={(event) => {
-              setRemark(event.target.value);
+              onDraftChange({ ...draft, remark: event.target.value });
               clearError("remark");
             }}
           />
@@ -149,7 +154,7 @@ export function WorkForm({
         <Icon name="play" />
         <span>{starting ? "正在开始…" : "开始工作"}</span>
       </button>
-      {onCancel && <button type="button" className="cancel-switch" disabled={starting} onClick={onCancel}><Icon name="left" />取消切换</button>}
+      {onCancel && <button type="button" className="cancel-switch" disabled={starting} onClick={onCancel}><Icon name="left" />{switching ? "取消切换" : "返回监测状态"}</button>}
     </form>
   );
 }

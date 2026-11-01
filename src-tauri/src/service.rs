@@ -20,6 +20,29 @@ use std::{
 use tauri::{Emitter, Manager, State};
 
 pub(crate) type SharedStore = Arc<Mutex<Result<Store>>>;
+
+// Use the same priority as the island frontend; old settlements stay persisted.
+fn island_presentation_key(
+    active: Option<i64>,
+    candidate: Option<u64>,
+    notice: Option<(&str, i64)>,
+    enabled: bool,
+    browsing: bool,
+) -> Option<String> {
+    if let Some(id) = active {
+        if notice == Some(("idle", id)) {
+            return Some(format!("idle:{id}"));
+        }
+        return enabled.then(|| format!("active:{id}"));
+    }
+    if let Some(id) = candidate {
+        return Some(format!("candidate:{id}"));
+    }
+    notice
+        .map(|(kind, id)| format!("{kind}:{id}"))
+        .or_else(|| (enabled && browsing).then(|| "browsing".into()))
+}
+
 pub struct Backend {
     pub(crate) inner: SharedStore,
     pub tray_ready: AtomicBool,
@@ -179,21 +202,13 @@ impl Backend {
                         }
                     }
                 }
-                let key = notice
-                    .as_ref()
-                    .map(|n| format!("{}:{}", n.kind, n.record.id))
-                    .or_else(|| candidate_id.map(|id| format!("candidate:{id}")))
-                    .or_else(|| {
-                        if browsing && app_handle.state::<crate::desktop::IslandState>().enabled() {
-                            return Some("browsing".into());
-                        }
-                        app_handle
-                            .state::<crate::desktop::IslandState>()
-                            .enabled()
-                            .then_some(active_id)
-                            .flatten()
-                            .map(|id| format!("active:{id}"))
-                    });
+                let key = island_presentation_key(
+                    active_id,
+                    candidate_id,
+                    notice.as_ref().map(|n| (n.kind.as_str(), n.record.id)),
+                    app_handle.state::<crate::desktop::IslandState>().enabled(),
+                    browsing,
+                );
                 let key = key.or_else(|| {
                     app_handle
                         .state::<crate::desktop::IslandState>()
@@ -530,5 +545,35 @@ fn observe_sound(store: &mut Store, enabled: bool) {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod island_tests {
+    use super::island_presentation_key as key;
+
+    #[test]
+    fn new_work_supersedes_old_reminders_without_changing_visibility_preference() {
+        assert_eq!(
+            key(None, Some(2), Some(("ended", 1)), false, false).as_deref(),
+            Some("candidate:2")
+        );
+        assert_eq!(
+            key(Some(3), None, Some(("ended", 1)), true, false).as_deref(),
+            Some("active:3")
+        );
+        assert_eq!(key(Some(3), None, Some(("ended", 1)), false, false), None);
+        assert_eq!(
+            key(None, None, Some(("ended", 1)), false, false).as_deref(),
+            Some("ended:1")
+        );
+        assert_eq!(
+            key(Some(3), None, Some(("idle", 3)), false, false).as_deref(),
+            Some("idle:3")
+        );
+        assert_eq!(
+            key(None, None, None, true, true).as_deref(),
+            Some("browsing")
+        );
     }
 }

@@ -5,7 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { DesktopWindow } from "./DesktopWindow";
 import { useAppearance } from "./useAppearance";
 import { themeStyle } from "./themes";
-import { WorkForm } from "./WorkForm";
+import { WorkForm, emptyWorkDraft } from "./WorkForm";
 import { useWorkSession } from "./useWorkSession";
 import { formatTime, type StartInput } from "./types";
 import { workView } from "./workView";
@@ -42,6 +42,8 @@ export default function App() {
   const [todayError, setTodayError] = useState("");
   const [startupError, setStartupError] = useState("");
   const [switchingFrom, setSwitchingFrom] = useState<number | null>(null);
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [workDraft, setWorkDraft] = useState(emptyWorkDraft);
   const workspace = useRef<HTMLElement>(null);
   const heightError = useMainContentHeight(workspace, !!session.snapshot);
   const active = session.snapshot?.active;
@@ -112,7 +114,8 @@ export default function App() {
     };
   }, [session.native]);
   const switching = switchingFrom !== null;
-  const switchValid = !!active?.is_paused && active.id === switchingFrom;
+  const formOpen = switching || newTaskOpen;
+  const switchValid = !!active?.is_paused && !active.recovery_pending && active.id === switchingFrom;
   return (
     <DesktopWindow
       density={layout.current.density}
@@ -179,28 +182,36 @@ export default function App() {
             上次未结束的任务保持暂停。请确认后继续，软件关闭期间不计时。
           </p>
         )}
-        {candidate && !active && !switching && (
+        {candidate && !active && !formOpen && (
           <section className="start-prompt" aria-label="开工确认">
             <WorkBadge
               category={candidate.category}
               presentation={presentation.current}
             />
-            <strong>准备开始工作？</strong>
+            <strong>已识别工作页面</strong>
             <p>确认前不计时，工作量稍后填写。</p>
             <div>
               <button
-                disabled={session.busy}
+                disabled={unavailable}
                 onClick={() => {
                   void session.confirmWork(candidate.id);
                 }}
               >
                 开始记录
               </button>
-
+              <button className="secondary" disabled={unavailable} onClick={() => setNewTaskOpen(true)}>新建任务</button>
             </div>
           </section>
         )}
-        {!switching && active && (
+        {!formOpen && !active && !candidate && (session.snapshot || !session.native) && (
+          <section className="form-card monitor-status-card" aria-label="监测状态">
+            <h1>{monitor?.browsing_only ? "仅浏览 · 当前不计时" : monitor?.enabled ? "等待识别工作页面" : "自动监测未启用"}</h1>
+            <p role="status">{monitor?.message || "请在桌面应用中查看监测状态。"}</p>
+            <p className="hint">工作页面出现新操作后，可在灵动岛确认开工；工作量稍后填写。</p>
+            <button type="button" disabled={unavailable} onClick={() => setNewTaskOpen(true)}><Icon name="play" />新建任务</button>
+          </section>
+        )}
+        {!formOpen && active && (
           <section
             className="timer-card"
             aria-label="当前工作"
@@ -280,18 +291,23 @@ export default function App() {
             )}
           </section>
         )}
-        {(switching || (!active && !candidate && (session.snapshot || !session.native))) && (
+        {formOpen && (
           <section className="form-card new-task-page" aria-label={switching ? "切换任务" : "新建任务"}>
             {switching && !switchValid && <p className="notice" role="status">原任务状态已变化，请返回当前任务确认。填写内容仍保留。</p>}
-            <WorkForm minimal={compact} switching={switching} disabled={unavailable || (switching && !switchValid)}
-              starting={session.pending === "start_task"} onCancel={switching ? () => { setSwitchingFrom(null); setSwitchRequest(null); } : undefined}
+            {!switching && active && <p className="notice" role="status">已有任务从其他入口开始，请返回当前任务。填写内容仍保留。</p>}
+            {candidate && !active && <p className="hint">已识别{name(candidate.category)}工作页面；也可在灵动岛确认开始。手动填写内容仍保留。</p>}
+            <WorkForm draft={workDraft} onDraftChange={setWorkDraft} minimal={compact} switching={switching} disabled={unavailable || (switching ? !switchValid : !!active)}
+              starting={session.pending === "start_task"} onCancel={() => { setNewTaskOpen(false); setSwitchingFrom(null); setSwitchRequest(null); }}
               onStart={async input => {
                 if (switching) {
                   if (!switchValid || !active) return false;
                   setSwitchRequest({input, id: switchingFrom, category: active.category});
                   return false;
                 }
-                return session.start(input);
+                if (active) return false;
+                const saved = await session.start(input);
+                if (saved) { setNewTaskOpen(false); setWorkDraft(emptyWorkDraft()); }
+                return saved;
               }} />
           </section>
         )}
@@ -351,7 +367,7 @@ export default function App() {
                     void session
                       .start(switchRequest.input, switchRequest.id)
                       .then((ok) => {
-                        if (ok) { setSwitchRequest(null); setSwitchingFrom(null); }
+                        if (ok) { setSwitchRequest(null); setSwitchingFrom(null); setNewTaskOpen(false); setWorkDraft(emptyWorkDraft()); }
                       });
                   }}
                 >

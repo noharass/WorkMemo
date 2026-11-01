@@ -88,6 +88,7 @@ try {
 
   const main=await context.newPage();
   await main.goto('http://127.0.0.1:1420/');
+  await main.getByRole('button',{name:'新建任务',exact:true}).click();
   await main.getByRole('option',{name:'第一窗口更新',exact:true}).waitFor({state:'attached'});
   assert.equal(await main.getByRole('option',{name:'第一窗口更新',exact:true}).getAttribute('value'),'开发');
   await settings.getByRole('button',{name:'监测',exact:true}).click();

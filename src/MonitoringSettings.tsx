@@ -8,7 +8,7 @@ import { Surface, useDraft } from "./Drafts";
 
 type ConnectionStatus = { state: string; message: string; identifier: string; version: string; host_name: string; manifest_path: string | null; extension_path: string | null };
 
-export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open: boolean; onClose: () => void; refreshVersion?: number }) {
   const { name } = useCategoryNames();
   const compact=useLayout().current.density==="compact";
   const [connection, setConnection] = useState<ConnectionStatus | null>(null);
@@ -20,6 +20,20 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
   const [baseline,setBaseline]=useState("");
   const [retry, setRetry] = useState(0);
   const nextRuleId = useRef(-1);
+  const saving = useRef(false);
+  const restoreFocus = useRef<HTMLElement | null>(null);
+  const readRevision = useRef(0);
+  const dirty = !!config && JSON.stringify(config) !== baseline;
+  const currentDraft = useRef({ dirty, busy });
+  currentDraft.current = { dirty, busy };
+  useEffect(() => {
+    if (busy) return;
+    const focused = restoreFocus.current;
+    restoreFocus.current = null;
+    if (focused?.isConnected && !document.hidden && document.activeElement === document.body && !document.querySelector("dialog[open]")) {
+      focused.focus({ preventScroll: true });
+    }
+  }, [busy]);
   function addRule(category: string) {
     if (busy) return;
     const id = nextRuleId.current--;
@@ -30,16 +44,24 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
   useEffect(() => {
     if (!open || !isTauri()) return;
     let stale = false;
-    setConnection(null);
+    const request = ++readRevision.current;
     void invoke<ConnectionStatus>("get_connection_status").then(value => { if (!stale) setConnection(value); }).catch((failure: unknown) => { if (!stale) setError(String(failure)); });
-    setConfig(null); setError(""); setNotice("");
-    void invoke<MonitorConfig>("get_monitor_config").then(value => { if (!stale) {setConfig(value);setBaseline(JSON.stringify(value));} })
+    // Keep the existing form mounted while a clean external refresh is in flight.
+    void invoke<MonitorConfig>("get_monitor_config").then(value => {
+      if (!stale && request === readRevision.current && !currentDraft.current.dirty && !saving.current) {
+        setConfig(value); setBaseline(JSON.stringify(value)); setError("");
+      }
+    })
       .catch((failure: unknown) => { if (!stale) setError(String(failure)); });
     return () => { stale = true; };
-  }, [open, retry]);
+  }, [open, retry, refreshVersion]);
   async function save(event?: FormEvent) {
     event?.preventDefault();
-    if (!config || busy) return false;
+    if (!config || saving.current) return false;
+    restoreFocus.current = document.activeElement instanceof HTMLElement && document.activeElement.closest("#monitor-form")
+      ? document.activeElement : null;
+    saving.current = true;
+    readRevision.current++;
     setBusy(true); setError(""); setNotice("");
     try {
       const saved = await invoke<MonitorConfig>("save_monitor_config", { input: {
@@ -47,11 +69,13 @@ export function MonitoringSettings({ open, onClose, onSaved }: { open: boolean; 
         poll_interval_seconds: config.poll_interval_seconds, auto_resume_manual: config.auto_resume_manual,
         rules: config.rules.map(({ url_prefix, category, match_mode }) => ({ url_prefix, category, match_mode })),
       } });
-      setConfig(saved); setBaseline(JSON.stringify(saved));setNotice("配置已保存。请在 Chrome 扩展中同步工作站点授权。"); onSaved();void emit("workmemo:data-changed");return true;
+      setConfig(saved); setBaseline(JSON.stringify(saved));setNotice("配置已保存。请在 Chrome 扩展中同步工作站点授权。");
+      void emit("workmemo:data-changed", { source: "monitor-settings" }).catch((failure: unknown) => setNotice(`配置已保存，窗口同步失败：${String(failure)}`));
+      return true;
     } catch (failure: unknown) { setError(String(failure));return false; }
-    finally { setBusy(false); }
+    finally { saving.current = false; setBusy(false); }
   }
-  useDraft("monitor",!!config&&JSON.stringify(config)!==baseline,busy,()=>save(),()=>{if(baseline)setConfig(JSON.parse(baseline));});
+  useDraft("monitor",dirty,busy,()=>save(),()=>{if(baseline)setConfig(JSON.parse(baseline));});
   return <Surface onClose={onClose} title="自动工作监测" actions={<button form="monitor-form" type="submit" disabled={busy||!config}>{busy?"正在保存…":"保存监测配置"}</button>}>
     {!isTauri() && <p className="notice">请在 Windows 桌面程序中配置监测。</p>}
     {error && <p className="error-banner" role="alert">{error}</p>}

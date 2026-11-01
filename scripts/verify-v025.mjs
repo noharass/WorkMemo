@@ -13,7 +13,7 @@ await page.addInitScript(() => {
   const p = new URLSearchParams(location.search), category = ['评测','质检','开发','文档'];
   const record = {id:7,category:'评测',quantity:null,remark:'隔离验收记录',start_time:Date.now()-2300000,end_time:null,confirmed_end_time:null,duration_ms:2300000,duration_seconds:2300,status:'WORKING',is_paused:p.get('state')==='paused',recovery_pending:false,settlement_status:'IN_PROGRESS',source:'MANUAL_START',control_mode:'MANUAL',revision:1};
   const ended = {...record,id:6,status:'FINISHED',is_paused:true,settlement_status:'PENDING',end_time:Date.now(),confirmed_end_time:Date.now()};
-  window.qa = {calls:[],active:p.get('state')==='empty'?null:record,notice:p.get('ended')?{kind:'ended',record:ended}:null,fail:'',browse:false,ready:true,stats:p.get('stats')==='empty'?[]:category.map((c,i)=>({category:c,quantity:i*11,pending:i===2?2:0,complete:1,records:1})),startup:{enabled:true,available:true,error:null}};
+  window.qa = {calls:[],template:record,active:p.get('state')==='empty'?null:record,notice:p.get('ended')?{kind:'ended',record:ended}:null,fail:'',browse:false,ready:true,stats:p.get('stats')==='empty'?[]:category.map((c,i)=>({category:c,quantity:i*11,pending:i===2?2:0,complete:1,records:1})),startup:{enabled:true,available:true,error:null}};
   window.isTauri = true;
   const callbacks = new Map(); let callback = 0;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {unregisterListener(){}};
@@ -61,7 +61,7 @@ async function load(params={},width=780,height=560){
   await page.setViewportSize({width,height});
   await page.goto(`${base}?${new URLSearchParams(params)}`);
   await page.locator(params.notice?'.island-main-row':'.desktop-frame').waitFor();
-  if(!params.notice&&!params.panel)await page.locator('.timer-card,.new-task-page').waitFor();
+  if(!params.notice&&!params.panel)await page.locator('.timer-card,.new-task-page,.monitor-status-card').waitFor();
   await page.waitForTimeout(180);
 }
 async function screenshot(name){await page.screenshot({path:fileURLToPath(new URL(`${name}.png`,output))});}
@@ -116,7 +116,7 @@ try {
     await page.getByRole('button',{name:'保存并开始',exact:true}).click();
     await page.getByRole('button',{name:'暂停',exact:true}).waitFor();
     const call=await page.evaluate(()=>window.qa.calls.filter(c=>c.command==='start_task').at(-1));
-    assert.equal(call.args.expectedActiveId,7);assert.equal(call.args.input.quantity,null);
+    assert.equal(call.args.expectedActiveId,7);assert.equal(call.args.input.quantity,0); // Cancel/reopen retains the draft.
   });
   await record('switch draft survives changed active task and refuses stale submission',async()=>{
     await load({state:'paused'});
@@ -160,7 +160,7 @@ try {
     assert.equal(await page.locator('.today-strip-track.is-scrolling').count(),0);
   });
   await record('island rapid reopen remains held and reduced motion collapses without animation',async()=>{
-    await load({notice:'1',ended:'1'},320,420);
+    await load({notice:'1',ended:'1',state:'empty'},320,420);
     await page.getByRole('button',{name:'填写工作量',exact:true}).waitFor();
     const before=await page.locator('.island-main-row').boundingBox();
     await page.evaluate(()=>window.qa.slowRegion=true);
@@ -180,7 +180,7 @@ try {
     await page.emulateMedia({reducedMotion:'no-preference'});
   });
   await record('island pinned body, inline save failures/conflicts, new work and smooth automatic collapse',async()=>{
-    await load({notice:'1',ended:'1'},320,420);
+    await load({notice:'1',ended:'1',state:'empty'},320,420);
     await page.getByRole('button',{name:'填写工作量',exact:true}).click();
     await page.getByLabel('工作量（必填）').fill('0');
     await page.getByLabel('备注（选填）').fill('岛内草稿');
@@ -192,7 +192,7 @@ try {
     await page.getByRole('button',{name:'填写工作量并保存',exact:true}).click();
     await page.getByRole('alert').filter({hasText:'记录已变化'}).waitFor();
     assert.equal(await page.getByLabel('备注（选填）').inputValue(),'岛内草稿');
-    await page.evaluate(()=>{window.qa.notice.record.revision=1;window.qa.active={...window.qa.active,id:99,category:'开发'};});
+    await page.evaluate(()=>{window.qa.notice.record.revision=1;window.qa.active={...window.qa.template,id:99,category:'开发'};});
     await page.waitForTimeout(1150);
     assert.equal(await page.locator('.island-info strong').innerText(),'开发');
     assert.equal(await page.getByLabel('备注（选填）').inputValue(),'岛内草稿');
@@ -214,7 +214,7 @@ try {
     await screenshot('island-collapsed');
   });
   await record('dirty island dismiss requires explicit discard and preserves pending record',async()=>{
-    await load({notice:'1',ended:'1'},320,420);
+    await load({notice:'1',ended:'1',state:'empty'},320,420);
     await page.getByRole('button',{name:'填写工作量',exact:true}).click();
     await page.getByLabel('工作量（必填）').fill('12');
     await page.getByRole('button',{name:'稍后填写',exact:true}).click();
@@ -228,10 +228,11 @@ try {
   });
   await record('desktop natural content height removes form/timer whitespace and preserves width',async()=>{
     await load({state:'empty'},780,560);
+    await page.getByRole('button',{name:'新建任务',exact:true}).click();
     await page.waitForFunction(()=>window.qa.calls.some(c=>c.command==='fit_main_content'));
     const fit=()=>page.evaluate(()=>window.qa.calls.filter(c=>c.command==='fit_main_content').at(-1).args.height);
     const formHeight=await fit();
-    assert.ok(formHeight>=280&&formHeight<480,`form height ${formHeight}`);
+    assert.ok(formHeight>=280&&formHeight<540,`form height ${formHeight}`); // Explicit manual page includes a return action.
     await page.setViewportSize({width:780,height:formHeight});
     await page.waitForTimeout(120);
     const gap=selector=>page.evaluate(selector=>{
