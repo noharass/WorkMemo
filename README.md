@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.5/WorkMemo_0.2.5_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.6/WorkMemo_0.2.6_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.5/WorkMemo_0.2.5_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.6/WorkMemo_0.2.6_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.5">v0.2.5 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.6">v0.2.6 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -33,24 +33,24 @@
 ## 第一次用
 
 1. 下载上面的安装版，或把 ZIP **完整解压**后运行 `WorkMemo/workmemo.exe`。不要只拿出主程序。
-2. 想先试试，直接选类别，点击「开始工作」；结束后到「待补全」填写工作量，填 `0` 也可以。
+2. 想先试试，点击「新建任务」，选择类别后点击「开始工作」；结束后到「待补全」填写工作量，填 `0` 也可以。
 3. 想用自动记录，打开「监测设置」，按[使用说明](docs/USER-GUIDE.md#使用-chrome-自动记录)装好配套扩展、添加工作网址并同步授权。
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## 这次更新：紧凑桌面与连续补填
+## 这次更新：连续开工与设置保存修正
 
-**v0.2.5** 沿用透明悬浮和四种皮肤，把「仅浏览」收进顶部工具栏；暂停后可用双箭头进入独立新建页，主窗口按内容收紧高度，底部以横向文字展示当天工作量。
+**v0.2.6** 优化结束后的下一次开工：识别出新的工作页面操作后，灵动岛优先展示识别类别和开始入口，确认后才计时；上一项未补填工作量不再遮挡新开工，正在填写的旧结算草稿继续保留。
 
-状态岛主体保持固定，提醒和工作量表单在下方平滑展开，保存成功后收起。网页详情与补填面板居中，分类右侧的待补填数量可直接进入，并能保存后继续下一条。默认开启当前用户开机自启，登录后在托盘后台运行，可在布局设置关闭。
+主窗口空闲时展示监测状态，点击「新建任务」后才显示手动表单；取消、刷新及候选到达保留草稿。已有任务继续显示当前工作，仍需暂停后确认切换。
 
-已有计时、暂停、历史、自然周期报表、工作改名、音效、多网址和备份继续保留；数据库仍为 schema 9。升级前请备份并从托盘正常退出旧版，完整安装或解压新版，并重新加载配套扩展。
+设置保存采用返回结果直接更新当前表单，修正重复加载和重建，加入重复提交保护、慢速保存焦点恢复；失败保留输入，成功后只执行一次目标操作。已验证浏览器隔离行为；Windows 原生闪动、透明及焦点验收仍有工具限制，未宣称所有显卡和 DPI 环境都已消除闪动。
 
-[查看 v0.2.5 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.5) · [构建校验与验收限制](docs/RELEASE-0.2.5.md)
+透明悬浮、四皮肤、默认当前用户自启、历史报表、多网址和备份功能继续保留；数据库仍为 schema 9。升级前请备份并从托盘正常退出旧版，完整安装或解压新版，并重新加载配套扩展。
 
-完整实施记录见[桌面与状态岛](docs/UPDATE-0.2.5-PHASE-1.md)和[反馈修正](docs/FIX-0.2.5-FEEDBACK.md)。旧版下载与阶段记录保留。
+[查看 v0.2.6 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.6) · [构建校验与验收限制](docs/RELEASE-0.2.6.md)
 
-当前源码已完成 **0.2.6 第一阶段**：连续开工入口、主窗口监测状态及设置保存刷新修正。程序版本号和上方成品下载仍为 0.2.5；原生闪动验收受工具限制，尚未进入新版成品发布。检查、完整源码和阶段边界见 [0.2.6 源码交付](docs/UPDATE-0.2.6-PHASE-1.md)。
+完整实施及源码见 [0.2.6 第一阶段](docs/UPDATE-0.2.6-PHASE-1.md)。旧版下载与阶段记录保留。
 
 ## 从旧版本过来
 

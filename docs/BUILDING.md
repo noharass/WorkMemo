@@ -53,9 +53,9 @@ node scripts/verify-multi-url.mjs
 
 这些浏览器回归使用隔离 HTTP／IPC 数据，不对真实任务发送操作。新版网页回归以 `test:web` 为准，v0.2.5 的连续补填和桌面收高分别由 verify-v025-followup.mjs 与 verify-v025.mjs 检查；旧网页脚本中的原生 select、侧抽屉及清空统计的断言对应历史布局，不能当作新版的验收入口。新截图和结果写入 `artifacts/web-ui/qa`；CSS 缩放和模拟 IPC 不等于 Windows 原生透明、系统 DPI 或实际浏览器扩展验收。完整说明见 [WEB-UI-UPDATE.md](WEB-UI-UPDATE.md)。
 
-0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。该阶段未提升发行版本号，原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
+0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。源码阶段与原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
 
-## 构建 v0.2.5 成品
+## 构建 v0.2.6 成品
 
 ```powershell
 & .\scripts\package-windows.ps1
@@ -63,10 +63,10 @@ node scripts/verify-multi-url.mjs
 
 脚本收集第三方许可，执行前端与 Tauri release 构建，准备浏览器组件，生成 NSIS 安装器和免安装 ZIP：
 
-- `artifacts/0.2.5/WorkMemo_0.2.5_x64-setup.exe`
-- `artifacts/0.2.5/WorkMemo_0.2.5_windows_x64.zip`
-- `artifacts/0.2.5/THIRD-PARTY-LICENSES.txt`
-- `artifacts/0.2.5/SHA256SUMS.txt`
+- `artifacts/0.2.6/WorkMemo_0.2.6_x64-setup.exe`
+- `artifacts/0.2.6/WorkMemo_0.2.6_windows_x64.zip`
+- `artifacts/0.2.6/THIRD-PARTY-LICENSES.txt`
+- `artifacts/0.2.6/SHA256SUMS.txt`
 
 脚本不启动成品或执行安装。产物、数据库、凭据和本机配置不提交 Git。相同版本重建会替换该输出目录中的同名文件。
 
