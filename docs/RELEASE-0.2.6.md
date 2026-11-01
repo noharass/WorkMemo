@@ -4,11 +4,21 @@
 
 ## 目标与状态
 
-本地正式构建、自动检查和成品核对完成。公开发布完成后补充服务端及匿名下载回执。版本 0.2.6；中文 NSIS 安装器、完整 ZIP、第三方许可和 SHA256 共四项资产。
+本地正式构建、自动检查和成品核对完成，GitHub Release 已公开为正式 Latest。版本 0.2.6；中文 NSIS 安装器、完整 ZIP、第三方许可和 SHA256 共四项资产，服务端大小／摘要和匿名下载复算全部一致。
 
 构建标签保留构建时记录，最终公开下载回执另行提交至 [main 分支的本记录](https://github.com/noharass/WorkMemo/blob/main/docs/RELEASE-0.2.6.md)，不移动已发布构建标签。
 
 发布入口：[WorkMemo v0.2.6](https://github.com/noharass/WorkMemo/releases/tag/v0.2.6)。本地成品目录：`E:\WorkMemo\artifacts\0.2.6`。
+
+## 公开发布回执
+
+- Release ID：`430489519`；发布时间：2026-11-01 17:52:21（Asia/Shanghai）。draft=false、prerelease=false，匿名 Latest 查询返回 v0.2.6。
+- 构建源码与轻量标签 v0.2.6：`710c34e5dc21524453c5581dee34ff2f717b6157`；构建提交、远程 main（发布时）及远程标签已核对一致。最终文档回执另行提交，标签不移动。
+- [WorkMemo_0.2.6_x64-setup.exe](https://github.com/noharass/WorkMemo/releases/download/v0.2.6/WorkMemo_0.2.6_x64-setup.exe)：服务端大小及 SHA256 与本地一致，已实际匿名重新下载并复核通过。
+- [WorkMemo_0.2.6_windows_x64.zip](https://github.com/noharass/WorkMemo/releases/download/v0.2.6/WorkMemo_0.2.6_windows_x64.zip)：服务端大小及 SHA256 与本地一致，已实际匿名重新下载并复核通过。
+- [THIRD-PARTY-LICENSES.txt](https://github.com/noharass/WorkMemo/releases/download/v0.2.6/THIRD-PARTY-LICENSES.txt)：服务端大小及 SHA256 与本地一致，已实际匿名重新下载并复核通过。
+- [SHA256SUMS.txt](https://github.com/noharass/WorkMemo/releases/download/v0.2.6/SHA256SUMS.txt)：服务端大小及 SHA256 与本地一致，已实际匿名重新下载并复核通过。
+- 本地完整回执：`E:\WorkMemo\artifacts\0.2.6\qa\RELEASE-RECEIPT.json`；匿名下载副本在同目录 public-downloads 中。回执仅含公开元数据，不提交构建产物、QA 数据或凭据。
 
 ## 本版变化
 
