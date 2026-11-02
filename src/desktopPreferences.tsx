@@ -55,7 +55,7 @@ export type LayoutSettings = {
   density: "compact" | "comfortable";
   revision: number;
   sound_enabled: boolean;
-  sound_theme: "soft" | "crisp";
+  sound_theme: "fiftysounds" | "soft" | "crisp";
   font_size: number;
   font_weight: number;
   line_spacing: "tight" | "standard" | "loose";
@@ -64,7 +64,7 @@ export const DEFAULT_LAYOUT: LayoutSettings = {
   density: "comfortable",
   revision: 0,
   sound_enabled: true,
-  sound_theme: "soft",
+  sound_theme: "fiftysounds",
   font_size: 14,
   font_weight: 400,
   line_spacing: "standard",

@@ -48531,3 +48531,33 @@ crisp/warning: source/question_002.ogg -> crisp/warning.wav
 	Follow on Twitter for updates:
 	http://twitter.com/KenneyNL
 
+=== Audio: FiftySounds Menu and Interface effects ===
+License: https://www.fiftysounds.com/music-license.html
+Source: https://www.fiftysounds.com/royalty-free-music/menu-interface-sound-effects.html
+Processing: trim silence; resample; target RMS 0.1 and peak <=0.45; fade in 5ms/out 40ms; cap 850ms
+start: https://www.fiftysounds.com/royalty-free-music/sfx-menu1.html -> fiftysounds/start.wav (SHA256 8d9620cedb3cbdab9126b53c11c9246cde15561dad05896a8fe7aa7ae229aae0)
+pause: https://www.fiftysounds.com/royalty-free-music/sfx-menu3.html -> fiftysounds/pause.wav (SHA256 66a0c3fb8f3c29bb4a84a61445c3e27d43d68abc0d849661a582e2a7915b5637)
+resume: https://www.fiftysounds.com/royalty-free-music/sfx-menu2.html -> fiftysounds/resume.wav (SHA256 132ae0addcbf3e6a705e3c046ec730c953aa12e046a8f858a943eb9c8ed95ee8)
+end: https://www.fiftysounds.com/royalty-free-music/sfx-menu6.html -> fiftysounds/end.wav (SHA256 bb8f0936af5ef8ef87ddf34ac636ad8e387b351714b4a92a16d954b6de6056e1)
+warning: https://www.fiftysounds.com/royalty-free-music/sfx-menu5.html -> fiftysounds/warning.wav (SHA256 897969ee4a6738bf052aa770bc565a6610d5693bd0c399ca79befcedb54a0a39)
+FiftySounds Menu and Interface sound effects
+Copyright remains with the original creator, FiftySounds.
+
+Source: https://www.fiftysounds.com/royalty-free-music/menu-interface-sound-effects.html
+License: https://www.fiftysounds.com/music-license.html
+Terms: https://www.fiftysounds.com/terms-and-conditions.html
+Retrieved: 2026-11-02
+
+FiftySounds permits commercial and non-commercial use of its sound effects.
+Attribution is optional for sound effects. Modification is permitted.
+Its license includes use in apps, software applications and video games.
+The sounds are integrated as five WorkMemo state-change cues; they are not
+offered as a standalone stock library, sold or sublicensed as original work.
+Do not claim authorship or redistribute them as a competing sound library.
+
+This notice records the source and applicable terms; it does not replace or
+expand the FiftySounds License. Consult the official license and terms above.
+Original ZIP/MP3 downloads are retained only in ignored local authoring artifacts.
+The processed application cues and their source URLs/hashes are recorded in manifest.json.
+
+

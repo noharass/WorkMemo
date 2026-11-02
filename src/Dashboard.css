@@ -2,7 +2,7 @@
 /* Keep specificity below the library's `html body` scroll locker. */
 body:where(:has(.data-center)) {
   overflow: auto;
-  background: #f4f7f5;
+  background: #edf2ee;
 }
 /* Legacy desktop buttons use width:100%; web controls opt out without a global reset. */
 .wm-ui-root .wm-btn:not(.wm-btn-icon-only),
@@ -13,7 +13,7 @@ body:where(:has(.data-center)) {
 .data-center {
   min-height: 100vh;
   color: #243c33;
-  background: #f4f7f5;
+  background: #edf2ee;
   font:
     14px/1.6 "Segoe UI",
     "Microsoft YaHei UI",
@@ -75,7 +75,7 @@ body:where(:has(.data-center)) {
   flex-direction: column;
   align-items: center;
   padding: 22px 0;
-  background: #fff;
+  background: rgb(255 255 255 / 60%);
   border-right: 1px solid #e3ebe5;
 }
 .dc-brand {
@@ -115,7 +115,7 @@ body:where(:has(.data-center)) {
   gap: 16px;
   height: 64px;
   padding: 0 28px;
-  background: rgb(255 255 255 / 95%);
+  background: rgb(255 255 255 / 65%);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid #e3ebe5;
 }
@@ -584,3 +584,11 @@ body:where(:has(.data-center)) {
     padding-inline: 16px;
   }
 }
+
+/* Local browser translucency: the page canvas stays a normal browser surface. */
+.data-center { background: linear-gradient(145deg, #f3f2eb, #e7efea 52%, #edf0f5); }
+.data-center .wm-card { backdrop-filter: blur(12px); }
+.dc-pending-list { display: grid; gap: 16px; min-width: 0; }
+.dc-pending-list > p { color: #536b5b; }
+.dc-pending-list .wm-table-cell { overflow-wrap: anywhere; }
+.dc-pending-refresh { justify-self: start; }

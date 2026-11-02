@@ -238,6 +238,7 @@ export async function dashboardFixture(page) {
         ...state.records,
         ...(state.active ? [state.active] : []),
       ].find((row) => row.id === body.id);
+      if (!record) return route.fulfill({ status: 404, json: { error: "记录已删除，请刷新列表" } });
       return route.fulfill({
         json: { record, segments: state.segments, revisions: state.revisions },
       });

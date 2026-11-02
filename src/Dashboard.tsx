@@ -106,7 +106,10 @@ function DashboardContent() {
   const [editorError, setEditorError] = useState("");
   const [detailStale, setDetailStale] = useState(false);
   const [pendingQuery, setPendingQuery] = useState<Query | null>(null);
-  const [pendingDone, setPendingDone] = useState(false);
+  const [pendingData, setPendingData] = useState<Data | null>(null);
+  const [pendingError, setPendingError] = useState("");
+  const [pendingStatus, setPendingStatus] = useState("");
+  const selectedPending = useRef<number | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const quantityInput = useRef<InputRef>(null);
@@ -207,7 +210,6 @@ function DashboardContent() {
     try {
       const value = await api<Detail>("detail", { id: row.id });
       setPendingQuery(null);
-      setPendingDone(false);
       showDetail(value, edit);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
@@ -216,31 +218,70 @@ function DashboardContent() {
       setBusy(false);
     }
   }
-  async function loadPending(criteria: Query, currentId?: number) {
-    const list = await api<Data>("query", criteria);
-    const row = list.records.find(record => record.id !== currentId && record.status === "FINISHED" && record.settlement_status === "PENDING");
-    if (!row) return false;
-    const value = await api<Detail>("detail", { id: row.id });
-    if (value.record.status !== "FINISHED" || value.record.settlement_status !== "PENDING") {
-      throw new Error("待补填记录已变化，请重试读取下一条。");
-    }
-    showDetail(value, true);
-    setEditorError("");
-    setPendingDone(false);
-    return true;
+  const readPending = useCallback(async (criteria: Query) => {
+    let list = await api<Data>("query", criteria);
+    if (criteria.page > list.pages && list.pages > 0)
+      list = await api<Data>("query", { ...criteria, page: list.pages });
+    setPendingQuery({ ...criteria, page: list.page });
+    setPendingData(list);
+    setPendingError("");
+  }, []);
+  async function refreshPending(criteria: Query) {
+    if (busyRef.current || !online) return;
+    busyRef.current = true; setBusy(true);
+    try { await readPending(criteria); }
+    catch (e) { setPendingError(String(e instanceof Error ? e.message : e)); }
+    finally { busyRef.current = false; setBusy(false); }
+  }
+  function returnToPending() {
+    if (!pendingQuery) return;
+    setDetail(null); setEditing(false); setEditorError("");
+    void refreshPending(pendingQuery);
+  }
+  useEffect(() => {
+    if (!sheetOpen || detail || !pendingData) return;
+    const frame = requestAnimationFrame(() => {
+      const id = selectedPending.current;
+      const button = document.querySelector<HTMLElement>(`[data-pending-id="${id}"]`)
+        ?? document.querySelector<HTMLElement>("[data-pending-id]")
+        ?? document.querySelector<HTMLElement>(".dc-pending-refresh");
+      button?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [sheetOpen, detail, pendingData]);
+  async function selectPending(row: Row) {
+    if (!pendingQuery || !pendingData || busyRef.current || !online) return;
+    selectedPending.current = row.id;
+    busyRef.current = true; setBusy(true); setPendingError("");
+    try {
+      const value = await api<Detail>("detail", { id: row.id });
+      const record = value.record;
+      const date = localDate(new Date(record.start_time));
+      if (record.status !== "FINISHED" || record.settlement_status !== "PENDING"
+        || record.category !== pendingQuery.category
+        || (pendingQuery.scope !== "all" && record.is_demo !== (pendingQuery.scope === "demo"))
+        || (pendingData.range.start_date && date < pendingData.range.start_date)
+        || (pendingData.range.end_date && date > pendingData.range.end_date)) {
+        setPendingStatus("这条记录已变化，请重新选择。");
+        await readPending(pendingQuery);
+        return;
+      }
+      showDetail(value, true); setEditorError("");
+    } catch (e) {
+      // A removed row must not silently open a different record.
+      try { await readPending(pendingQuery); }
+      catch { /* Preserve the original error and offer an explicit retry. */ }
+      setPendingError(e instanceof Error ? e.message : String(e));
+    } finally { busyRef.current = false; setBusy(false); }
   }
   async function openCategoryPending(category: string) {
-    if (busyRef.current || detail || !online) return;
+    if (busyRef.current || sheetOpen || !online) return;
     trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const criteria: Query = { ...query, anchor_date: data?.range.anchor_date ?? query.anchor_date, category, status: "pending", page: 1 };
-    busyRef.current = true;
-    setBusy(true);
+    setPendingQuery(criteria); setPendingData(null); setPendingError(""); setPendingStatus("");
+    selectedPending.current = null; setSheetOpen(true);
     setActionError("");
-    try {
-      if (await loadPending(criteria)) setPendingQuery(criteria);
-      else { void message.info("这个分类在当前范围已没有待补填记录。"); setRefresh(value => value + 1); }
-    } catch (e) { setActionError(e instanceof Error ? e.message : String(e)); }
-    finally { busyRef.current = false; setBusy(false); }
+    await refreshPending(criteria);
   }
   const save = useCallback(async () => {
     if (!detail || busyRef.current || !online) return false;
@@ -283,6 +324,15 @@ function DashboardContent() {
         remark: record.remark,
       });
       setRefresh((value) => value + 1);
+      if (pendingQuery) {
+        setDetail(null); setEditing(false); setEditorError("");
+        setPendingStatus("工作量已保存，请选择下一条记录。");
+        // A committed write stays committed even when refreshing the list fails.
+        setPendingData(null);
+        try { await readPending(pendingQuery); }
+        catch (e) { setPendingError(`已保存，列表刷新失败：${e instanceof Error ? e.message : String(e)}`); }
+        return true;
+      }
       const updated = await api<Detail>("detail", { id: detail.record.id });
       setDetail(updated);
       setDetailStale(false);
@@ -305,23 +355,7 @@ function DashboardContent() {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [detail, fields, online, message]);
-  async function nextPending() {
-    if (!pendingQuery || !detail || busyRef.current || !online || confirmation) return;
-    const currentId = detail.record.id;
-    if (editing && !(await save())) return;
-    busyRef.current = true;
-    setBusy(true);
-    if (!editing) setEditorError("");
-    try {
-      if (!(await loadPending(pendingQuery, currentId))) {
-        setPendingDone(true);
-        void message.success("当前分类在这个范围的待补填已全部处理。");
-      }
-    } catch (e) {
-      setEditorError(`当前记录已保存，下一条读取失败：${e instanceof Error ? e.message : String(e)}。可重试下一条。`);
-    } finally { busyRef.current = false; setBusy(false); }
-  }
+  }, [detail, fields, online, message, pendingQuery, readPending]);
   useEffect(() => {
     const keys = (event: KeyboardEvent) => {
       if (
@@ -385,7 +419,7 @@ function DashboardContent() {
   }
   function pendingLink(row: CategoryTotal) {
     return row.pending > 0 ? <Button type="link" size="small" className="dc-pending-link"
-      aria-label={`${name(row.category)}待补填${row.pending}条`} disabled={!online || busy || !!detail}
+      aria-label={`${name(row.category)}待补填${row.pending}条`} disabled={!online || busy || sheetOpen}
       onClick={() => { void openCategoryPending(row.category); }}>{row.pending} 条</Button>
       : <span className="dc-muted">0 条</span>;
   }
@@ -1155,7 +1189,7 @@ function DashboardContent() {
               WORK RECORD {detail ? `#${detail.record.id}` : ""}
             </span>
             <h2>
-              {editing ? "填写工作量" : "工作详情"}{" "}
+              {pendingQuery && !detail ? "选择待补填记录" : editing ? "填写工作量" : "工作详情"}{" "}
               {detail?.record.is_demo && <Tag color="gold">演示数据</Tag>}
             </h2>
           </div>
@@ -1174,7 +1208,7 @@ function DashboardContent() {
             setEditing(false);
             setEditorError("");
             setPendingQuery(null);
-            setPendingDone(false);
+            setPendingData(null); setPendingError(""); setPendingStatus("");
             restoreTrigger();
           }
         }}
@@ -1182,7 +1216,7 @@ function DashboardContent() {
           <div className="dc-sheet-footer">
             <span className={dirty ? "dc-unsaved" : "dc-muted"}>
               {pendingQuery?.category ? `${name(pendingQuery.category)} · ` : ""}
-              {dirty ? "有未保存修改" : pendingDone ? "本范围已全部补填" : "数据保存在本机"}
+              {dirty ? "有未保存修改" : "数据保存在本机"}
             </span>
             <Space wrap>
               <Button
@@ -1191,8 +1225,8 @@ function DashboardContent() {
               >
                 关闭
               </Button>
-              {pendingQuery && <Button disabled={blocked || !online || pendingDone} onClick={() => { void nextPending(); }}>
-                {editing ? "保存并下一条" : "下一条"}
+              {pendingQuery && detail && <Button disabled={blocked} onClick={() => leave(returnToPending)}>
+                返回列表
               </Button>}
               {editing ? (
                 <Button
@@ -1207,7 +1241,7 @@ function DashboardContent() {
                 >
                   保存工作量
                 </Button>
-              ) : (
+              ) : detail ? (
                 <Button
                   key="edit"
                   type="primary"
@@ -1222,11 +1256,28 @@ function DashboardContent() {
                 >
                   编辑工作量
                 </Button>
-              )}
+              ) : null}
             </Space>
           </div>
         }
       >
+        {pendingQuery && !detail && <section className="dc-pending-list" aria-label="待补填记录列表">
+          <p>{name(pendingQuery.category ?? "")} · {pendingData ? reportRangeLabel(pendingData.range) : "当前已应用周期"} · 请选择具体记录</p>
+          {pendingStatus && <Alert type={pendingStatus.startsWith("工作量已保存") ? "success" : "info"} title={pendingStatus} role="status" />}
+          {pendingError && <Alert type="error" title={pendingError} showIcon />}
+          <Button className="dc-pending-refresh" disabled={blocked || !online} loading={busy} onClick={() => { void refreshPending(pendingQuery); }}>刷新待补填列表</Button>
+          {busy && !pendingData ? <Skeleton active /> : pendingData && <>
+            <Table<Row> rowKey="id" pagination={false} dataSource={pendingData.records} scroll={{ x: 550 }}
+              locale={{ emptyText: "当前分类在这个范围已没有待补填记录。" }} columns={[
+                { title: "记录", key: "record", render: (_, row) => <><strong>#{row.id}</strong><div>{formatTime(row.start_time)}</div><div>至 {row.end_time ? formatTime(row.end_time) : "—"}</div></> },
+                { title: "有效工时", key: "duration", render: (_, row) => formatDuration(row.duration_ms / 1000) },
+                { title: "备注", dataIndex: "remark", render: (value: string) => value || "无备注" },
+                { title: "操作", key: "action", render: (_, row) => <Button data-pending-id={row.id} aria-label={`补填记录${row.id}`} disabled={blocked || !online || !!pendingError} onClick={() => { void selectPending(row); }}>补填</Button> },
+              ]} />
+            <Pagination current={pendingData.page} total={pendingData.record_count} pageSize={50} showSizeChanger={false} disabled={blocked || !online}
+              onChange={page => { void refreshPending({ ...pendingQuery, page }); }} />
+          </>}
+        </section>}
         {detail && (
           <div className="dc-detail-content">
             <div className="dc-record-summary">

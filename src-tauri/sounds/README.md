@@ -28,3 +28,15 @@ node .\scripts\prepare-sounds.mjs
 ```
 
 此脚本在离线浏览器 AudioContext 中解码原始 OGG，生成同一格式的 WAV 与摘要；不播放声音、不下载素材、不修改系统音量。
+
+## v0.2.7 默认：FiftySounds
+
+默认套装为 FiftySounds Menu / Interface。开始 Notification（sfx-menu1）、暂停 Menu（sfx-menu3）、恢复 Interface（sfx-menu2）、结束 Confirmation（sfx-menu6）、空闲提醒 Alert（sfx-menu5）。来源、处理后 WAV 和原始 MP3 摘要保存在 `fiftysounds/manifest.json`，许可说明见 `fiftysounds/LICENSE.txt`。旧 Kenney 两套仍可选回。
+
+五个原始 ZIP 来自 `https://www.fiftysounds.com/music/sfx-menuN.zip`（N 为 1、2、3、5、6），本地原始下载保存在被忽略的 `artifacts/0.2.7/audio-source`，不作为独立素材库发布。解压相应 MP3 后可执行：
+
+```powershell
+node scripts/prepare-fiftysounds.mjs
+```
+
+作者工具使用现有 Playwright 解码，无新增运行依赖。处理为 22050Hz 单声道 16-bit PCM，目标 RMS 0.1、峰值不超过 0.45，淡入 5ms／淡出 40ms，最多 850ms；记录裁切处理，不声称完整播放原始文件。日常构建只嵌入已处理 WAV，无需联网或解码器。

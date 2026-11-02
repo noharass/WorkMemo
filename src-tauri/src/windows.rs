@@ -16,6 +16,8 @@ pub struct Layout {
     pub revision: u64,
     pub sound_enabled: bool,
     pub sound_theme: crate::sound::SoundTheme,
+    #[serde(default)]
+    sound_library_version: u8,
     pub font_size: u8,
     pub font_weight: u16,
     pub line_spacing: String,
@@ -27,7 +29,8 @@ impl Default for Layout {
             density: "comfortable".into(),
             revision: 0,
             sound_enabled: true,
-            sound_theme: crate::sound::SoundTheme::Soft,
+            sound_theme: crate::sound::SoundTheme::Fiftysounds,
+            sound_library_version: 1,
             font_size: 14,
             font_weight: 400,
             line_spacing: "standard".into(),
@@ -48,14 +51,21 @@ pub fn load(path: &std::path::Path) -> Result<Layout, String> {
     if !path.exists() {
         return Ok(Layout::default());
     }
-    decode_layout(&std::fs::read(path).map_err(|e| e.to_string())?)
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    let original: Layout = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let migrated = decode_layout(&bytes)?;
+    if original.sound_library_version == 0 {
+        write_layout(path, &migrated)?;
+    }
+    Ok(migrated)
 }
 pub fn decode_layout(bytes: &[u8]) -> Result<Layout, String> {
-    let d: Layout = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+    let mut d: Layout = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
     if !(12..=18).contains(&d.font_size)
         || ![400, 500, 600, 700].contains(&d.font_weight)
         || !["tight", "standard", "loose"].contains(&d.line_spacing.as_str())
         || !["compact", "comfortable"].contains(&d.density.as_str())
+        || d.sound_library_version > 1
         || d.windows.iter().any(|(k, v)| {
             !(valid_label(k) || k == "main-compact")
                 || !v.width.is_finite()
@@ -67,6 +77,11 @@ pub fn decode_layout(bytes: &[u8]) -> Result<Layout, String> {
         })
     {
         return Err("窗口布局格式无效。".into());
+    }
+    if d.sound_library_version == 0 {
+        d.sound_theme = crate::sound::SoundTheme::Fiftysounds;
+        d.sound_library_version = 1;
+        d.revision = d.revision.checked_add(1).ok_or("窗口设置修订号溢出")?;
     }
     Ok(d)
 }
@@ -102,17 +117,20 @@ pub fn initialize(app: &tauri::App) -> Result<(), String> {
 }
 fn persist(state: &WindowState) -> Result<(), String> {
     let d = state.data.lock().map_err(|_| "窗口设置锁异常")?;
-    if let Some(p) = state.path.parent() {
+    write_layout(&state.path, &d)
+}
+fn write_layout(path: &std::path::Path, data: &Layout) -> Result<(), String> {
+    if let Some(p) = path.parent() {
         std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
     }
-    let tmp = state.path.with_extension("pending");
+    let tmp = path.with_extension("pending");
     use std::io::Write;
     let mut file = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
-    file.write_all(&serde_json::to_vec(&*d).map_err(|e| e.to_string())?)
+    file.write_all(&serde_json::to_vec(data).map_err(|e| e.to_string())?)
         .and_then(|_| file.sync_all())
         .map_err(|e| e.to_string())?;
     drop(file);
-    std::fs::rename(tmp, &state.path).map_err(|e| e.to_string())
+    std::fs::rename(tmp, path).map_err(|e| e.to_string())
 }
 pub fn capture(window: &tauri::Window) -> Result<(), String> {
     if !valid_label(window.label()) || window.is_minimized().unwrap_or(true) {
@@ -469,13 +487,48 @@ mod tests {
             decode_layout(br#"{"sound_enabled":false}"#)
                 .unwrap()
                 .sound_theme,
-            crate::sound::SoundTheme::Soft
+            crate::sound::SoundTheme::Fiftysounds
         );
-        let crisp = decode_layout(br#"{"sound_enabled":false,"sound_theme":"crisp"}"#).unwrap();
+        let crisp = decode_layout(
+            br#"{"sound_library_version":1,"sound_enabled":false,"sound_theme":"crisp"}"#,
+        )
+        .unwrap();
         let loaded = decode_layout(&serde_json::to_vec(&crisp).unwrap()).unwrap();
         assert_eq!(loaded.sound_theme, crate::sound::SoundTheme::Crisp);
         assert!(!loaded.sound_enabled);
         assert!(decode_layout(br#"{"sound_theme":"unknown"}"#).is_err());
+    }
+    #[test]
+    fn sound_migration_is_persisted_once_and_preserves_mute_geometry_and_reselected_legacy() {
+        let path = std::env::temp_dir().join(format!(
+            "workmemo-sound-migration-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(&path, br#"{"revision":7,"sound_enabled":false,"sound_theme":"crisp","font_size":18,"windows":{"main":{"x":-100,"y":20,"width":780,"height":560}}}"#).unwrap();
+        let migrated = load(&path).unwrap();
+        assert_eq!(migrated.sound_theme, crate::sound::SoundTheme::Fiftysounds);
+        assert!(!migrated.sound_enabled);
+        assert_eq!(migrated.revision, 8);
+        assert_eq!(migrated.font_size, 18);
+        assert_eq!(migrated.windows["main"].x, -100);
+        let before = std::fs::read(&path).unwrap();
+        assert_eq!(load(&path).unwrap().revision, 8);
+        assert_eq!(before, std::fs::read(&path).unwrap());
+        let selected = Layout {
+            sound_theme: crate::sound::SoundTheme::Soft,
+            ..migrated
+        };
+        write_layout(&path, &selected).unwrap();
+        assert_eq!(
+            load(&path).unwrap().sound_theme,
+            crate::sound::SoundTheme::Soft
+        );
+        std::fs::remove_file(&path).unwrap();
+        assert!(decode_layout(br#"{"sound_library_version":2}"#).is_err());
     }
     #[test]
     fn typography_migrates_defaults_and_validates_saved_options() {

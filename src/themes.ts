@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 export const THEME_IDS = ["glass", "cream", "dark", "neon"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
-export const MIN_OPACITY = 80;
+export const MIN_OPACITY = 40;
 export const MAX_OPACITY = 100;
 
 export interface Appearance {
@@ -11,7 +11,7 @@ export interface Appearance {
   opacity: number;
 }
 
-export const DEFAULT_APPEARANCE: Appearance = { version: 1, theme: "cream", opacity: 88 };
+export const DEFAULT_APPEARANCE: Appearance = { version: 1, theme: "cream", opacity: 65 };
 
 interface Theme {
   name: string;
@@ -52,7 +52,7 @@ interface Theme {
 
 export const THEMES: Record<ThemeId, Theme> = {
   glass: {
-    name: "Glass", description: "薄荷烟玻璃", defaultOpacity: 82, scheme: "dark",
+    name: "Glass", description: "薄荷烟玻璃", defaultOpacity: 65, scheme: "dark",
     windowRgb: "30 42 57", surfaceRgb: "43 58 76", inputRgb: "31 44 59",
     text: "#f0f5fa", muted: "#c5d2e0", accent: "#83dfce", accentHover: "#90e3d4",
     accentText: "#a0efdf", onAccent: "#142f2c", line: "#52657b", border: "rgb(196 218 241 / 27%)",
@@ -64,7 +64,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     closeBg: "#a84a48", onClose: "#ffffff", scroll: "rgb(197 220 235 / 30%)",
   },
   cream: {
-    name: "Cream", description: "温暖奶油", defaultOpacity: 88, scheme: "light",
+    name: "Cream", description: "温暖奶油", defaultOpacity: 65, scheme: "light",
     windowRgb: "245 243 238", surfaceRgb: "255 253 248", inputRgb: "255 254 250",
     text: "#303b35", muted: "#435247", accent: "#3b6551", accentHover: "#345b48",
     accentText: "#284b38", onAccent: "#ffffff", line: "#d7d8c9", border: "rgb(255 255 247 / 85%)",
@@ -76,7 +76,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     closeBg: "#a94f43", onClose: "#ffffff", scroll: "rgb(79 102 71 / 42%)",
   },
   dark: {
-    name: "Dark", description: "安静深色", defaultOpacity: 94, scheme: "dark",
+    name: "Dark", description: "安静深色", defaultOpacity: 65, scheme: "dark",
     windowRgb: "23 29 38", surfaceRgb: "32 40 51", inputRgb: "28 35 45",
     text: "#edf2f8", muted: "#c2ccd8", accent: "#a8d8be", accentHover: "#b2dfc6",
     accentText: "#bce5cd", onAccent: "#16291f", line: "#4b596a", border: "rgb(156 181 203 / 34%)",
@@ -88,7 +88,7 @@ export const THEMES: Record<ThemeId, Theme> = {
     closeBg: "#a8434c", onClose: "#ffffff", scroll: "rgb(184 205 229 / 42%)",
   },
   neon: {
-    name: "Neon", description: "赛博微光", defaultOpacity: 90, scheme: "dark",
+    name: "Neon", description: "赛博微光", defaultOpacity: 65, scheme: "dark",
     windowRgb: "15 22 35", surfaceRgb: "22 32 49", inputRgb: "18 28 44",
     text: "#edf9ff", muted: "#c0d3e7", accent: "#6ef3da", accentHover: "#85f5e0",
     accentText: "#87f7e2", onAccent: "#092c29", line: "#3e697d", border: "rgb(110 243 218 / 57%)",
@@ -112,15 +112,22 @@ export function isAppearance(value: unknown): value is Appearance {
 
 export function themeStyle(settings: Appearance): CSSProperties {
   const theme = THEMES[settings.theme];
+  const windowOpacity = settings.opacity / 100;
+  const readingOpacity = Math.max(0.12, windowOpacity < 1 ? (0.8 - windowOpacity) / (1 - windowOpacity) : 0);
   const variables: Record<string, string | number> = {
     "--text-primary": theme.text, "--text-muted": theme.muted,
     "--accent": theme.accent, "--accent-hover": theme.accentHover,
     "--accent-text": theme.accentText, "--on-accent": theme.onAccent,
     "--line": theme.line, "--window-rgb": theme.windowRgb,
     "--surface-rgb": theme.surfaceRgb, "--input-rgb": theme.inputRgb,
-    "--window-opacity": settings.opacity / 100, "--surface-opacity": 0.94,
+    "--window-opacity": windowOpacity, "--surface-opacity": Math.max(0.24, readingOpacity),
+    // Local reading surfaces protect text at low window opacity; empty space stays transparent.
+    "--reading-opacity": readingOpacity,
+    "--control-background": `rgb(${theme.surfaceRgb} / 24%)`,
+    "--primary-background": `color-mix(in srgb, ${theme.accent} 10%, transparent)`,
+    "--control-pressed": `color-mix(in srgb, ${theme.accent} 18%, transparent)`,
     "--window-border": theme.border, "--header-background": theme.header,
-    "--control-hover": theme.controlHover, "--secondary-hover": theme.secondaryHover,
+    "--control-hover": theme.controlHover, "--secondary-hover": theme.controlHover,
     "--window-shadow": theme.shadow, "--panel-shadow": theme.panelShadow,
     "--button-shadow": theme.buttonShadow, "--timer-shadow": theme.timerShadow,
     "--timer-font": theme.timerFont, "--window-radius": `${theme.radius}px`,

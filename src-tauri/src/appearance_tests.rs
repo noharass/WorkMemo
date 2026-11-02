@@ -39,7 +39,7 @@ fn missing_file_uses_default_without_writing() {
 fn all_themes_and_boundaries_round_trip_over_existing_file() {
     let directory = Directory::new();
     for theme in [Theme::Glass, Theme::Cream, Theme::Dark, Theme::Neon] {
-        for opacity in [80, 88, 100] {
+        for opacity in [40, 65, 88, 100] {
             let expected = Appearance {
                 version: 1,
                 theme,
@@ -57,7 +57,7 @@ fn invalid_opacity_does_not_replace_saved_settings() {
     let directory = Directory::new();
     save(&directory.settings(), Appearance::default()).unwrap();
     let original = fs::read(directory.settings()).unwrap();
-    for opacity in [0, 79, 101, 255] {
+    for opacity in [0, 39, 101, 255] {
         assert!(
             save(
                 &directory.settings(),

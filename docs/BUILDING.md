@@ -51,11 +51,21 @@ node scripts/verify-v023-phase1.mjs
 node scripts/verify-multi-url.mjs
 ```
 
-这些浏览器回归使用隔离 HTTP／IPC 数据，不对真实任务发送操作。新版网页回归以 `test:web` 为准，v0.2.5 的连续补填和桌面收高分别由 verify-v025-followup.mjs 与 verify-v025.mjs 检查；旧网页脚本中的原生 select、侧抽屉及清空统计的断言对应历史布局，不能当作新版的验收入口。新截图和结果写入 `artifacts/web-ui/qa`；CSS 缩放和模拟 IPC 不等于 Windows 原生透明、系统 DPI 或实际浏览器扩展验收。完整说明见 [WEB-UI-UPDATE.md](WEB-UI-UPDATE.md)。
+这些浏览器回归使用隔离 HTTP／IPC 数据，不对真实任务发送操作。新版网页回归以 `test:web` 为准。0.2.7 将分类连续补填改为先选记录、保存后返回列表；历史命令 verify-v025-followup.mjs 转到新的 verify-v027-web.mjs，桌面收高仍由 verify-v025.mjs 检查。旧网页脚本中的原生 select、侧抽屉及清空统计的断言对应历史布局，不能当作新版的验收入口。新截图和结果写入 `artifacts/web-ui/qa`；CSS 缩放和模拟 IPC 不等于 Windows 原生透明、系统 DPI 或实际浏览器扩展验收。完整说明见 [WEB-UI-UPDATE.md](WEB-UI-UPDATE.md)。
 
 0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。源码阶段与原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
 
 ## 构建 v0.2.6 成品
+
+0.2.7 当前处于源码及隔离验收阶段，版本号和正式下载仍为 0.2.6；阶段记录、独立 Windows 构建及完整命令见 [UPDATE-0.2.7-PHASE-1.md](UPDATE-0.2.7-PHASE-1.md)。新增回归：
+
+```powershell
+node scripts/verify-v027-web.mjs
+node scripts/verify-v027-island.mjs
+node scripts/verify-v027-visual.mjs
+```
+
+视觉脚本覆盖四皮肤、40/65/100% 不透明度及两种密度，网页截图只用于浏览器合成效果检查。原始音效只在素材编辑时需要，普通构建直接使用仓库 WAV，不联网下载。
 
 ```powershell
 & .\scripts\package-windows.ps1

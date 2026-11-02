@@ -67,6 +67,8 @@ export function BottomSheet({
           overflow: "hidden",
         },
         section: {
+          background: "rgb(250 253 250 / 86%)",
+          backdropFilter: "blur(18px)",
           borderRadius: 20,
           overflow: "hidden",
           boxShadow: "0 24px 90px #173c2b30",
@@ -77,7 +79,7 @@ export function BottomSheet({
           overscrollBehavior: "contain",
           overflowY: blocked ? "hidden" : "auto",
         },
-        footer: { flexShrink: 0, background: "#fff" },
+        footer: { flexShrink: 0, background: "rgb(255 255 255 / 38%)" },
         mask: {
           background: "rgb(20 38 30 / 30%)",
           backdropFilter: "blur(3px)",

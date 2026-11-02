@@ -112,14 +112,24 @@ try {
     fullPage: true,
   });
   if (!layoutOnly) {
-    await page.waitForTimeout(350);
+    // Wait for the real canvas entrance animation, including slower CI/browser scheduling.
+    await page.locator(".dc-trend .dc-chart canvas").evaluate(canvas => new Promise((resolve, reject) => {
+      const started = performance.now(); let previous = "", stable = 0;
+      function sample() {
+        const current = canvas.toDataURL();
+        stable = current === previous ? stable + 1 : 0; previous = current;
+        if (stable >= 4 && performance.now() - started >= 350) return resolve(true);
+        if (performance.now() - started > 5000) return reject(Error("Initial chart did not settle"));
+        requestAnimationFrame(sample);
+      }
+      sample();
+    }));
     const graph = await page.locator(".dc-trend .dc-chart").screenshot();
     await page.waitForTimeout(2400);
-    assert.deepEqual(
-      await page.locator(".dc-trend .dc-chart").screenshot(),
-      graph,
-      "unchanged polling must not redraw a different chart",
-    );
+    const polledGraph = await page.locator(".dc-trend .dc-chart").screenshot();
+    await writeFile(new URL("poll-before.png", output), graph);
+    await writeFile(new URL("poll-after.png", output), polledGraph);
+    assert.ok(graph.equals(polledGraph), "unchanged polling must not redraw a different chart");
     result.stablePolling = true;
 
     await open(true);
@@ -195,6 +205,11 @@ try {
     );
     await close();
     await report.getByText("98.5", { exact: true }).waitFor();
+    // The Drawer restores the trigger after its leave callback, on the next frame.
+    await page.waitForFunction(
+      element => element === document.activeElement,
+      await page.locator(".dc-records").getByRole("button", { name: "编辑", exact: true }).first().elementHandle(),
+    );
     assert.equal(await page.evaluate(() => window.scrollY), scrollY);
     assert.equal(
       await page
@@ -685,6 +700,7 @@ try {
     JSON.stringify(
       {
         message: error.message,
+        focused: await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 700)),
         errors,
         warnings,
         saves: state.saves,

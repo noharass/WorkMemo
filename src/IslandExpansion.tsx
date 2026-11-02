@@ -1,14 +1,16 @@
 import CSSMotion from "@rc-component/motion";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { islandRegionSync } from "./islandRegion";
 
 export function IslandExpansion({ open, children, onCollapsed, onError }: {
   open: boolean; children: ReactNode; onCollapsed: () => void; onError: (error: string) => void;
 }) {
   const [maximum, setMaximum] = useState(364);
   const [reduced, setReduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const container = useRef<HTMLDivElement>(null);
-  const content = useRef<HTMLDivElement>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const [content, setContent] = useState<HTMLDivElement | null>(null);
+  const region = useRef<ReturnType<typeof islandRegionSync> | null>(null);
   const [contentHeight, setContentHeight] = useState(0);
   const openRef = useRef(open);
   openRef.current = open;
@@ -26,39 +28,32 @@ export function IslandExpansion({ open, children, onCollapsed, onError }: {
     return () => window.removeEventListener("resize", update);
   }, [onError]);
   useEffect(() => {
-    if (isTauri() && open) void invoke("hold_island", { holding: true }).catch(e => onError(String(e)));
-  }, [open, onError]);
-  useEffect(() => {
-    const measure = () => setContentHeight(Math.min(content.current?.scrollHeight ?? 0, maximum));
+    const measure = () => setContentHeight(Math.min(content?.scrollHeight ?? 0, maximum));
     const observer = new ResizeObserver(measure);
-    if (content.current) observer.observe(content.current);
+    if (content) observer.observe(content);
     measure();
     return () => observer.disconnect();
-  }, [maximum, open]);
+  }, [maximum, open, content]);
   useEffect(() => {
-    if (!isTauri() || !container.current) return;
-    let stopped = false, sending = false;
-    let next: number | null = null;
-    const send = async () => {
-      if (sending || stopped) return;
-      sending = true;
-      while (next !== null && !stopped) {
-        const height = next; next = null;
-        try { await invoke("set_island_region", { height }); }
-        catch (e) { if (!stopped) onError(String(e)); }
-      }
-      sending = false;
+    if (!isTauri()) return;
+    const sync = islandRegionSync(invoke, onError);
+    region.current = sync;
+    return () => { sync.dispose(); region.current = null; };
+  }, [onError]);
+  useEffect(() => {
+    if (!container) return;
+    const measure = () => {
+      const height = Math.min(maximum + 56, Math.max(56, container.getBoundingClientRect().height + 56));
+      // Keep held through the leave animation; release only at its endpoint.
+      region.current?.update(height, openRef.current || height > 56.5);
     };
-    const observer = new ResizeObserver(() => {
-      next = Math.min(maximum + 56, Math.max(56, (container.current?.getBoundingClientRect().height ?? 0) + 56));
-      void send();
-    });
-    observer.observe(container.current);
-    return () => { stopped = true; observer.disconnect(); };
-  }, [maximum, onError]);
+    const observer = new ResizeObserver(measure);
+    observer.observe(container); measure();
+    return () => observer.disconnect();
+  }, [container, maximum, open]);
   const measured = (element: HTMLElement) => Math.min(element.scrollHeight, maximum);
   return <CSSMotion visible={open} motionName="island-reveal" motionAppear={!reduced} motionEnter={!reduced} motionLeave={!reduced}
-    removeOnLeave={false} motionDeadline={260}
+    forceRender removeOnLeave={false} motionDeadline={260}
     onAppearStart={() => ({ height: 0, opacity: 0, transform: "translateY(-6px)" })}
     onEnterStart={() => ({ height: 0, opacity: 0, transform: "translateY(-6px)" })}
     onAppearActive={element => ({ height: measured(element), opacity: 1, transform: "translateY(0)" })}
@@ -67,19 +62,17 @@ export function IslandExpansion({ open, children, onCollapsed, onError }: {
     onLeaveActive={() => ({ height: 0, opacity: 0, transform: "translateY(-6px)" })}
     onVisibleChanged={visible => {
       if (!visible && !openRef.current) {
-        if (isTauri()) void invoke("set_island_region", { height: 56 })
-          .then(() => { if (!openRef.current) return invoke("hold_island", { holding: false }); })
-          .catch(e => onError(String(e)));
+        region.current?.update(56, false);
         onCollapsed();
       }
     }}>
     {({ className, style }, ref) => <div ref={node => {
-      container.current = node;
+      setContainer(node);
       if (typeof ref === "function") ref(node);
       else if (ref) ref.current = node;
     }}
       className={`island-expansion ${className || ""}`} style={{ height: open ? contentHeight : 0, maxHeight: maximum, ...style }} aria-hidden={!open} inert={!open}>
-      <div className="island-expansion-content" ref={content}>{children}</div>
+      <div className="island-expansion-content" ref={setContent}>{children}</div>
     </div>}
   </CSSMotion>;
 }

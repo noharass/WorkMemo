@@ -37,7 +37,7 @@ impl Default for Appearance {
         Self {
             version: VERSION,
             theme: Theme::Cream,
-            opacity: 88,
+            opacity: 65,
         }
     }
 }
@@ -47,8 +47,8 @@ impl Appearance {
         if self.version != VERSION {
             return Err("外观设置版本不受支持，请使用匹配的应用版本。".into());
         }
-        if !(80..=100).contains(&self.opacity) {
-            return Err("背景不透明度须在 80% 到 100% 之间。".into());
+        if !(40..=100).contains(&self.opacity) {
+            return Err("背景不透明度须在 40% 到 100% 之间。".into());
         }
         Ok(())
     }

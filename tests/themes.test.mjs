@@ -27,14 +27,16 @@ for (const id of THEME_IDS) {
   test(`${id}: readable foregrounds at both opacity boundaries over black and white`, () => {
     const theme = THEMES[id];
     assert.ok(theme.defaultOpacity >= MIN_OPACITY && theme.defaultOpacity <= MAX_OPACITY);
-    for (const opacity of [MIN_OPACITY, MAX_OPACITY]) {
+    for (const opacity of [MIN_OPACITY, 65, MAX_OPACITY]) {
       for (const backdrop of [[0, 0, 0], [255, 255, 255]]) {
-        const background = blend(rgb(theme.windowRgb), backdrop, opacity / 100);
+        const canvas = blend(rgb(theme.windowRgb), backdrop, opacity / 100);
+        const readingOpacity = themeStyle({ version: 1, theme: id, opacity })["--reading-opacity"];
+        const background = blend(rgb(theme.windowRgb), canvas, readingOpacity);
         for (const [name, foreground] of Object.entries({ primary: theme.text, muted: theme.muted, accent: theme.accentText })) {
           readable(foreground, background, `${id}/${opacity}/${name}`);
         }
-        const panel = blend(rgb(theme.surfaceRgb), background, 0.94);
-        const input = blend(rgb(theme.inputRgb), background, 0.96);
+        const panel = blend(rgb(theme.surfaceRgb), canvas, readingOpacity);
+        const input = blend(rgb(theme.inputRgb), panel, readingOpacity);
         readable(theme.text, panel, `${id}/panel`);
         readable(theme.muted, input, `${id}/input`);
       }
@@ -50,7 +52,7 @@ for (const id of THEME_IDS) {
 test("reject malformed or out-of-range appearance payloads", () => {
   assert.ok(isAppearance(DEFAULT_APPEARANCE));
   for (const value of [null, {}, { ...DEFAULT_APPEARANCE, version: 2 },
-    { ...DEFAULT_APPEARANCE, theme: "unknown" }, { ...DEFAULT_APPEARANCE, opacity: 79 },
+    { ...DEFAULT_APPEARANCE, theme: "unknown" }, { ...DEFAULT_APPEARANCE, opacity: 39 },
     { ...DEFAULT_APPEARANCE, opacity: 101 }, { ...DEFAULT_APPEARANCE, opacity: 88.5 },
     { ...DEFAULT_APPEARANCE, opacity: NaN }]) assert.equal(isAppearance(value), false);
 });

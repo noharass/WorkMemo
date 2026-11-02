@@ -190,11 +190,11 @@ export function LayoutPanel() {
       <div className="layout-form">
         <StartupSetting />
         <label className="monitor-toggle"><input type="checkbox" checked={current.sound_enabled} disabled={busy} onChange={e => field("sound_enabled", e.target.checked)}/>关键状态提示音</label>
-        <label>提示音套装<select aria-label="提示音套装" value={current.sound_theme??"soft"} disabled={busy} onChange={event=>field("sound_theme",event.target.value as LayoutSettings["sound_theme"])}>
-          <option value="soft">柔和轻提示</option><option value="crisp">清脆短提示</option>
+        <label>提示音套装<select aria-label="提示音套装" value={current.sound_theme??"fiftysounds"} disabled={busy} onChange={event=>field("sound_theme",event.target.value as LayoutSettings["sound_theme"])}>
+          <option value="fiftysounds">FiftySounds · 默认</option><option value="soft">柔和轻提示</option><option value="crisp">清脆短提示</option>
         </select></label>
         <div className="sound-preview-buttons" aria-label="分别试听提示音">
-          {([["start","开始"],["pause","暂停"],["resume","恢复"],["end","结束"],["warning","空闲提醒"]] as const).map(([cue,label])=><button key={cue} type="button" className="secondary" disabled={!isTauri()||busy} onClick={()=>{void invoke("preview_sound",{theme:current.sound_theme??"soft",cue}).catch(e=>setError(String(e)));}}>试听{label}</button>)}
+          {([["start","开始"],["pause","暂停"],["resume","恢复"],["end","结束"],["warning","空闲提醒"]] as const).map(([cue,label])=><button key={cue} type="button" className="secondary" disabled={!isTauri()||busy} onClick={()=>{void invoke("preview_sound",{theme:current.sound_theme??"fiftysounds",cue}).catch(e=>setError(String(e)));}}>试听{label}</button>)}
         </div>
         <p className="hint">试听当前选择，保存布局后应用。试听不受提示音开关限制；日常只在状态变化时响一次。</p>
         <label>

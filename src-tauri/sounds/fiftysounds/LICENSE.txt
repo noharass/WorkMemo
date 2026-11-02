@@ -1,0 +1,19 @@
+FiftySounds Menu and Interface sound effects
+Copyright remains with the original creator, FiftySounds.
+
+Source: https://www.fiftysounds.com/royalty-free-music/menu-interface-sound-effects.html
+License: https://www.fiftysounds.com/music-license.html
+Terms: https://www.fiftysounds.com/terms-and-conditions.html
+Retrieved: 2026-11-02
+
+FiftySounds permits commercial and non-commercial use of its sound effects.
+Attribution is optional for sound effects. Modification is permitted.
+Its license includes use in apps, software applications and video games.
+The sounds are integrated as five WorkMemo state-change cues; they are not
+offered as a standalone stock library, sold or sublicensed as original work.
+Do not claim authorship or redistribute them as a competing sound library.
+
+This notice records the source and applicable terms; it does not replace or
+expand the FiftySounds License. Consult the official license and terms above.
+Original ZIP/MP3 downloads are retained only in ignored local authoring artifacts.
+The processed application cues and their source URLs/hashes are recorded in manifest.json.

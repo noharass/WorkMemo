@@ -12,6 +12,7 @@ pub enum Cue {
 #[serde(rename_all = "snake_case")]
 pub enum SoundTheme {
     #[default]
+    Fiftysounds,
     Soft,
     Crisp,
 }
@@ -58,6 +59,15 @@ impl Tracker {
 }
 fn pcm(cue: Cue, theme: SoundTheme) -> &'static [u8] {
     match (theme, cue) {
+        (SoundTheme::Fiftysounds, Cue::Start) => include_bytes!("../sounds/fiftysounds/start.wav"),
+        (SoundTheme::Fiftysounds, Cue::Pause) => include_bytes!("../sounds/fiftysounds/pause.wav"),
+        (SoundTheme::Fiftysounds, Cue::Resume) => {
+            include_bytes!("../sounds/fiftysounds/resume.wav")
+        }
+        (SoundTheme::Fiftysounds, Cue::End) => include_bytes!("../sounds/fiftysounds/end.wav"),
+        (SoundTheme::Fiftysounds, Cue::Warning) => {
+            include_bytes!("../sounds/fiftysounds/warning.wav")
+        }
         (SoundTheme::Soft, Cue::Start) => include_bytes!("../sounds/start.wav"),
         (SoundTheme::Soft, Cue::Pause) => include_bytes!("../sounds/pause.wav"),
         (SoundTheme::Soft, Cue::Resume) => include_bytes!("../sounds/resume.wav"),
@@ -127,8 +137,8 @@ mod tests {
         assert!(serde_json::from_str::<Cue>("\"unknown\"").is_err());
     }
     #[test]
-    fn ten_embedded_cues_are_short_faded_non_silent_pcm_with_bounded_peak() {
-        for theme in [SoundTheme::Soft, SoundTheme::Crisp] {
+    fn fifteen_embedded_cues_are_short_faded_non_silent_pcm_with_bounded_peak() {
+        for theme in [SoundTheme::Fiftysounds, SoundTheme::Soft, SoundTheme::Crisp] {
             for cue in [Cue::Start, Cue::Pause, Cue::Resume, Cue::End, Cue::Warning] {
                 let wav = pcm(cue, theme);
                 assert_eq!(&wav[..4], b"RIFF");
@@ -152,6 +162,10 @@ mod tests {
                 let peak = samples.iter().map(|v| i32::from(*v).abs()).max().unwrap();
                 assert!(peak > 100 && peak <= 14746);
                 assert_ne!(pcm(cue, SoundTheme::Soft), pcm(cue, SoundTheme::Crisp));
+                assert_ne!(
+                    pcm(cue, SoundTheme::Fiftysounds),
+                    pcm(cue, SoundTheme::Soft)
+                );
             }
         }
     }

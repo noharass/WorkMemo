@@ -1,0 +1,72 @@
+{
+  "source": "https://www.fiftysounds.com/royalty-free-music/menu-interface-sound-effects.html",
+  "license": "FiftySounds License",
+  "license_url": "https://www.fiftysounds.com/music-license.html",
+  "retrieved": "2026-11-02",
+  "sample_rate": 22050,
+  "channels": 1,
+  "bits": 16,
+  "processing": "trim silence; resample; target RMS 0.1 and peak <=0.45; fade in 5ms/out 40ms; cap 850ms",
+  "sounds": [
+    {
+      "theme": "fiftysounds",
+      "cue": "start",
+      "source": "https://www.fiftysounds.com/music/sfx-menu1.zip",
+      "page": "https://www.fiftysounds.com/royalty-free-music/sfx-menu1.html",
+      "original_file": "sfx-menu1.mp3",
+      "archive_sha256": "69121fd2096eb956ecd5480b4312dcfe9fd431405064dfc4bec3ed126c54c875",
+      "file": "fiftysounds/start.wav",
+      "duration_ms": 850,
+      "sha256": "8d9620cedb3cbdab9126b53c11c9246cde15561dad05896a8fe7aa7ae229aae0",
+      "source_sha256": "a53d999ddb14ded8d0f0834a450da9af6d96aebe1d47e338b1fe780fc770c792"
+    },
+    {
+      "theme": "fiftysounds",
+      "cue": "pause",
+      "source": "https://www.fiftysounds.com/music/sfx-menu3.zip",
+      "page": "https://www.fiftysounds.com/royalty-free-music/sfx-menu3.html",
+      "original_file": "sfx-menu3.mp3",
+      "archive_sha256": "0c151f2d039c11b8f73ca4d92d0e3606f70f4c53aca18128c0abe1f7f3f611c6",
+      "file": "fiftysounds/pause.wav",
+      "duration_ms": 850,
+      "sha256": "66a0c3fb8f3c29bb4a84a61445c3e27d43d68abc0d849661a582e2a7915b5637",
+      "source_sha256": "5f37b2e556e92bd64c944ad7e02b7374ee4acefab6d660a37e24d447b0b207a8"
+    },
+    {
+      "theme": "fiftysounds",
+      "cue": "resume",
+      "source": "https://www.fiftysounds.com/music/sfx-menu2.zip",
+      "page": "https://www.fiftysounds.com/royalty-free-music/sfx-menu2.html",
+      "original_file": "sfx-menu2.mp3",
+      "archive_sha256": "f3fd8ca68e015fd6b2c4e4e211b8480dd22168ae733819c37bc3aba7f70fe271",
+      "file": "fiftysounds/resume.wav",
+      "duration_ms": 850,
+      "sha256": "132ae0addcbf3e6a705e3c046ec730c953aa12e046a8f858a943eb9c8ed95ee8",
+      "source_sha256": "3a9a0bbf6f34a4d04b744002db93e2f638fb41050c280c98edfe0ed8de6503dd"
+    },
+    {
+      "theme": "fiftysounds",
+      "cue": "end",
+      "source": "https://www.fiftysounds.com/music/sfx-menu6.zip",
+      "page": "https://www.fiftysounds.com/royalty-free-music/sfx-menu6.html",
+      "original_file": "sfx-menu6.mp3",
+      "archive_sha256": "7642fe2dc5969832e1dede516d103ad7a32ca24d4c3ee674987854bd6bab292a",
+      "file": "fiftysounds/end.wav",
+      "duration_ms": 850,
+      "sha256": "bb8f0936af5ef8ef87ddf34ac636ad8e387b351714b4a92a16d954b6de6056e1",
+      "source_sha256": "d327b9a824b690e72bf170c1262ced9e393a3d43b3ca99c235c55e29bc418c7f"
+    },
+    {
+      "theme": "fiftysounds",
+      "cue": "warning",
+      "source": "https://www.fiftysounds.com/music/sfx-menu5.zip",
+      "page": "https://www.fiftysounds.com/royalty-free-music/sfx-menu5.html",
+      "original_file": "sfx-menu5.mp3",
+      "archive_sha256": "3f39c8c14f8e8b630f0bc941072992e40e2ddcce41193500420cf9cd30194a36",
+      "file": "fiftysounds/warning.wav",
+      "duration_ms": 850,
+      "sha256": "897969ee4a6738bf052aa770bc565a6610d5693bd0c399ca79befcedb54a0a39",
+      "source_sha256": "792228126555028d6a9ce5b01b69204dc0836677b5289c9414e922c7f987d253"
+    }
+  ]
+}
