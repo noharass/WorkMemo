@@ -55,9 +55,9 @@ node scripts/verify-multi-url.mjs
 
 0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。源码阶段与原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
 
-## 构建 v0.2.6 成品
+## 构建 v0.2.7 成品
 
-0.2.7 当前处于源码及隔离验收阶段，版本号和正式下载仍为 0.2.6；阶段记录、独立 Windows 构建及完整命令见 [UPDATE-0.2.7-PHASE-1.md](UPDATE-0.2.7-PHASE-1.md)。新增回归：
+0.2.7 已进入成品发布阶段，发布核对与兼容性见 [RELEASE-0.2.7.md](RELEASE-0.2.7.md)；前序阶段记录、独立 Windows 构建及完整命令见 [UPDATE-0.2.7-PHASE-1.md](UPDATE-0.2.7-PHASE-1.md)。新增回归：
 
 ```powershell
 node scripts/verify-v027-web.mjs
@@ -74,10 +74,10 @@ node scripts/verify-v027-visual.mjs
 
 脚本收集第三方许可，执行前端与 Tauri release 构建，准备浏览器组件，生成 NSIS 安装器和免安装 ZIP：
 
-- `artifacts/0.2.6/WorkMemo_0.2.6_x64-setup.exe`
-- `artifacts/0.2.6/WorkMemo_0.2.6_windows_x64.zip`
-- `artifacts/0.2.6/THIRD-PARTY-LICENSES.txt`
-- `artifacts/0.2.6/SHA256SUMS.txt`
+- `artifacts/0.2.7/WorkMemo_0.2.7_x64-setup.exe`
+- `artifacts/0.2.7/WorkMemo_0.2.7_windows_x64.zip`
+- `artifacts/0.2.7/THIRD-PARTY-LICENSES.txt`
+- `artifacts/0.2.7/SHA256SUMS.txt`
 
 脚本不启动成品或执行安装。产物、数据库、凭据和本机配置不提交 Git。相同版本重建会替换该输出目录中的同名文件。
 

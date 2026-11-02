@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.6/WorkMemo_0.2.6_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.7/WorkMemo_0.2.7_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.6/WorkMemo_0.2.6_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.7/WorkMemo_0.2.7_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.6">v0.2.6 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.7">v0.2.7 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -38,21 +38,17 @@
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## 这次更新：连续开工与设置保存修正
+## 这次更新：补填选择、工时占比与轻透明界面
 
-**v0.2.6** 优化结束后的下一次开工：识别出新的工作页面操作后，灵动岛优先展示识别类别和开始入口，确认后才计时；上一项未补填工作量不再遮挡新开工，正在填写的旧结算草稿继续保留。
+**v0.2.7** 的分类待补填入口先列出记录，选中具体一条才填写；保存后返回列表，失败和冲突保留输入。辅助分析新增工时占比饼图，可点击扇区或图例筛选类别。
 
-主窗口空闲时展示监测状态，点击「新建任务」后才显示手动表单；取消、刷新及候选到达保留草稿。已有任务继续显示当前工作，仍需暂停后确认切换。
+主窗、设置、状态岛和网页统一轻透明控件，减少重复说明并补齐卡片圆角。四皮肤新默认不透明度为 65%，可选 40–100%；已有透明度保持。修正灵动岛首次展开的原生区域更新，以及网页导航提示随滚动晃动的问题。
 
-设置保存采用返回结果直接更新当前表单，修正重复加载和重建，加入重复提交保护、慢速保存焦点恢复；失败保留输入，成功后只执行一次目标操作。已验证浏览器隔离行为；Windows 原生闪动、透明及焦点验收仍有工具限制，未宣称所有显卡和 DPI 环境都已消除闪动。
+默认提示音改为 FiftySounds；首次升级会切换套装，保留静音选择，旧柔和／清脆仍可选回。计时、数据库 schema 9 和权限范围保持。Windows 原生透明、区域点击、焦点和系统 DPI 验收仍有工具限制，详见发布记录。
 
-透明悬浮、四皮肤、默认当前用户自启、历史报表、多网址和备份功能继续保留；数据库仍为 schema 9。升级前请备份并从托盘正常退出旧版，完整安装或解压新版，并重新加载配套扩展。
+[查看 v0.2.7 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.7) · [构建校验与验收限制](docs/RELEASE-0.2.7.md)
 
-[查看 v0.2.6 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.6) · [构建校验与验收限制](docs/RELEASE-0.2.6.md)
-
-完整实施及源码见 [0.2.6 第一阶段](docs/UPDATE-0.2.6-PHASE-1.md)。旧版下载与阶段记录保留。
-
-0.2.7 源码阶段已加入分类待补填记录选择、灵动岛展开修正、桌面与网页轻透明控件及 FiftySounds 默认提示音。检查结果和原生验收限制见 [0.2.7 源码交付](docs/UPDATE-0.2.7-PHASE-1.md)。正式下载仍为 0.2.6，0.2.7 安装包与公开发布尚未开始。
+完整实现保留在 [0.2.7 第一阶段](docs/UPDATE-0.2.7-PHASE-1.md) 与 [反馈修订](docs/FIX-0.2.7-FEEDBACK.md)。旧版下载和阶段记录继续保留。
 
 ## 从旧版本过来
 
@@ -60,7 +56,7 @@
 
 - 从正式版更新：安装新版，沿用原有正式记录。
 - 从预览版迁移：先退出预览版，再到新版「设置 → 数据管理」查看来源和数量，确认后合并；重复导入会跳过，有变化的记录会提示冲突。
-- 想回退旧版：保留旧安装包和升级前的数据备份；旧程序不能直接读取新版数据格式。
+- 想回退旧版：保留旧安装包和升级前的记录、设置备份；旧版可能无法读取新的音效、透明度设置或数据库格式。
 
 具体步骤与数据位置见[使用说明](docs/USER-GUIDE.md#升级迁移与回退)。历史预览版仍保留在 [Releases](https://github.com/noharass/WorkMemo/releases)。
 
@@ -75,5 +71,3 @@ WorkMemo 不需要云账号。工作记录、监测设置、背景图片和备�
 欢迎[提一个 Issue](https://github.com/noharass/WorkMemo/issues/new)。描述一下当时做了什么、希望它怎样工作，再附上软件版本和错误提示就好。请不要上传真实工作数据库或私人备注。
 
 [使用说明](docs/USER-GUIDE.md) · [下载与更新](https://github.com/noharass/WorkMemo/releases/latest) · [反馈问题](https://github.com/noharass/WorkMemo/issues)
-
-0.2.7 后续源码修订加入工时占比饼图、导航提示稳定性修正、说明精简与卡片圆角，见 [反馈修订交付](docs/FIX-0.2.7-FEEDBACK.md)。正式下载仍为 0.2.6。
