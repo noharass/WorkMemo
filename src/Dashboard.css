@@ -331,7 +331,7 @@ body:where(:has(.data-center)) {
 }
 .dc-auxiliary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 .dc-auxiliary-grid > * {
@@ -486,9 +486,6 @@ body:where(:has(.data-center)) {
   .dc-topbar {
     padding-inline: 20px;
   }
-  .dc-auxiliary-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 @media (max-width: 760px) {
   .dc-sidebar {
@@ -592,3 +589,15 @@ body:where(:has(.data-center)) {
 .dc-pending-list > p { color: #536b5b; }
 .dc-pending-list .wm-table-cell { overflow-wrap: anywhere; }
 .dc-pending-refresh { justify-self: start; }
+
+.dc-pie .dc-chart { height:190px; }
+.dc-pie-legend { list-style:none; margin:0; padding:0 4px 4px; display:grid; gap:2px; }
+.dc-pie-legend .wm-btn { display:flex; align-items:center; width:100%; height:auto; min-height:30px; padding:4px 7px; gap:7px; }
+.dc-pie-legend i { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.dc-pie-name { flex:1; min-width:0; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dc-pie-value { flex-shrink:0; font-size:12px; font-variant-numeric:tabular-nums; }
+@media (min-width:760px) and (max-width:1199px) {
+  .dc-auxiliary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dc-auxiliary-grid .dc-calendar { grid-column:1/-1; }
+}
+@media (max-width:759px) { .dc-auxiliary-grid { grid-template-columns:minmax(0,1fr); } }

@@ -33,7 +33,12 @@ try {
     assert.ok(alpha<=0.2,JSON.stringify(styles));
     assert.equal(await page.locator('.desktop-frame').evaluate(el=>getComputedStyle(el).opacity),'1');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-    metrics.push({theme,opacity,density,styles});
+    const strips = await page.locator('.home-footer, .today-strip').evaluateAll(nodes => nodes.map(el => ({
+      radius: parseFloat(getComputedStyle(el).borderTopLeftRadius), padding: parseFloat(getComputedStyle(el).paddingLeft),
+    })));
+    assert.ok(strips.every(strip => strip.radius >= 6 && strip.padding >= 7), JSON.stringify(strips));
+    assert.equal(await page.locator('.monitor-caption').count(), 0);
+    metrics.push({theme,opacity,density,styles,strips});
     await page.screenshot({path:fileURLToPath(new URL(`main-${theme}-${opacity}-${density}.png`,output))});
   }
   await load({panel:'settings',section:'layout'},780,680);

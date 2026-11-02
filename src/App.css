@@ -475,7 +475,7 @@ button.browse-toolbar[aria-pressed=true]:disabled { opacity:.85; }
 .work-form .start-work { width:100%; justify-content:center; border-radius:999px; gap:9px; margin-top:2px; }
 .work-form .cancel-switch { justify-content:flex-start; width:auto; color:var(--text-primary); background:transparent; padding:4px 0; box-shadow:none; }
 .switch-hint { font-size:11px; color:var(--text-muted); margin:0; }
-button.today-strip { display:flex; gap:13px; width:100%; flex-shrink:0; padding:12px 0 2px; border:0; border-top:1px solid var(--line); border-radius:0; box-shadow:none; background:transparent; color:var(--text-muted); font-size:12px; text-align:left; }
+button.today-strip { display:flex; gap:13px; width:100%; flex-shrink:0; padding:10px 12px; border:1px solid var(--window-border); border-radius:var(--control-radius); box-shadow:none; background:transparent; color:var(--text-muted); font-size:12px; text-align:left; }
 button.today-strip:hover { background:transparent; color:var(--text-primary); }
 .today-strip-label { display:flex; align-items:center; gap:7px; flex-shrink:0; color:var(--text-primary); white-space:nowrap; }
 .today-strip .icon { width:16px; height:16px; font-size:16px; }
@@ -488,7 +488,7 @@ button.today-strip:hover { background:transparent; color:var(--text-primary); }
 .desktop-frame[data-density=compact] .workspace { gap:8px; }
 .desktop-frame[data-density=compact] .workspace .actions { gap:8px; padding-top:10px; }
 .desktop-frame[data-density=compact] .category-field-symbol { width:30px; height:30px; }
-.desktop-frame[data-density=compact] .today-strip { font-size:10px; gap:8px; padding-top:8px; }
+.desktop-frame[data-density=compact] .today-strip { font-size:10px; gap:8px; padding:7px 9px; }
 .desktop-frame[data-density=compact] .workspace .home-footer { margin-top:0; }
 @media(max-width:440px) {
   .workspace .actions { gap:8px; }
@@ -559,3 +559,14 @@ button.island-action, button.island-open, button.quiet-action { border-color: tr
 }
 .desktop-frame .appearance-dialog, .desktop-frame .history-dialog, .desktop-frame .delete-dialog,
 .desktop-frame .ui-dialog { background: rgb(var(--surface-rgb) / var(--reading-opacity)); backdrop-filter: blur(16px); }
+
+/* Feedback: standalone reading strips use the same rounded material as other cards. */
+.home-footer { border:1px solid var(--window-border); border-radius:var(--control-radius); padding:7px 12px; min-height:34px; }
+.desktop-frame[data-density=compact] .home-footer { padding:4px 9px; min-height:29px; }
+.home-footer > button { margin:0; }
+.help-disclosure { color:var(--text-muted); font-size:.82em; line-height:1.65; }
+.help-disclosure > summary { cursor:pointer; width:fit-content; padding-block:3px; }
+.help-disclosure p { margin:7px 0 0; overflow-wrap:anywhere; }
+.monitor-status-card .help-disclosure { margin-block:4px; }
+.desktop-frame .start-prompt, .desktop-frame .switch-panel,
+.desktop-frame .monitor-status, .desktop-frame .font-preview { border-radius:var(--panel-radius); }

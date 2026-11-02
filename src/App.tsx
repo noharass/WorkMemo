@@ -206,8 +206,9 @@ export default function App() {
         {!formOpen && !active && !candidate && (session.snapshot || !session.native) && (
           <section className="form-card monitor-status-card" aria-label="监测状态">
             <h1>{monitor?.browsing_only ? "仅浏览 · 当前不计时" : monitor?.enabled ? "等待识别工作页面" : "自动监测未启用"}</h1>
-            <p role="status">{monitor?.message || "请在桌面应用中查看监测状态。"}</p>
-            <p className="hint">工作页面出现新操作后，可在灵动岛确认开工；工作量稍后填写。</p>
+            {monitor?.enabled && (!monitor.browser_connected || !monitor.native_available)
+              ? <p className="notice" role="status">{monitor.message}</p>
+              : <details className="help-disclosure"><summary>监测详情</summary><p>{monitor?.message || "请在桌面应用中查看监测状态。"}</p></details>}
             <button type="button" disabled={unavailable} onClick={() => setNewTaskOpen(true)}><Icon name="play" />新建任务</button>
           </section>
         )}
@@ -320,9 +321,6 @@ export default function App() {
           >
             待补全 {session.snapshot?.pending_count ?? "—"}
           </button>
-          <span className="monitor-caption" title={monitor?.message}>
-            {monitor?.message || "正在读取状态…"}
-          </span>
         </div>
         <TodayWorkloadStrip items={today} error={todayError} onOpen={() => { void dashboard.open("today"); }} />
         {monitor?.idle_warning && (

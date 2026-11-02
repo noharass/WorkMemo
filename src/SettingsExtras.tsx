@@ -196,7 +196,7 @@ export function LayoutPanel() {
         <div className="sound-preview-buttons" aria-label="分别试听提示音">
           {([["start","开始"],["pause","暂停"],["resume","恢复"],["end","结束"],["warning","空闲提醒"]] as const).map(([cue,label])=><button key={cue} type="button" className="secondary" disabled={!isTauri()||busy} onClick={()=>{void invoke("preview_sound",{theme:current.sound_theme??"fiftysounds",cue}).catch(e=>setError(String(e)));}}>试听{label}</button>)}
         </div>
-        <p className="hint">试听当前选择，保存布局后应用。试听不受提示音开关限制；日常只在状态变化时响一次。</p>
+        <p className="hint">保存布局后应用；试听忽略静音开关。</p>
         <label>
           界面模式
           <select
@@ -210,9 +210,7 @@ export function LayoutPanel() {
             <option value="compact">紧凑 · 极简信息</option>
           </select>
         </label>
-        <p className="hint">
-          紧凑模式让主窗口成为小计时器，二级页面默认折叠辅助内容；错误与恢复提醒始终可见。
-        </p>
+        <details className="help-disclosure"><summary>界面模式说明</summary><p>紧凑模式收起辅助信息；错误与恢复提醒始终可见。</p></details>
         <label>
           正文字号：{current.font_size}px
           <input

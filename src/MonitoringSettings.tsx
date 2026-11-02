@@ -89,21 +89,22 @@ export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open
         void invoke<ConnectionStatus>("repair_browser_connection").then(setConnection).catch((failure: unknown) => setError(String(failure))).finally(() => setRepairing(false));
       }}>{repairing ? "正在修复…" : "修复本机连接"}</button>
       <button type="button" className="text-button" onClick={() => { void invoke("open_browser_extension").catch((failure: unknown) => setError(String(failure))); }}>打开配套扩展文件夹</button>
-      <p className="hint">Chrome 扩展需加载一次本目录。EXE、ZIP 和源码版启动时均会检查并修复当前用户的本机主机注册。</p>
+      <details className="help-disclosure"><summary>连接说明</summary><p>Chrome 扩展需加载一次配套目录。程序启动时会检查并修复当前用户的本机主机注册。</p></details>
     </details>}
     {config && <form id="monitor-form" className="monitor-settings grid gap-4" onSubmit={(event) => { void save(event); }}>
       <label className="monitor-toggle"><input type="checkbox" checked={config.enabled} disabled={busy}
         onChange={event => setConfig({ ...config, enabled: event.target.checked })} />启用工作页面自动识别</label>
-      <p className="hint">浏览器前台工作页面匹配且有新操作时提示开工，确认后才计时；仅浏览不计时。手动计时也受空闲保护。</p>
+      <p className="hint">确认开工后才计时；仅浏览不计时。</p>
       <fieldset className="monitor-rule"><legend>识别与恢复</legend>
         <label>浏览器状态检查间隔（秒）<select value={config.poll_interval_seconds} disabled={busy}
           onChange={event => setConfig({ ...config, poll_interval_seconds: Number(event.target.value) })}>
           {[1, 2, 3, 4, 5].map(seconds => <option key={seconds} value={seconds}>{seconds} 秒</option>)}
         </select></label>
-        <p className="hint">间隔越短，状态更新通常越快，也会增加少量后台活动。网络或系统忙碌时可能延迟。</p>
         <label className="monitor-toggle"><input type="checkbox" checked={config.auto_resume_manual} disabled={busy}
           onChange={event => setConfig({ ...config, auto_resume_manual: event.target.checked })} />返回工作页面并产生新操作后，自动恢复手动暂停的任务</label>
-        <p className="hint">恢复原任务，不创建新记录；需要可信的页面连接和新的输入。关闭后需手动继续。</p>
+        <details className="help-disclosure"><summary>识别与恢复说明</summary>
+          <p>检查越频繁，后台活动越多；系统忙碌时可能延迟。自动恢复沿用原任务，需要可信页面连接和新输入；关闭后需手动继续。</p>
+        </details>
       </fieldset>
       <details className="advanced-settings" open={!compact}><summary>计时参数（秒）</summary><fieldset className="monitor-rule"><legend className="sr-only">计时参数</legend>
         {([
@@ -114,12 +115,13 @@ export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open
           ["idle_end_seconds", "无输入后结束"],
         ] as const).map(([key, label]) => <label key={key}>{label}<input type="number" min={1} max={86400} step={1} required disabled={busy}
           value={config.times[key]} onChange={event => setConfig({ ...config, times: { ...config.times, [key]: event.target.valueAsNumber } })} /></label>)}
-        <p className="hint">每项 1 至 86400 秒；空闲暂停、空闲提醒均须早于空闲结束。空闲暂停扣除最后输入后的尾段；手动任务有新输入即恢复，自动任务须返回工作页面操作。离页宽限后暂停，再等待保留期结束记录。连接中断时不计入无法确认的时间；保留期同样适用。空闲结束可能更早发生。</p>
+        <p className="hint">每项 1–86400 秒；空闲暂停、提醒须早于结束。</p>
+        <details className="help-disclosure"><summary>计时规则说明</summary><p>空闲暂停扣除最后输入后的尾段。手动任务有新输入即恢复，自动任务须返回工作页面操作。离页宽限后暂停，保留期结束后结束记录；空闲结束可能更早发生。连接中断时不计入无法确认的时间，手动计时同样受空闲保护。</p></details>
       </fieldset>
       </details>
       <section className="monitor-work-sites" aria-label="每项工作的多个网址">
         <h3>工作与网址</h3>
-        <p className="hint">同一项工作可添加多个 URL，命中其中任意一个网站都属于工作页面。计时中切换这些网站会保留同一条记录，不重复开工。</p>
+        <p className="hint">同一工作可配置多个网址。</p>
         {CATEGORIES.map(category => {
           const rules = config.rules.filter(rule => rule.category === category);
           return <details key={category} className="monitor-work-group" open={rules.length > 0} aria-label={`${name(category)}工作网址`}>
@@ -142,9 +144,10 @@ export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open
             </div>
           </details>;
         })}
-        <p className="hint">全部工作合计最多 50 条 URL；移除一个 URL 不影响同一工作下的其他网址。配置保存后，请在扩展中同步所有工作站点授权。</p>
+        <p className="hint">最多 50 条 URL；保存后请在扩展中同步站点授权。</p>
       </section>
-      <p className="hint">路径前缀限定站点与路径边界；整个站点覆盖该来源全部路径；域名后缀覆盖该域名与子域名，例如 .cn-beijing-vpc.fcapp.run。查询参数和片段不参与匹配。保存监测配置会暂停当前自动记录；重新确认工作页面并产生新的输入后才会恢复。</p>
+      <p className="hint">保存会暂停当前自动记录；返回工作页操作后恢复。</p>
+      <details className="help-disclosure"><summary>网址匹配说明</summary><p>路径前缀限定站点与路径边界；整个站点覆盖该来源全部路径；域名后缀覆盖该域名与子域名。查询参数和片段不参与匹配。同一工作的网址间切换保留原记录，移除网址不影响其余规则。</p></details>
 
       <details><summary>连接与隐私说明</summary>
         <p className="hint">第一版配套 Chrome 扩展。安装扩展和本机通信主机后，在扩展面板同步已配置站点授权。只传规则标识、前台匹配状态、连接状态和页面活动信号；不传 URL、网页内容或输入文本。连接断开时暂停自动累计。</p>

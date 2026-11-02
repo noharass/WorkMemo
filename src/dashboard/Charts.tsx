@@ -1,6 +1,9 @@
 import { memo, useEffect, useMemo, useRef } from "react";
 import { init, use as registerCharts, type ECharts } from "echarts/core";
-import { BarChart, LineChart, HeatmapChart } from "echarts/charts";
+import { BarChart, LineChart, HeatmapChart, PieChart } from "echarts/charts";
+import { Button, Empty } from "antd";
+import { durationSlices } from "./durationPie";
+import { formatDuration } from "../types";
 import {
   GridComponent,
   TooltipComponent,
@@ -20,6 +23,7 @@ registerCharts([
   BarChart,
   LineChart,
   HeatmapChart,
+  PieChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,
@@ -197,6 +201,52 @@ export function CategoryChart({
       onCategory={onCategory}
     />
   );
+}
+
+export function DurationPieChart({ categories, presentation, onCategory }: {
+  categories: Data["categories"];
+  presentation: Presentation;
+  onCategory: (category: string) => void;
+}) {
+  const { name } = useCategoryNames();
+  const reduced = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const slices = useMemo(() => durationSlices(categories), [categories]);
+  const option = useMemo<EChartsOption>(() => ({
+    animation: !reduced,
+    animationDuration: 240,
+    animationDurationUpdate: 160,
+    tooltip: {
+      ...tooltip, trigger: "item",
+      formatter: params => {
+        const point = Array.isArray(params) ? params[0] : params;
+        const slice = slices.find(row => row.category === point.name);
+        return slice ? `${name(slice.category)}\n${formatDuration(slice.value / 1000)} · ${slice.percentLabel}` : "";
+      },
+    },
+    series: [{
+      id: "category-duration-share", type: "pie", radius: "78%", center: ["50%", "50%"],
+      stillShowZeroSum: false,
+      label: { show: false },
+      emphasis: { scaleSize: 4 },
+      data: slices.map(slice => ({
+        name: slice.category, value: slice.value,
+        itemStyle: { color: presentation.categories[slice.category]?.color },
+      })),
+    }],
+  }), [slices, name, presentation, reduced]);
+  if (!slices.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无有效工时" />;
+  return <>
+    <Chart option={option} label="按类别汇总的工时占比" onCategory={onCategory} />
+    <ul className="dc-pie-legend" aria-label="工时占比明细">
+      {slices.map(slice => <li key={slice.category}>
+        <Button type="text" style={{ width: "100%" }} onClick={() => onCategory(slice.category)} aria-label={`${name(slice.category)}：${formatDuration(slice.value / 1000)}，${slice.percentLabel}，筛选此类别`}>
+          <i aria-hidden="true" style={{ background: presentation.categories[slice.category]?.color }} />
+          <span className="dc-pie-name" title={name(slice.category)}>{name(slice.category)}</span>
+          <span className="dc-pie-value">{slice.percentLabel}</span>
+        </Button>
+      </li>)}
+    </ul>
+  </>;
 }
 
 export function CalendarChart({

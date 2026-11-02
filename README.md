@@ -75,3 +75,5 @@ WorkMemo 不需要云账号。工作记录、监测设置、背景图片和备�
 欢迎[提一个 Issue](https://github.com/noharass/WorkMemo/issues/new)。描述一下当时做了什么、希望它怎样工作，再附上软件版本和错误提示就好。请不要上传真实工作数据库或私人备注。
 
 [使用说明](docs/USER-GUIDE.md) · [下载与更新](https://github.com/noharass/WorkMemo/releases/latest) · [反馈问题](https://github.com/noharass/WorkMemo/issues)
+
+0.2.7 后续源码修订加入工时占比饼图、导航提示稳定性修正、说明精简与卡片圆角，见 [反馈修订交付](docs/FIX-0.2.7-FEEDBACK.md)。正式下载仍为 0.2.6。

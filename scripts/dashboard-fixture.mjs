@@ -121,13 +121,13 @@ export async function dashboardFixture(page) {
     const resolved = range(query);
     const extras = state.many
       ? Array.from({ length: 52 }, (_, i) => ({
-          ...state.records[0],
+          ...records[0],
           id: 200 + i,
           quantity: 1,
         }))
       : [];
     const demo = {
-      ...state.records[0],
+      ...records[0],
       id: 500,
       is_demo: true,
       demo_batch: "isolated-browser-fixture",

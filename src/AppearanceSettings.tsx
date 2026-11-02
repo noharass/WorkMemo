@@ -131,15 +131,10 @@ export function AppearanceSettings({
       >
         恢复 {THEMES[appearance.current.theme].name} 默认透明度
       </button>
-      <p className="hint">
-        只调节背景，文字和按钮保持清晰。切换皮肤时会应用该皮肤的默认值。
-      </p>
+      <details className="help-disclosure"><summary>透明度说明</summary><p>只调节背景，文字和按钮保持清晰。切换皮肤会应用该皮肤默认值。</p></details>
       <section className="background-settings">
         <h3>图片背景</h3>
-        <p className="hint">
-          图片用于主窗口与二级窗口，状态岛保持类别配色。支持PNG、JPEG、WebP，最多10
-          MiB、1600万像素。
-        </p>
+        <details className="help-disclosure"><summary>图片要求</summary><p>支持 PNG、JPEG、WebP，最多 10 MiB、1600万像素。用于主窗口与二级窗口，状态岛保持类别配色。</p></details>
         <div className="data-buttons">
           <button
             type="button"

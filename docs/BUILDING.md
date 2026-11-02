@@ -61,6 +61,7 @@ node scripts/verify-multi-url.mjs
 
 ```powershell
 node scripts/verify-v027-web.mjs
+node scripts/verify-v027-feedback.mjs
 node scripts/verify-v027-island.mjs
 node scripts/verify-v027-visual.mjs
 ```
@@ -95,3 +96,5 @@ npm.cmd run tauri -- build --ci --no-binary-patching
 版本在 package.json、package-lock.json、Cargo.toml、Cargo.lock、tauri.conf.json 和扩展 version_name 中同步。扩展的 Chrome 数字版本另行递增，固定 key 保持扩展标识不变。
 
 正式 release 标识首次运行默认注册当前用户开机启动；开发、隔离预览不会注册。自启以 `--autostart` 进入后台，单实例插件最先初始化。主窗口内容高度命令只允许 main 调用，状态岛区域命令只允许 notice；不要扩大前端原生权限。
+
+0.2.7 反馈回归 `verify-v027-feedback.mjs` 覆盖侧栏提示／滚动／键盘、类别工时饼图及筛选、三／二／单列、文案与圆角。完整结果与原生限制见 [FIX-0.2.7-FEEDBACK.md](FIX-0.2.7-FEEDBACK.md)。

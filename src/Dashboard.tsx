@@ -52,7 +52,7 @@ import {
   type Row,
 } from "./dashboard/api";
 import { useDashboardData } from "./dashboard/useDashboardData";
-import { CalendarChart, CategoryChart, TrendChart } from "./dashboard/Charts";
+import { CalendarChart, CategoryChart, DurationPieChart, TrendChart } from "./dashboard/Charts";
 import "./Dashboard.css";
 
 const minDate = dayjs("1970-01-01"),
@@ -76,11 +76,11 @@ function RecordStatus({ row }: { row: Row }) {
     </Tag>
   );
 }
-function Title({ title, description }: { title: string; description: string }) {
+function Title({ title, description }: { title: string; description?: string }) {
   return (
     <div className="dc-card-title">
       <h2>{title}</h2>
-      <p>{description}</p>
+      {description && <p>{description}</p>}
     </div>
   );
 }
@@ -125,6 +125,10 @@ function DashboardContent() {
   const afterConfirm = useRef<(() => void) | null>(null);
   const [categoryMetric, setCategoryMetric] = useState("duration");
   const [section, setSection] = useState("overview");
+  const [hideNavHints, setHideNavHints] = useState(false);
+  const [navHint, setNavHint] = useState<string | null>(null);
+  const navScrollFrame = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(navScrollFrame.current), []);
   const presentation = meta?.presentation ?? DEFAULT_PRESENTATION;
   const categoryOptions = CATEGORIES.map((value) => ({
     value,
@@ -609,24 +613,44 @@ function DashboardContent() {
           mode="inline"
           inlineCollapsed
           selectedKeys={[section]}
+          tooltip={false}
+          onMouseLeave={() => { setHideNavHints(false); setNavHint(null); }}
+          onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setHideNavHints(false); }}
           items={[
             {
               key: "overview",
-              icon: <Icon name="chart" />,
+              icon: <Tooltip title="工作总览" placement="right" trigger={[]} open={!hideNavHints && navHint === "overview"}
+                classNames={{ root: "dc-nav-tooltip" }} getPopupContainer={node => node.closest<HTMLElement>(".dc-sidebar") ?? document.body}
+                styles={{ root: { pointerEvents: "none", visibility: hideNavHints ? "hidden" : undefined } }}>
+                <span className="dc-nav-icon"><Icon name="chart" /></span>
+              </Tooltip>,
               label: "工作总览",
-              title: "工作总览",
+              onMouseEnter: () => setNavHint("overview"),
+              onMouseLeave: () => setNavHint(null),
             },
             {
               key: "records",
-              icon: <Icon name="list" />,
+              icon: <Tooltip title="工作明细" placement="right" trigger={[]} open={!hideNavHints && navHint === "records"}
+                classNames={{ root: "dc-nav-tooltip" }} getPopupContainer={node => node.closest<HTMLElement>(".dc-sidebar") ?? document.body}
+                styles={{ root: { pointerEvents: "none", visibility: hideNavHints ? "hidden" : undefined } }}>
+                <span className="dc-nav-icon"><Icon name="list" /></span>
+              </Tooltip>,
               label: "工作明细",
-              title: "工作明细",
+              onMouseEnter: () => setNavHint("records"),
+              onMouseLeave: () => setNavHint(null),
             },
           ]}
-          onClick={({ key }) => {
-            if (key === "records")
-              recordsRef.current?.scrollIntoView({ behavior: scrollBehavior });
-            else window.scrollTo({ top: 0, behavior: scrollBehavior });
+          onClick={({ key, domEvent }) => {
+            setHideNavHints(domEvent.type !== "keydown");
+            setNavHint(null);
+            cancelAnimationFrame(navScrollFrame.current);
+            navScrollFrame.current = requestAnimationFrame(() => {
+              // Commit the closed tooltip first, and cancel an older smooth scroll.
+              window.scrollTo({ top: window.scrollY, behavior: "instant" });
+              if (key === "records")
+                recordsRef.current?.scrollIntoView({ behavior: scrollBehavior });
+              else window.scrollTo({ top: 0, behavior: scrollBehavior });
+            });
           }}
         />
         <div className="dc-sidebar-bottom">
@@ -923,7 +947,6 @@ function DashboardContent() {
                 description={`${data ? reportRangeLabel(data.range) : "正在读取…"} · 数量按类型分别合计`}
               />
             }
-            extra={<Tag>自动汇总</Tag>}
             styles={{ body: { padding: 0 } }}
           >
             {loading ? (
@@ -1020,7 +1043,6 @@ function DashboardContent() {
                 description={`${data?.range.trend_unit === "hour" ? "按开始小时汇总" : data?.range.trend_unit === "month" ? "按开始月份汇总" : "按开始日期汇总"} · 已结束记录的有效工时`}
               />
             }
-            extra={<Tag>时间视角</Tag>}
             styles={{ body: { padding: "12px 8px 8px" } }}
           >
             {data ? (
@@ -1041,12 +1063,7 @@ function DashboardContent() {
             items={[
               {
                 key: "analysis",
-                label: (
-                  <span>
-                    辅助分析{" "}
-                    <small className="dc-muted">类别分布与工作的节奏</small>
-                  </span>
-                ),
+                label: "辅助分析",
                 children: data ? (
                   <div className="dc-auxiliary-grid">
                     <Card
@@ -1054,7 +1071,6 @@ function DashboardContent() {
                       title={
                         <Title
                           title="工作分布"
-                          description="按工作类别回顾投入"
                         />
                       }
                       extra={
@@ -1083,12 +1099,16 @@ function DashboardContent() {
                         }}
                       />
                     </Card>
+                    <Card className="dc-pie" title={<Title title="工时占比" />} styles={{ body: { padding: 8 } }}>
+                      <DurationPieChart categories={data.categories} presentation={presentation}
+                        onCategory={category => applyQuery({ ...query, category, page: 1 })} />
+                    </Card>
                     <Card
                       className="dc-calendar"
                       title={
                         <Title
                           title="工作的节奏"
-                          description="已应用筛选范围 · 最多展示近90天有效工时"
+                          description="近90天有效工时"
                         />
                       }
                       styles={{ body: { padding: 8 } }}
@@ -1132,7 +1152,6 @@ function DashboardContent() {
               title={
                 <Title
                   title="工作明细"
-                  description="查看计时区间、补填工作量，或回顾修正记录。"
                 />
               }
               extra={<Tag>{data ? data.record_count : "—"} 条记录</Tag>}
