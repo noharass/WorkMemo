@@ -57,6 +57,8 @@ node scripts/verify-multi-url.mjs
 
 ## 构建 v0.2.7 成品
 
+0.2.7 发布后的页面任务自动切换仍处于源码阶段，数据库 schema 10 和隔离检查说明见 [PAGE-TASK-SWITCH-PHASE-1.md](PAGE-TASK-SWITCH-PHASE-1.md)。隔离界面脚本为 `node scripts/verify-page-task-ui.mjs`，请勿把开发构建复制到正式应用目录。
+
 0.2.7 已进入成品发布阶段，发布核对与兼容性见 [RELEASE-0.2.7.md](RELEASE-0.2.7.md)；前序阶段记录、独立 Windows 构建及完整命令见 [UPDATE-0.2.7-PHASE-1.md](UPDATE-0.2.7-PHASE-1.md)。新增回归：
 
 ```powershell

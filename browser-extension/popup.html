@@ -6,9 +6,9 @@
     <header class="popup-header"><span class="brand-mark" aria-hidden="true">C</span><div><p class="eyebrow">WORKMEMO</p><h1>工作监测</h1></div></header>
     <section class="status-card" aria-label="连接状态"><div class="section-label"><span id="connection-icon" aria-hidden="true"></span>本机连接</div><p id="status" role="status">正在读取连接状态…</p></section>
     <section class="rules-card" aria-labelledby="rules-title"><div class="section-label"><span id="sites-icon" aria-hidden="true"></span><span id="rules-title">已配置工作页面</span></div><ul id="rules"></ul><p id="permissions" class="permissions"></p></section>
-    <div class="actions"><button id="grant" class="primary-action" disabled><span id="grant-icon" aria-hidden="true"></span>同步工作站点授权</button><button id="refresh" class="secondary-action"><span id="refresh-icon" aria-hidden="true"></span>刷新连接状态</button></div>
+    <div class="actions"><button id="grant" class="primary-action" disabled><span id="grant-icon" aria-hidden="true"></span>同步工作站点授权</button><button id="grant-tabs" class="secondary-action">授权识别新网页</button><button id="refresh" class="secondary-action"><span id="refresh-icon" aria-hidden="true"></span>刷新连接状态</button></div>
     <p id="error" role="alert"></p>
-    <p class="privacy">仅在授权工作站点判断页面并监听是否发生操作，不读取网页内容或输入文本。匹配结果只发给本机 WorkMemo。修改工作 URL 后，请在这里同步授权。未授权或连接中断时不会猜测工作时间。</p>
+    <p class="privacy">授权识别新网页后，仅将去掉查询参数和片段的地址发送给本机 WorkMemo 用于确认绑定。工作站点活动只发送是否发生操作，不读取内容或输入文本。未授权或连接中断时不会猜测工作时间。</p>
   </main>
   <script type="module" src="popup.js"></script>
 </body></html>

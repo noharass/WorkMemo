@@ -7,7 +7,7 @@ return page.addInitScript(() => {
   const config = { enabled: true, revision: 3, times: { idle_pause_seconds: 120, away_pause_seconds: 120, hold_seconds: 600, idle_warning_seconds: 300, idle_end_seconds: 420 }, poll_interval_seconds: 1, auto_resume_manual: true, rules: [{ id: 1, category: '开发', match_mode: 'origin', url_prefix: 'https://work.example.test/' }] };
   const callbacks = new Map(), listeners = new Map(); let sequence = 0;
   const emit = (event, payload) => { for (const [id, entry] of listeners) if (entry.event === event) callbacks.get(entry.handler)?.({ event, id, payload }); };
-  window.qa = { calls: [], active: params.get('state') === 'empty' ? null : record, candidate: params.has('candidate') ? { id: 21, rule_id: 1, category: '开发' } : null, notice: params.has('ended') ? { kind: 'ended', record: ended, idle_warning_seconds: 300, idle_end_seconds: 420 } : null, config, browse: false, fail: '', delay: 0, readsDelay: 100, emit, record };
+  window.qa = { calls: [], active: params.get('state') === 'empty' ? null : record, candidate: params.has('candidate') ? { id: 21, rule_id: 1, category: '开发' } : null, unknown: params.has('unknown') ? 'https://new.example.test/work' : null, finishedRule: params.has('finished') ? 1 : null, tasks: [{id:1,name:'已有任务',category:'开发',record_id:params.has('suspended')?7:null,finished:false,suspended:params.has('suspended'),recovery_pending:params.has('suspended')}], notice: params.has('ended') ? { kind: 'ended', record: ended, idle_warning_seconds: 300, idle_end_seconds: 420 } : null, config, browse: false, fail: '', delay: 0, readsDelay: 100, emit, record };
   window.isTauri = true;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: id => listeners.delete(id) };
   window.__TAURI_INTERNALS__ = {
@@ -16,7 +16,7 @@ return page.addInitScript(() => {
     convertFileSrc() { return 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="700"><path fill="#8fa9bb" d="M0 0h800v700H0z"/><path fill="#b9ad96" d="m0 0 800 700H0z"/></svg>'); },
     async invoke(command, args = {}) {
       const q = window.qa; q.calls.push({ command, args });
-      const snapshot = () => structuredClone({ active: q.active, recent_records: q.notice ? [q.notice.record] : [], pending_count: q.notice ? 1 : 0, warning: null, monitoring: { browsing_only: q.browse, browse_ready: true, browse_category: '开发', enabled: true, native_available: true, browser_connected: true, work_page: true, message: '已识别工作页面，等待新的鼠标或键盘活动', idle_warning: false, idle_warning_seconds: 300, idle_end_seconds: 420, start_candidate: q.candidate } });
+      const snapshot = () => structuredClone({ active: q.active, recent_records: q.notice ? [q.notice.record] : [], pending_count: q.notice ? 1 : 0, warning: null, monitoring: { browsing_only: q.browse, browse_ready: true, browse_category: '开发', enabled: true, native_available: true, browser_connected: true, work_page: true, message: '已识别工作页面，等待新的鼠标或键盘活动', idle_warning: false, idle_warning_seconds: 300, idle_end_seconds: 420, revision:q.config.revision,unknown_page_url:q.unknown,finished_page_rule:q.finishedRule,start_candidate: q.candidate } });
       if (command.startsWith('plugin:event|')) {
         if (command.endsWith('|listen')) { const id = ++sequence; listeners.set(id, args); return id; }
         if (command.endsWith('|unlisten')) listeners.delete(args.eventId);
@@ -31,6 +31,11 @@ return page.addInitScript(() => {
       if (command === 'get_layout_settings') return { density: params.get('density') || 'comfortable', revision: 0, sound_enabled: false, sound_theme: 'fiftysounds', font_size: params.has('large') ? 18 : 14, font_weight: 400, line_spacing: 'standard' };
       if (command === 'get_presentation') return { version: 1, revision: 0, background: params.has('background') ? { file: 'isolated-background.svg', opacity: 50 } : null, categories: Object.fromEntries(categories.map((c, i) => [c, { icon: ['checkSquare', 'safety', 'code', 'note'][i], color: '#447cba' }])) };
       if (command === 'get_monitor_config') { const value = structuredClone(q.config); await new Promise(r => setTimeout(r, q.readsDelay)); return value; }
+      if (command === 'get_page_tasks') return structuredClone(q.tasks);
+      if (command === 'get_ignored_pages') return [];
+      if (command === 'bind_page') {q.unknown=null;q.config.revision++;return snapshot();}
+      if (command === 'rebind_finished_page') {q.finishedRule=null;q.config.revision++;return snapshot();}
+      if (command === 'confirm_recovery_task') {q.tasks=q.tasks.map(t=>({...t,suspended:false,recovery_pending:false}));q.active={...record,is_paused:false,recovery_pending:false};return snapshot();}
       if (command === 'get_connection_status') return { state: 'ready', message: '隔离连接', version: 'fixture', identifier: 'fixture', host_name: 'fixture' };
       if (command === 'save_monitor_config') { await new Promise(r => setTimeout(r, q.delay)); q.config = { ...args.input, revision: q.config.revision + 1, rules: args.input.rules.map((r, i) => ({ ...r, id: i + 1 })) }; return structuredClone(q.config); }
       if (command === 'get_today_workload') return [];

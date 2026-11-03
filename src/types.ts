@@ -4,6 +4,7 @@ export type Category = (typeof CATEGORIES)[number];
 
 export interface WorkRecord {
   id: number;
+  task_name?: string | null;
   category: string;
   quantity: number | null;
   remark: string;
@@ -11,7 +12,7 @@ export interface WorkRecord {
   end_time: number | null;
   duration_seconds: number;
   duration_ms: number;
-  status: "NOT_STARTED" | "WORKING" | "FINISHED";
+  status: "NOT_STARTED" | "WORKING" | "SUSPENDED" | "FINISHED";
   is_paused: boolean;
   recovery_pending: boolean;
   settlement_status: "IN_PROGRESS" | "PENDING" | "COMPLETE";
@@ -40,6 +41,8 @@ export interface StartInput {
 }
 
 export interface MonitorStatus {
+  unknown_page_url: string | null;
+  finished_page_rule: number | null;
   browsing_only:boolean;
   browse_ready:boolean;
   browse_category:string|null;

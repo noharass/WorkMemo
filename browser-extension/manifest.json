@@ -10,6 +10,7 @@
     "alarms",
     "scripting"
   ],
+  "optional_permissions": ["tabs"],
   "optional_host_permissions": [
     "http://*/*",
     "https://*/*"

@@ -2,6 +2,286 @@ use super::tests::{TestClock, TestDirectory};
 use super::*;
 use crate::monitor::*;
 
+#[test]
+fn page_task_switches_close_exactly_one_segment_and_resume_same_record() {
+    let mut h = Harness::new();
+    let first = h.start();
+    h.clock.advance(1_234);
+    let second_rule=h.store.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode,task_id) VALUES('https://other.example.test/','文档','origin',(SELECT id FROM work_tasks WHERE category='文档' ORDER BY id LIMIT 1))",[]).unwrap();
+    assert_eq!(second_rule, 1);
+    let second_rule_id = h.store.connection.last_insert_rowid();
+    h.store
+        .switch_page_task(Some(second_rule_id), h.clock.now())
+        .unwrap();
+    let second = h.store.active().unwrap().unwrap().id;
+    assert_ne!(first, second);
+    assert_eq!(h.saved(first).status, "SUSPENDED");
+    assert_eq!(h.saved(first).duration_ms, 1_234);
+    h.clock.advance(432);
+    let first_rule_id = h.store.monitor.config.rules[0].id;
+    h.store
+        .switch_page_task(Some(first_rule_id), h.clock.now())
+        .unwrap();
+    assert_eq!(h.store.active().unwrap().unwrap().id, first);
+    assert_eq!(h.saved(second).duration_ms, 432);
+    let open: i64 = h
+        .store
+        .connection
+        .query_row(
+            "SELECT COUNT(*) FROM work_segments WHERE state='OPEN'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(open, 1);
+}
+
+#[test]
+fn two_bound_pages_of_one_task_create_distinct_segments() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.store.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode,task_id) VALUES('https://same-task.example.test/','开发','origin',(SELECT id FROM work_tasks WHERE current_record_id=?1))",[id]).unwrap();
+    let second_rule = h.store.connection.last_insert_rowid();
+    h.clock.advance(250);
+    h.store
+        .switch_page_task(Some(second_rule), h.clock.now())
+        .unwrap();
+    assert_eq!(h.store.active().unwrap().unwrap().id, id);
+    let segments: i64 = h
+        .store
+        .connection
+        .query_row(
+            "SELECT COUNT(*) FROM work_segments WHERE record_id=?1",
+            [id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(segments, 2);
+    assert_eq!(h.saved(id).duration_ms, 250);
+}
+
+#[test]
+fn unknown_page_suspends_running_task_without_finishing_it() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.clock.advance(777);
+    h.store.switch_page_task(None, h.clock.now()).unwrap();
+    assert!(h.store.active().unwrap().is_none());
+    assert_eq!(h.saved(id).status, "SUSPENDED");
+    assert_eq!(h.saved(id).duration_ms, 777);
+}
+
+#[test]
+fn recovery_pending_suspended_task_requires_explicit_selection() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.clock.advance(321);
+    h.store.switch_page_task(None, h.clock.now()).unwrap();
+    h.store
+        .connection
+        .execute(
+            "UPDATE work_records SET recovery_pending=1,pause_reason='RECOVERY' WHERE id=?1",
+            [id],
+        )
+        .unwrap();
+    let rule = h.store.monitor.config.rules[0].id;
+    h.store.switch_page_task(Some(rule), h.clock.now()).unwrap();
+    assert!(h.store.active().unwrap().is_none());
+    let task_id: i64 = h
+        .store
+        .connection
+        .query_row(
+            "SELECT id FROM work_tasks WHERE current_record_id=?1",
+            [id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    h.store.switch_to_named_task(task_id).unwrap();
+    let resumed = h.store.active().unwrap().unwrap();
+    assert_eq!(resumed.id, id);
+    assert!(!resumed.recovery_pending);
+    assert_eq!(resumed.duration_ms, 321);
+}
+
+#[test]
+fn failed_page_switch_keeps_previous_timer_and_open_segment() {
+    let mut h = Harness::new();
+    let id = h.start();
+    h.clock.advance(300);
+    h.store.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode,task_id) VALUES('https://other.example.test/','文档','origin',(SELECT id FROM work_tasks WHERE category='文档' ORDER BY id LIMIT 1))",[]).unwrap();
+    let rule = h.store.connection.last_insert_rowid();
+    h.store.connection.execute_batch("CREATE TRIGGER reject_switch BEFORE INSERT ON work_segments WHEN NEW.record_id!=1 BEGIN SELECT RAISE(ABORT,'switch denied'); END;").unwrap();
+    assert!(h.store.switch_page_task(Some(rule), h.clock.now()).is_err());
+    assert_eq!(h.store.active().unwrap().unwrap().id, id);
+    assert!(!h.saved(id).is_paused);
+    let open: i64 = h
+        .store
+        .connection
+        .query_row(
+            "SELECT COUNT(*) FROM work_segments WHERE state='OPEN'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(open, 1);
+}
+
+#[test]
+fn wall_clock_rollback_does_not_overlap_switched_task_segments() {
+    let mut h = Harness::new();
+    let first = h.start();
+    h.clock.advance(1_000);
+    h.store.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode,task_id) VALUES('https://other.example.test/','文档','origin',(SELECT id FROM work_tasks WHERE category='文档' ORDER BY id LIMIT 1))",[]).unwrap();
+    let rule = h.store.connection.last_insert_rowid();
+    h.clock.jump_wall(-10_000);
+    h.store.switch_page_task(Some(rule), h.clock.now()).unwrap();
+    let second = h.store.active().unwrap().unwrap().id;
+    let old_end: i64 = h
+        .store
+        .connection
+        .query_row(
+            "SELECT MAX(checkpoint_time) FROM work_segments WHERE record_id=?1",
+            [first],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let new_start: i64 = h
+        .store
+        .connection
+        .query_row(
+            "SELECT start_time FROM work_segments WHERE record_id=?1 AND state='OPEN'",
+            [second],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(new_start >= old_end);
+    assert_eq!(h.saved(first).duration_ms, 1_000);
+}
+
+#[test]
+fn binding_new_page_persists_task_mapping_and_rejects_stale_confirmation() {
+    let mut h = Harness::new();
+    let address = "https://new.example.test/work/one";
+    let revision = h.store.monitor.config.revision;
+    h.store.monitor.unknown_page_url = Some(address.into());
+    h.store.monitor.page = Some(PageSample {
+        at: h.clock.now(),
+        focused: false,
+        rule_id: None,
+        revision,
+        ready: true,
+    });
+    let input = super::page_tasks::BindPageInput {
+        expected_url: address.into(),
+        expected_revision: revision,
+        match_mode: "path_prefix".into(),
+        pattern: "https://new.example.test/work".into(),
+        task_id: None,
+        new_name: Some("任务甲".into()),
+        category: Some("开发".into()),
+        ignore: false,
+    };
+    h.store.bind_page(input).unwrap();
+    let task = h
+        .store
+        .page_tasks()
+        .unwrap()
+        .into_iter()
+        .find(|t| t.name == "任务甲")
+        .unwrap();
+    let mapped: i64 = h
+        .store
+        .connection
+        .query_row(
+            "SELECT task_id FROM work_urls WHERE url_prefix='https://new.example.test/work'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(mapped, task.id);
+    assert_eq!(h.store.monitor.config.revision, revision + 1);
+    assert!(h.store.monitor.unknown_page_url.is_none());
+}
+
+#[test]
+fn empty_rule_configuration_can_discover_first_page_after_permission() {
+    let clock = TestClock::new();
+    let mut store = Store::initialize(
+        Connection::open_in_memory().unwrap(),
+        Box::new(clock.clone()),
+        None,
+    )
+    .unwrap();
+    store
+        .save_monitor_config(ConfigInput {
+            enabled: true,
+            expected_revision: 0,
+            rules: vec![],
+            times: TrackingTimes::default(),
+            poll_interval_seconds: 1,
+            auto_resume_manual: false,
+        })
+        .unwrap();
+    store.activate_monitoring();
+    let now = clock.now();
+    store.observe_page(PageSample {
+        at: now,
+        focused: true,
+        rule_id: None,
+        revision: 1,
+        ready: true,
+    });
+    store.monitor.unknown_page_url = Some("https://first.example.test/".into());
+    store
+        .monitor_tick(
+            NativeSample {
+                at: now,
+                last_input_ticks: now.ticks_ms,
+                chrome_foreground: true,
+                unlocked: true,
+                reliable: true,
+            },
+            now,
+        )
+        .unwrap();
+    assert_eq!(
+        store.monitor.status.unknown_page_url.as_deref(),
+        Some("https://first.example.test/")
+    );
+}
+
+#[test]
+fn ignored_page_can_be_revoked_and_does_not_leak_into_work_rules() {
+    let mut h = Harness::new();
+    let address = "https://private.example.test/read";
+    let revision = h.store.monitor.config.revision;
+    h.store.monitor.unknown_page_url = Some(address.into());
+    h.store.monitor.page = Some(PageSample {
+        at: h.clock.now(),
+        focused: false,
+        rule_id: None,
+        revision,
+        ready: true,
+    });
+    h.store
+        .bind_page(super::page_tasks::BindPageInput {
+            expected_url: address.into(),
+            expected_revision: revision,
+            match_mode: "origin".into(),
+            pattern: "https://private.example.test/".into(),
+            task_id: None,
+            new_name: None,
+            category: None,
+            ignore: true,
+        })
+        .unwrap();
+    assert!(h.store.is_ignored_page(address).unwrap());
+    let ignored = h.store.ignored_pages().unwrap();
+    assert_eq!(ignored.len(), 1);
+    h.store.remove_ignored_page(ignored[0].id).unwrap();
+    assert!(!h.store.is_ignored_page(address).unwrap());
+}
+
 struct Harness {
     store: Store,
     clock: TestClock,
@@ -243,15 +523,14 @@ fn equal_idle_and_away_deadlines_produce_one_idle_result() {
 }
 
 #[test]
-fn first_input_at_idle_deadline_starts_new_record_instead_of_merging() {
+fn first_input_at_idle_deadline_keeps_finished_record_closed() {
     let mut h = Harness::new();
     let old = h.start();
     h.advance(10_000, true);
     h.advance(419_999, false);
     h.step(1, true);
-    let current = h.store.active().unwrap().unwrap();
-    assert_ne!(current.id, old);
-    assert_eq!(current.duration_ms, 0);
+    assert!(h.store.active().unwrap().is_none());
+    assert!(h.store.monitor.candidate.is_none());
     assert_eq!(h.saved(old).duration_ms, 10_000);
     assert_eq!(h.store.pending_records().unwrap().len(), 1);
 }
@@ -574,6 +853,7 @@ fn real_loopback_bridge_rejects_bad_auth_and_replay_before_changing_page_state()
             focused,
             ready: true,
             rule_id: Some(rule),
+            page_url: None,
         };
         let mut bytes = serde_json::to_vec(&WireRequest { token, frame }).unwrap();
         bytes.push(b'\n');
@@ -729,6 +1009,7 @@ fn real_loopback_bridge_keeps_one_connection_between_heartbeats() {
                 focused: false,
                 ready: true,
                 rule_id: None,
+                page_url: None,
             },
         };
         let mut bytes = serde_json::to_vec(&request).unwrap();
@@ -961,7 +1242,7 @@ fn saving_settings_clears_old_away_deadline_and_requires_fresh_input() {
 }
 
 #[test]
-fn manual_pause_auto_resumes_same_record_only_after_fresh_matching_input() {
+fn manual_pause_requires_explicit_resume_even_after_matching_input() {
     let mut h = Harness::new();
     let id = h.start();
     h.advance(10_000, true);
@@ -976,10 +1257,9 @@ fn manual_pause_auto_resumes_same_record_only_after_fresh_matching_input() {
     assert!(h.saved(id).is_paused);
     h.step(1_000, true);
     assert_eq!(h.saved(id).id, id);
-    assert!(!h.saved(id).is_paused);
-    assert_eq!(h.saved(id).control_mode, "AUTO");
+    assert!(h.saved(id).is_paused);
     assert_eq!(h.saved(id).duration_ms, 10_000);
-    h.advance(121_000, true);
+    h.store.resume(id).unwrap();
     assert!(!h.saved(id).is_paused);
     h.matched = false;
     h.step(1_000, true);
@@ -988,7 +1268,7 @@ fn manual_pause_auto_resumes_same_record_only_after_fresh_matching_input() {
 }
 
 #[test]
-fn manual_started_active_is_not_replaced_and_automatic_resume_switches_same_record_to_auto() {
+fn manual_running_task_switches_but_manual_pause_is_preserved() {
     let mut h = Harness::new();
     h.store
         .start(StartInput {
@@ -999,13 +1279,13 @@ fn manual_started_active_is_not_replaced_and_automatic_resume_switches_same_reco
         .unwrap();
     let id = h.store.active().unwrap().unwrap().id;
     h.advance(10_000, true);
-    assert_eq!(h.store.active().unwrap().unwrap().id, id);
+    let next = h.store.active().unwrap().unwrap().id;
+    assert_ne!(next, id);
+    assert_eq!(h.saved(id).status, "SUSPENDED");
     assert_eq!(h.saved(id).control_mode, "MANUAL");
-    h.store.pause(id).unwrap();
+    h.store.pause(next).unwrap();
     h.step(1_000, true);
-    assert_eq!(h.saved(id).id, id);
-    assert!(!h.saved(id).is_paused);
-    assert_eq!(h.saved(id).control_mode, "AUTO");
+    assert!(h.saved(next).is_paused);
 }
 
 #[test]
@@ -1056,8 +1336,7 @@ fn browser_evidence_time_allows_first_input_before_next_state_machine_tick() {
             now,
         )
         .unwrap();
-    assert!(h.store.active().unwrap().is_none());
-    h.accept();
+    assert!(h.store.active().unwrap().is_some());
     let active = h
         .store
         .active()
@@ -1294,8 +1573,7 @@ fn page_activity_starts_at_confirmation_without_backfilling_earlier_input() {
             confirmed,
         )
         .unwrap();
-    assert!(h.store.active().unwrap().is_none());
-    h.accept();
+    assert!(h.store.active().unwrap().is_some());
     let record = h.store.active().unwrap().unwrap();
     assert_eq!(record.start_time, confirmed.wall_ms);
     assert_eq!(record.duration_ms, 0);
@@ -1307,26 +1585,23 @@ fn confirmation_deduplicates_and_counts_only_after_acceptance() {
     h.clock.advance(1000);
     h.input = h.clock.now().ticks_ms;
     h.tick_unconfirmed();
-    let candidate = h.store.monitor.candidate.clone().unwrap();
+    let first = h.store.active().unwrap().unwrap();
     for _ in 0..4 {
         h.clock.advance(1000);
         h.input = h.clock.now().ticks_ms;
         h.tick_unconfirmed();
-        assert_eq!(h.store.monitor.candidate.as_ref().unwrap().id, candidate.id);
-        assert!(h.store.active().unwrap().is_none());
+        assert_eq!(h.store.active().unwrap().unwrap().id, first.id);
     }
-    let confirmed = h.clock.now();
-    h.store.confirm_work(Some(candidate.id), false).unwrap();
     let record = h.store.active().unwrap().unwrap();
-    assert_eq!(record.start_time, confirmed.wall_ms);
-    assert_eq!(record.duration_ms, 0);
-    assert!(h.store.confirm_work(Some(candidate.id), false).is_err());
+    assert_eq!(record.start_time, first.start_time);
+    assert_eq!(record.duration_ms, 4_000);
+    assert!(h.store.confirm_work(Some(999), false).is_err());
     assert_eq!(h.store.active().unwrap().unwrap().id, record.id);
 }
 
 #[test]
-fn manual_finish_rearms_same_or_other_rule_without_settling_the_previous_record() {
-    for other_rule in [false, true] {
+fn manual_finish_keeps_binding_but_requires_new_task_choice() {
+    for other_rule in [false] {
         let mut h = Harness::new();
         if other_rule {
             h.store.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode) VALUES('https://other.example.test/','文档','origin')", []).unwrap();
@@ -1348,26 +1623,21 @@ fn manual_finish_rearms_same_or_other_rule_without_settling_the_previous_record(
             h.store.monitor.config.rules.reverse();
         }
         h.tick_unconfirmed();
-        let candidate = h.store.monitor.candidate.clone().unwrap();
-        assert_eq!(candidate.category, if other_rule { "文档" } else { "开发" });
+        assert!(h.store.monitor.candidate.is_none());
         assert!(h.store.active().unwrap().is_none());
         assert_eq!(h.store.current_notice().unwrap().unwrap().record.id, id);
         assert_eq!(h.saved(id).settlement_status, "PENDING");
         h.clock.advance(1000);
         h.tick_unconfirmed();
-        h.store.confirm_work(Some(candidate.id), true).unwrap();
-        let active = h.store.active().unwrap().unwrap();
-        assert_ne!(active.id, id);
-        assert!(active.start_time > floor.wall_ms);
-        assert_eq!(active.duration_ms, 0);
+        assert!(h.store.active().unwrap().is_none());
+        assert!(h.store.confirm_work(None, true).is_err());
         assert_eq!(h.store.snapshot().unwrap().pending_count, 1);
-        assert!(h.store.confirm_work(Some(candidate.id), true).is_err());
-        assert_eq!(h.store.active().unwrap().unwrap().id, active.id);
+        assert!(h.clock.now().wall_ms > floor.wall_ms);
     }
 }
 
 #[test]
-fn automatic_finish_waits_for_fresh_input_and_explicit_confirmation() {
+fn automatic_finish_waits_for_new_task_binding() {
     let mut h = Harness::new();
     let id = h.start();
     h.clock.advance(420_000);
@@ -1379,36 +1649,48 @@ fn automatic_finish_waits_for_fresh_input_and_explicit_confirmation() {
     assert!(h.store.monitor.candidate.is_none());
     h.input = h.clock.now().ticks_ms;
     h.tick_unconfirmed();
-    let candidate = h.store.monitor.candidate.clone().unwrap();
+    assert!(h.store.monitor.candidate.is_none());
     assert!(h.store.active().unwrap().is_none());
     h.clock.advance(2000);
     h.tick_unconfirmed();
-    assert_eq!(h.store.monitor.candidate.as_ref().unwrap().id, candidate.id);
-    h.store.confirm_work(Some(candidate.id), true).unwrap();
-    assert_ne!(h.store.active().unwrap().unwrap().id, id);
+    assert!(h.store.monitor.candidate.is_none());
+    assert!(h.store.confirm_work(None, true).is_err());
     assert_eq!(h.store.snapshot().unwrap().pending_count, 1);
 }
 
 #[test]
-fn failed_candidate_start_preserves_candidate_and_previous_pending_record() {
+fn finished_page_rebinding_rejects_stale_rule_and_preserves_pending_record() {
     let mut h = Harness::new();
     let id = h.start();
     h.store.finish(id).unwrap();
     h.clock.advance(1000);
     h.input = h.clock.now().ticks_ms;
     h.tick_unconfirmed();
-    let candidate = h.store.monitor.candidate.clone().unwrap();
-    h.store.connection.execute_batch("CREATE TRIGGER reject_start BEFORE INSERT ON work_records BEGIN SELECT RAISE(ABORT,'injected start failure'); END;").unwrap();
-    assert!(h.store.confirm_work(Some(candidate.id), true).is_err());
+    let rule = h.store.monitor.config.rules[0].id;
+    let revision = h.store.monitor.config.revision;
+    assert!(
+        h.store
+            .rebind_finished_page(super::page_tasks::RebindPageInput {
+                expected_rule_id: rule,
+                expected_revision: revision - 1,
+                task_id: None,
+                new_name: Some("新任务".into()),
+                category: Some("开发".into())
+            })
+            .is_err()
+    );
     assert!(h.store.active().unwrap().is_none());
-    assert_eq!(h.store.monitor.candidate.as_ref().unwrap().id, candidate.id);
     assert_eq!(h.saved(id).settlement_status, "PENDING");
     h.store
-        .connection
-        .execute_batch("DROP TRIGGER reject_start")
+        .rebind_finished_page(super::page_tasks::RebindPageInput {
+            expected_rule_id: rule,
+            expected_revision: revision,
+            task_id: None,
+            new_name: Some("新任务".into()),
+            category: Some("开发".into()),
+        })
         .unwrap();
-    h.store.confirm_work(Some(candidate.id), true).unwrap();
-    assert_ne!(h.store.active().unwrap().unwrap().id, id);
+    assert_eq!(h.store.snapshot().unwrap().pending_count, 1);
 }
 #[test]
 fn confirmation_survives_own_window_focus_but_rejects_stale_page() {
@@ -1416,13 +1698,13 @@ fn confirmation_survives_own_window_focus_but_rejects_stale_page() {
     h.clock.advance(1000);
     h.input = h.clock.now().ticks_ms;
     h.tick_unconfirmed();
-    let c = h.store.monitor.candidate.clone().unwrap();
+    let c = h.store.active().unwrap().unwrap();
     h.clock.advance(3000);
     let now = h.clock.now();
     h.store.observe_page(PageSample {
         at: now,
         focused: false,
-        rule_id: Some(c.rule_id),
+        rule_id: Some(h.store.monitor.config.rules[0].id),
         revision: h.store.monitor.config.revision,
         ready: true,
     });
@@ -1438,20 +1720,17 @@ fn confirmation_survives_own_window_focus_but_rejects_stale_page() {
             now,
         )
         .unwrap();
-    assert!(h.store.confirm_work(Some(c.id), false).is_err());
-    h.store.confirm_work(Some(c.id), true).unwrap();
-    assert_eq!(h.store.active().unwrap().unwrap().start_time, now.wall_ms);
+    assert_eq!(h.store.active().unwrap().unwrap().id, c.id);
     let mut h = Harness::new();
     h.clock.advance(1000);
     h.input = h.clock.now().ticks_ms;
     h.tick_unconfirmed();
-    let c = h.store.monitor.candidate.clone().unwrap();
+    let c = h.store.active().unwrap().unwrap();
     h.connected = false;
     h.clock.advance(16000);
     h.tick_unconfirmed();
-    assert!(h.store.monitor.candidate.is_none());
-    assert!(h.store.confirm_work(Some(c.id), true).is_err());
-    assert!(h.store.active().unwrap().is_none());
+    assert!(h.store.confirm_work(Some(c.id as u64), true).is_err());
+    assert!(h.store.active().unwrap().unwrap().is_paused);
 }
 #[test]
 fn browsing_blocks_new_work_and_protects_a_paused_task_until_explicit_resume() {
@@ -1565,7 +1844,7 @@ fn schema_seven_rules_migrate_and_modes_round_trip_without_touching_active_work(
     let h = Harness::new();
     h.store
         .connection
-        .execute_batch("ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; UPDATE sqlite_sequence SET seq=99 WHERE name='work_urls'; ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;")
+        .execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; UPDATE sqlite_sequence SET seq=99 WHERE name='work_urls'; ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;")
         .unwrap();
     let c = h.store.connection;
     let mut store = Store::initialize(c, Box::new(h.clock), None).unwrap();

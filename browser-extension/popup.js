@@ -38,6 +38,7 @@ async function refresh() {
     origins = permissionOrigins(state?.config?.rules ?? []);
     grant.disabled = !state?.connected || origins.length === 0;
     const allowed = origins.length > 0 && await chrome.permissions.contains({ origins });
+    document.querySelector('#grant-tabs').disabled = await chrome.permissions.contains({permissions:['tabs']});
     permissionStatus.textContent = !state?.connected ? '先恢复本机连接，再同步工作站点授权'
       : origins.length === 0 ? '请先在 WorkMemo 配置 URL，再同步站点授权'
       : allowed ? '工作站点已授权' : '工作站点尚未授权，请点击下方按钮';
@@ -52,6 +53,14 @@ grant.addEventListener('click', async () => {
     else await chrome.runtime.sendMessage({ type: 'refresh' });
     await refresh();
   } catch { error.textContent = '站点授权未完成，请重新打开扩展面板后重试。'; }
+});
+document.querySelector('#grant-tabs').addEventListener('click', async () => {
+  error.textContent='';
+  try {
+    if (await chrome.permissions.request({permissions:['tabs']})) await chrome.runtime.sendMessage({type:'refresh'});
+    else error.textContent='未授权识别新网页，已有工作页面仍可使用。';
+    await refresh();
+  } catch { error.textContent='网页识别授权未完成，请重试。'; }
 });
 document.querySelector('#refresh').addEventListener('click', async () => { await chrome.runtime.sendMessage({ type: 'refresh' }); await refresh(); });
 await refresh();

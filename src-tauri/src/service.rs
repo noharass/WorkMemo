@@ -394,6 +394,47 @@ pub async fn get_monitor_config(state: State<'_, Backend>) -> Result<MonitorConf
     access(state.inner.clone(), |store| store.monitor_config()).await
 }
 #[tauri::command]
+pub async fn get_page_tasks(state: State<'_, Backend>) -> Result<Vec<crate::database::PageTask>> {
+    access(state.inner.clone(), |store| store.page_tasks()).await
+}
+#[tauri::command]
+pub async fn bind_page(
+    state: State<'_, Backend>,
+    input: crate::database::BindPageInput,
+) -> Result<Snapshot> {
+    execute(state.inner.clone(), move |store| store.bind_page(input)).await
+}
+#[tauri::command]
+pub async fn get_ignored_pages(
+    state: State<'_, Backend>,
+) -> Result<Vec<crate::database::IgnoredPage>> {
+    access(state.inner.clone(), |store| store.ignored_pages()).await
+}
+#[tauri::command]
+pub async fn remove_ignored_page(state: State<'_, Backend>, id: i64) -> Result<Snapshot> {
+    execute(state.inner.clone(), move |store| {
+        store.remove_ignored_page(id)
+    })
+    .await
+}
+#[tauri::command]
+pub async fn rebind_finished_page(
+    state: State<'_, Backend>,
+    input: crate::database::RebindPageInput,
+) -> Result<Snapshot> {
+    execute(state.inner.clone(), move |store| {
+        store.rebind_finished_page(input)
+    })
+    .await
+}
+#[tauri::command]
+pub async fn confirm_recovery_task(state: State<'_, Backend>, task_id: i64) -> Result<Snapshot> {
+    execute(state.inner.clone(), move |store| {
+        store.confirm_recovery_task(task_id)
+    })
+    .await
+}
+#[tauri::command]
 pub async fn get_category_names(
     state: State<'_, Backend>,
 ) -> Result<crate::database::categories::CategoryNames> {

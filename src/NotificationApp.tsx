@@ -60,13 +60,15 @@ export function NotificationApp() {
     return () => { stopped = true; clearInterval(timer); void unlisten.then(fn => fn()); };
   }, [appearance.reload]);
   const { active, candidate, notice: visibleNotice, key } = islandView(snapshot, notice);
-  useEffect(() => {
-    if (key === seen.current) return;
-    seen.current = key;
-    if (key && !editingRef.current) setExpanded(true);
-    if (!key && !editingRef.current) setExpanded(false);
-  }, [key]);
   const monitor = snapshot?.monitoring;
+  const bindingKey = monitor?.unknown_page_url ? `new:${monitor.unknown_page_url}` : monitor?.finished_page_rule != null ? `finished:${monitor.finished_page_rule}` : null;
+  const expansionKey = bindingKey ?? key;
+  useEffect(() => {
+    if (expansionKey === seen.current) return;
+    seen.current = expansionKey;
+    if (expansionKey && !editingRef.current) setExpanded(true);
+    if (!expansionKey && !editingRef.current) setExpanded(false);
+  }, [expansionKey]);
   const state = monitor?.browsing_only
     ? monitor.browse_ready
       ? "工作页面已就绪"
@@ -122,14 +124,14 @@ export function NotificationApp() {
           if (event.button === 0) void getCurrentWindow().startDragging().then(() => invoke("fit_island_position")).catch(e => setError(String(e)));
         }}>
           {active || candidate || monitor?.browse_category ? <WorkBadge category={active?.category ?? candidate?.category ?? monitor?.browse_category ?? "开发"} presentation={presentation.current} showName={false} /> : <span className="work-symbol"><Icon name="read" /></span>}
-          <span className="island-info"><strong>{active ? name(active.category) : candidate ? name(candidate.category) : visibleNotice?.kind === "ended" ? "工作已结束" : "仅浏览"}</strong>
+          <span className="island-info"><strong>{bindingKey ? "新网页待处理" : active ? name(active.category) : candidate ? name(candidate.category) : visibleNotice?.kind === "ended" ? "工作已结束" : "仅浏览"}</strong>
             <small>{snapshot ? visibleNotice?.kind === "ended" ? "结果已保存 · 待填写工作量" : state : "状态不可用"}</small></span>
           {active && <strong className="island-time">{formatDuration(active.duration_seconds)}</strong>}
         </div>
         {candidate && <button type="button" className="island-action" aria-label="开始识别的工作" title={`开始记录 · ${name(candidate.category)}`} disabled={busy || !!session.connectionError} onClick={() => { void session.confirmWork(candidate.id); }}><Icon name="play" /></button>}
         {!candidate && active && !monitor?.browsing_only && <button type="button" className="island-action" aria-label={active.is_paused ? "继续记录" : "暂停记录"} disabled={busy || !!session.connectionError || active.recovery_pending} onClick={() => { void (active.is_paused ? session.resume(active.id) : session.pause(active.id)); }}><Icon name={active.is_paused ? "play" : "pause"} /></button>}
         {!candidate && monitor?.browsing_only && <button type="button" className="island-action" aria-label={active ? "继续记录" : "开始记录"} disabled={busy || !monitor.browse_ready || !!active?.recovery_pending || !!session.connectionError} onClick={() => { void session.confirmWork(null); }}><Icon name="play" /></button>}
-        {(visibleNotice || candidate || editing || combinedError || (snapshot?.pending_count ?? 0) > 0) && <button type="button" className="island-action island-expand" aria-expanded={expanded} title={expanded ? "收起展开区域" : "展开工作提醒"} aria-label={expanded ? "收起展开区域" : "展开工作提醒"} onClick={() => {
+        {(bindingKey || visibleNotice || candidate || editing || combinedError || (snapshot?.pending_count ?? 0) > 0) && <button type="button" className="island-action island-expand" aria-expanded={expanded} title={expanded ? "收起展开区域" : "展开工作提醒"} aria-label={expanded ? "收起展开区域" : "展开工作提醒"} onClick={() => {
           if (expanded && editing) { void later(); return; }
           setExpanded(value => !value);
         }}><Icon name={expanded ? "left" : "right"} /></button>}
@@ -153,7 +155,7 @@ export function NotificationApp() {
             }} /></DraftContext.Provider>
           <button className="text-button" type="button" disabled={busy} onClick={() => { void later(); }}>稍后填写</button>
           {session.commandError && <button className="text-button" type="button" onClick={() => { void dashboard.open("pending"); }}>打开待补全列表核对</button>}
-        </> : candidate ? <section aria-label="开工确认"><h2>开始记录 · {name(candidate.category)}</h2><p>已匹配工作网址，确认前不计时。</p><div className="island-buttons"><button disabled={busy || !!session.connectionError} onClick={() => { void session.confirmWork(candidate.id); }}>开始记录</button><button className="secondary" disabled={busy} onClick={() => { void session.browse(); }}>仅浏览</button></div></section> : visibleNotice?.kind === "ended" ? <section aria-label="工作结束提醒">
+        </> : bindingKey ? <section aria-label="新网页处理提醒"><h2>{monitor?.unknown_page_url ? "发现新网页" : "绑定任务已结束"}</h2><p>计时已暂停，请选择任务或忽略此网页。</p><button type="button" onClick={() => { void invoke("show_main", {settlement:false}).catch(e => setError(String(e))); }}>打开主窗口处理</button></section> : candidate ? <section aria-label="开工确认"><h2>开始记录 · {name(candidate.category)}</h2><p>已匹配工作网址，确认前不计时。</p><div className="island-buttons"><button disabled={busy || !!session.connectionError} onClick={() => { void session.confirmWork(candidate.id); }}>开始记录</button><button className="secondary" disabled={busy} onClick={() => { void session.browse(); }}>仅浏览</button></div></section> : visibleNotice?.kind === "ended" ? <section aria-label="工作结束提醒">
           <h2>本次工作已结束</h2><p>{name(visibleNotice.record.category)} · 有效工时 {formatDuration(visibleNotice.record.duration_seconds)}</p>
           <div className="island-buttons"><button type="button" disabled={busy || !!session.connectionError} onClick={() => { setEditing(visibleNotice.record); setExpanded(true); }}>填写工作量</button><button className="secondary" type="button" disabled={busy} onClick={() => { void later(); }}>稍后</button></div>
         </section> : visibleNotice?.kind === "idle" ? <section aria-label="空闲提醒">

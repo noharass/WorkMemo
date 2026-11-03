@@ -112,6 +112,8 @@ pub struct StartCandidate {
 }
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct MonitorStatus {
+    pub unknown_page_url: Option<String>,
+    pub finished_page_rule: Option<i64>,
     pub browsing_only: bool,
     pub browse_ready: bool,
     pub browse_category: Option<String>,
@@ -131,6 +133,8 @@ pub struct MonitorStatus {
 
 #[derive(Default)]
 pub struct Runtime {
+    pub active_rule_id: Option<i64>,
+    pub unknown_page_url: Option<String>,
     pub candidate: Option<StartCandidate>,
     pub candidate_sequence: u64,
     pub browse_ready_rule: Option<i64>,
@@ -156,6 +160,7 @@ pub struct Runtime {
 
 impl Runtime {
     pub fn record_changed(&mut self, id: i64, at: TimePoint) {
+        self.active_rule_id = None;
         self.candidate = None;
         self.status.start_candidate = None;
         self.config.browsing_only = false;
@@ -168,6 +173,7 @@ impl Runtime {
         self.status.idle_warning = false;
     }
     pub fn record_ended(&mut self, at: TimePoint) {
+        self.active_rule_id = None;
         self.record_id = None;
         self.input_floor = at.ticks_ms;
         self.away_since = None;

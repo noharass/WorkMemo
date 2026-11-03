@@ -484,6 +484,7 @@ function DashboardContent() {
       render: (value: string, row) => (
         <Space orientation="vertical" size={4}>
           <WorkBadge category={value} presentation={presentation} />
+          {row.task_name && row.task_name !== value && row.task_name !== name(value) && <span className="dc-muted">{row.task_name}</span>}
           {row.is_demo && <Tag color="gold">演示</Tag>}
         </Space>
       ),

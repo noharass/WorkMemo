@@ -176,7 +176,9 @@ impl Store {
                 "end_reminders",
                 "record_revisions",
                 "work_segments",
+                "ignored_work_urls",
                 "work_urls",
+                "work_tasks",
                 "monitoring_settings",
                 "work_records",
             ];
@@ -637,7 +639,7 @@ fn merge_options(target: &mut Store, source: &Store, include_config: bool) -> Re
             }
             continue;
         }
-        if active && record.status == "WORKING" {
+        if record.status == "SUSPENDED" || (active && record.status == "WORKING") {
             r.skipped_active += 1;
             r.skipped_active_ids.push(id);
             continue;
@@ -675,9 +677,16 @@ fn merge_options(target: &mut Store, source: &Store, include_config: bool) -> Re
     if let Some(c) = config {
         tx.execute("DELETE FROM work_urls", []).map_err(db_error)?;
         for rule in c.rules {
+            let task_id: i64 = tx
+                .query_row(
+                    "SELECT id FROM work_tasks WHERE category=?1 ORDER BY id LIMIT 1",
+                    [&rule.category],
+                    |r| r.get(0),
+                )
+                .map_err(db_error)?;
             tx.execute(
-                "INSERT INTO work_urls(url_prefix,category,match_mode) VALUES(?1,?2,?3)",
-                params![rule.url_prefix, rule.category, rule.match_mode],
+                "INSERT INTO work_urls(url_prefix,category,match_mode,task_id) VALUES(?1,?2,?3,?4)",
+                params![rule.url_prefix, rule.category, rule.match_mode, task_id],
             )
             .map_err(db_error)?;
         }
@@ -833,13 +842,53 @@ mod tests {
             target.monitor_config().unwrap().rules[0].match_mode,
             "domain_suffix"
         );
-        source.connection.execute_batch("DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
+        source.connection.execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
         let image = checked_image(&source.archive(&dir).unwrap(), &dir).unwrap();
         target.apply_image(&image.0).unwrap();
         assert_eq!(
             target.monitor_config().unwrap().rules[0].match_mode,
             "path_prefix"
         );
+    }
+    #[test]
+    fn full_restore_preserves_named_tasks_bindings_and_ignored_pages() {
+        let d = TestDirectory::new();
+        let dir = d.db().parent().unwrap().to_path_buf();
+        let mut source = empty();
+        source
+            .connection
+            .execute(
+                "INSERT INTO work_tasks(name,category) VALUES('客户甲','开发')",
+                [],
+            )
+            .unwrap();
+        let task = source.connection.last_insert_rowid();
+        source.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode,task_id) VALUES('https://client.example.test/work','开发','path_prefix',?1)",[task]).unwrap();
+        source.connection.execute("INSERT INTO ignored_work_urls(match_mode,url_prefix) VALUES('origin','https://private.example.test/')",[]).unwrap();
+        let image = checked_image(&source.archive(&dir).unwrap(), &dir).unwrap();
+        let mut target = empty();
+        target.apply_image(&image.0).unwrap();
+        assert!(
+            target
+                .page_tasks()
+                .unwrap()
+                .iter()
+                .any(|t| t.name == "客户甲")
+        );
+        assert!(
+            target
+                .is_ignored_page("https://private.example.test/read")
+                .unwrap()
+        );
+        let mapped: i64 = target
+            .connection
+            .query_row(
+                "SELECT task_id FROM work_urls WHERE url_prefix='https://client.example.test/work'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(mapped, task);
     }
     fn empty() -> Store {
         Store::initialize(

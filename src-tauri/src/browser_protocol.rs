@@ -18,6 +18,8 @@ pub struct BrowserFrame {
     pub focused: bool,
     pub ready: bool,
     pub rule_id: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]

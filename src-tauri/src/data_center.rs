@@ -22,8 +22,8 @@ fn tagged(row: &rusqlite::Row<'_>) -> rusqlite::Result<Value> {
     let record = read_record(row)?;
     let mut value = serde_json::to_value(record)
         .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
-    value["is_demo"] = row.get::<_, bool>(20)?.into();
-    value["demo_batch"] = row.get::<_, Option<String>>(21)?.into();
+    value["is_demo"] = row.get::<_, bool>(21)?.into();
+    value["demo_batch"] = row.get::<_, Option<String>>(22)?.into();
     Ok(value)
 }
 #[derive(Serialize)]

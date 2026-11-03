@@ -139,6 +139,19 @@ async function poll() {
       return;
     }
     const frame = { version: 1, sequence: ++sequence, config_revision: config?.revision ?? -1, focused, ready, rule_id: ruleId };
+    if (app?.page_tasks === true && !ruleId && activeTab?.url && await chrome.permissions.contains({permissions:['tabs']})) {
+      try {
+        const page = new URL(activeTab.url);
+        if (['http:','https:'].includes(page.protocol) && !page.username && !page.password) {
+          page.search = ''; page.hash = '';
+          frame.page_url = page.toString().slice(0, 2048);
+        }
+      } catch { /* Browser internal pages are not bindable. */ }
+    }
+    if (port !== current || config !== currentConfig || generation !== eventGeneration) {
+      pendingEvent = true;
+      return;
+    }
     if (app?.match_modes === true) frame.match_modes = true;
     if (app?.page_activity === true && pageActivity && focused && ruleId && activeTab?.id === pageActivity.tabId && activeTab?.url === pageActivity.url && pageActivity.revision === currentConfig?.revision && Date.now() - pageActivity.at <= 2000) frame.page_activity = true;
     pageActivity = null;

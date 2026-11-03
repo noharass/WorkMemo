@@ -73,6 +73,22 @@ test('原生连接先交换配置，未授权时不发送工作页；后续心�
   });
 });
 
+test('新网页只向支持任务绑定的本机版本发送去参数地址', async () => {
+  await backgroundScenario(async ({native,chrome,messages,tick})=>{
+    const config={enabled:true,revision:2,poll_interval_seconds:1,rules:[{id:1,url_prefix:'https://known.example.test/',category:'开发'}]};
+    chrome.permissions.contains=async()=>true;
+    chrome.windows.getLastFocused=async()=>({focused:true,id:7});
+    chrome.tabs.query=async()=>[{id:8,url:'https://new.example.test/a/b?token=private#secret'}];
+    native.onMessage.emit({connected:true,config,app:{protocol:1,identifier:'com.workmemo.test.monitor',page_tasks:true}});
+    await tick(1000);
+    assert.equal(messages.at(-1).page_url,'https://new.example.test/a/b');
+    assert.equal(JSON.stringify(messages.at(-1)).includes('private'),false);
+    native.onMessage.emit({connected:true,config,app:{protocol:1,identifier:'com.workmemo.test.monitor'}});
+    await tick(1000);
+    assert.equal(messages.at(-1).page_url,undefined);
+  });
+});
+
 test('Chrome 原生主机错误显示具体原因，断开后的旧回复不能恢复连接', async () => {
   await backgroundScenario(async ({ native, chrome, status }) => {
     chrome.runtime.lastError = { message: 'Specified native messaging host not found.' };

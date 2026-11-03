@@ -101,7 +101,7 @@ export function HistoryPanel({ open, onClose, refreshKey, onDeleted, children }:
         : tab === "records" ? <>
           <ol className="history-records">
             {result.records.map((record) => <li key={record.id}>
-              <div className="record-heading"><strong>{name(record.category)} · {formatQuantity(record.quantity)} · {record.settlement_status === "PENDING" ? "待补全" : "已结算"}</strong>
+              <div className="record-heading"><strong>{record.task_name && record.task_name !== record.category && record.task_name !== name(record.category) ? `${record.task_name} · ` : ""}{name(record.category)} · {formatQuantity(record.quantity)} · {record.settlement_status === "PENDING" ? "待补全" : "已结算"}</strong>
                 <span>{formatDuration(record.duration_seconds)}</span></div>
               <p className="hint">工作日期 {localDate(new Date(record.start_time))}<br />
                 开始 {formatTime(record.start_time)}<br />结束 {record.end_time !== null ? formatTime(record.end_time) : "—"}</p>

@@ -11,6 +11,7 @@ pub type Result<T> = std::result::Result<T, String>;
 #[derive(Clone, Debug, Serialize)]
 pub struct WorkRecord {
     pub id: i64,
+    pub task_name: Option<String>,
     pub category: String,
     pub quantity: Option<f64>,
     pub remark: String,
@@ -73,7 +74,8 @@ pub struct Store {
 const COLUMNS: &str = "id, category, quantity, remark, start_time, end_time,
     duration_seconds, duration_ms, status, is_paused, recovery_pending,
     settlement_status, source, pause_reason, confirmed_end_time, last_input_time,
-    end_reason, legacy_duration_ms, revision, control_mode";
+    end_reason, legacy_duration_ms, revision, control_mode,
+    (SELECT name FROM work_tasks WHERE current_record_id=work_records.id ORDER BY id DESC LIMIT 1) AS task_name";
 
 fn db_error(error: rusqlite::Error) -> String {
     format!("本地数据读写失败：{error}")
@@ -82,6 +84,7 @@ fn db_error(error: rusqlite::Error) -> String {
 fn read_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkRecord> {
     Ok(WorkRecord {
         id: row.get(0)?,
+        task_name: row.get(20)?,
         category: row.get(1)?,
         quantity: row.get(2)?,
         remark: row.get(3)?,
@@ -155,7 +158,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1..=9 => {}
+            1..=10 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -206,6 +209,12 @@ impl Store {
             tx.pragma_update(None, "user_version", 9)
                 .map_err(db_error)?;
         }
+        if version < 10 {
+            tx.execute_batch(include_str!("../migrations/010_page_tasks.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 10)
+                .map_err(db_error)?;
+        }
         let invalid: Option<String> = tx
             .query_row(
                 "SELECT [table] FROM pragma_foreign_key_check LIMIT 1",
@@ -222,7 +231,7 @@ impl Store {
             .map_err(db_error)?;
         tx.execute(
             "UPDATE work_records SET is_paused=1, recovery_pending=1,
-             pause_reason=COALESCE(pause_reason,'RECOVERY') WHERE status='WORKING'",
+             pause_reason=COALESCE(pause_reason,'RECOVERY') WHERE status IN ('WORKING','SUSPENDED')",
             [],
         )
         .map_err(db_error)?;
@@ -411,6 +420,13 @@ impl Store {
         tx.execute("INSERT INTO work_records(category, quantity, remark, start_time, status, is_paused,settlement_status,source,control_mode,last_input_time) VALUES(?1,?2,?3,?4,'WORKING',0,'IN_PROGRESS',?5,?6,?4)",
             params![input.category, input.quantity, remark, now.wall_ms,source,if source=="AUTO"{"AUTO"}else{"MANUAL"}]).map_err(db_error)?;
         let id = tx.last_insert_rowid();
+        if source == "MANUAL_START" {
+            tx.execute(
+                "INSERT INTO work_tasks(name,category,current_record_id) VALUES(?1,?2,?3)",
+                params![format!("{} #{}", input.category, id), input.category, id],
+            )
+            .map_err(db_error)?;
+        }
         let row_id = insert_segment(&tx, id, now.wall_ms, &self.clock_session, now.ticks_ms)?;
         tx.execute(
             "UPDATE monitoring_settings SET browsing_only=0 WHERE id=1",
@@ -629,6 +645,9 @@ mod settlement_tests;
 #[path = "tracking.rs"]
 mod tracking;
 pub use tracking::Notice;
+#[path = "page_tasks.rs"]
+mod page_tasks;
+pub use page_tasks::{BindPageInput, IgnoredPage, PageTask, RebindPageInput};
 #[cfg(test)]
 #[path = "tracking_tests.rs"]
 mod tracking_tests;

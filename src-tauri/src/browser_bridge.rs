@@ -137,6 +137,17 @@ fn serve(
                 return Err("浏览器规则标识无效。".into());
             }
             let compatible = crate::monitor::supports_match_modes(frame.match_modes, &config.rules);
+            let unknown_page = if frame.ready && compatible && frame.rule_id.is_none() {
+                frame.page_url.as_deref().and_then(|raw| {
+                    let parsed = url::Url::parse(raw).ok()?;
+                    if parsed.query().is_some() || parsed.fragment().is_some() {
+                        return None;
+                    }
+                    crate::monitor::normalize_url(raw).ok()
+                })
+            } else {
+                None
+            };
             if !compatible {
                 store.warning = Some(
                     "浏览器扩展不支持新网址匹配模式，请更新当前版本的配套扩展并同步站点授权。"
@@ -157,10 +168,11 @@ fn serve(
                     ready: frame.ready && compatible,
                 },
             );
+            store.monitor.unknown_page_url = unknown_page;
             if frame.page_activity && compatible {
                 store.observe_browser_activity(client);
             }
-            serde_json::json!({"connected":true,"config":config,"category_names":store.category_names()?.names,"app":{"identifier":env!("WORKMEMO_IDENTIFIER"),"version":env!("CARGO_PKG_VERSION"),"protocol":1,"page_activity":true,"match_modes":true,"update_required":!compatible}})
+            serde_json::json!({"connected":true,"config":config,"category_names":store.category_names()?.names,"app":{"identifier":env!("WORKMEMO_IDENTIFIER"),"version":env!("CARGO_PKG_VERSION"),"protocol":1,"page_activity":true,"match_modes":true,"page_tasks":true,"update_required":!compatible}})
         };
         let mut response = serde_json::to_vec(&reply).map_err(|e| e.to_string())?;
         response.push(b'\n');

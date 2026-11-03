@@ -7,6 +7,7 @@ import {useLayout} from "./desktopPreferences";
 import { Surface, useDraft } from "./Drafts";
 
 type ConnectionStatus = { state: string; message: string; identifier: string; version: string; host_name: string; manifest_path: string | null; extension_path: string | null };
+type IgnoredPage={id:number;match_mode:string;url_prefix:string};
 
 export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open: boolean; onClose: () => void; refreshVersion?: number }) {
   const { name } = useCategoryNames();
@@ -14,6 +15,7 @@ export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open
   const [connection, setConnection] = useState<ConnectionStatus | null>(null);
   const [repairing, setRepairing] = useState(false);
   const [config, setConfig] = useState<MonitorConfig | null>(null);
+  const [ignored,setIgnored]=useState<IgnoredPage[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -46,6 +48,7 @@ export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open
     let stale = false;
     const request = ++readRevision.current;
     void invoke<ConnectionStatus>("get_connection_status").then(value => { if (!stale) setConnection(value); }).catch((failure: unknown) => { if (!stale) setError(String(failure)); });
+    void invoke<IgnoredPage[]>("get_ignored_pages").then(value=>{if(!stale)setIgnored(value)}).catch((failure:unknown)=>{if(!stale)setError(String(failure))});
     // Keep the existing form mounted while a clean external refresh is in flight.
     void invoke<MonitorConfig>("get_monitor_config").then(value => {
       if (!stale && request === readRevision.current && !currentDraft.current.dirty && !saving.current) {
@@ -94,16 +97,16 @@ export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open
     {config && <form id="monitor-form" className="monitor-settings grid gap-4" onSubmit={(event) => { void save(event); }}>
       <label className="monitor-toggle"><input type="checkbox" checked={config.enabled} disabled={busy}
         onChange={event => setConfig({ ...config, enabled: event.target.checked })} />启用工作页面自动识别</label>
-      <p className="hint">确认开工后才计时；仅浏览不计时。</p>
+      <p className="hint">已绑定网页可自动切换任务；手动暂停和仅浏览期间不自动计时。</p>
+      <details className="monitor-rule"><summary>已忽略网页（{ignored.length}）</summary>{ignored.map(item=><div key={item.id}><span>{item.match_mode} · {item.url_prefix}</span><button type="button" className="text-button" disabled={busy} onClick={()=>{void invoke("remove_ignored_page",{id:item.id}).then(()=>{setIgnored(items=>items.filter(v=>v.id!==item.id));setRetry(v=>v+1)}).catch(e=>setError(String(e)))}}>撤销忽略</button></div>)}</details>
       <fieldset className="monitor-rule"><legend>识别与恢复</legend>
         <label>浏览器状态检查间隔（秒）<select value={config.poll_interval_seconds} disabled={busy}
           onChange={event => setConfig({ ...config, poll_interval_seconds: Number(event.target.value) })}>
           {[1, 2, 3, 4, 5].map(seconds => <option key={seconds} value={seconds}>{seconds} 秒</option>)}
         </select></label>
-        <label className="monitor-toggle"><input type="checkbox" checked={config.auto_resume_manual} disabled={busy}
-          onChange={event => setConfig({ ...config, auto_resume_manual: event.target.checked })} />返回工作页面并产生新操作后，自动恢复手动暂停的任务</label>
+        <p>手动暂停后需要明确继续，页面切换不会覆盖手动决定。</p>
         <details className="help-disclosure"><summary>识别与恢复说明</summary>
-          <p>检查越频繁，后台活动越多；系统忙碌时可能延迟。自动恢复沿用原任务，需要可信页面连接和新输入；关闭后需手动继续。</p>
+          <p>检查越频繁，后台活动越多；系统忙碌时可能延迟。返回已绑定页面时继续对应任务。</p>
         </details>
       </fieldset>
       <details className="advanced-settings" open={!compact}><summary>计时参数（秒）</summary><fieldset className="monitor-rule"><legend className="sr-only">计时参数</legend>
@@ -150,7 +153,7 @@ export function MonitoringSettings({ open, onClose, refreshVersion = 0 }: { open
       <details className="help-disclosure"><summary>网址匹配说明</summary><p>路径前缀限定站点与路径边界；整个站点覆盖该来源全部路径；域名后缀覆盖该域名与子域名。查询参数和片段不参与匹配。同一工作的网址间切换保留原记录，移除网址不影响其余规则。</p></details>
 
       <details><summary>连接与隐私说明</summary>
-        <p className="hint">第一版配套 Chrome 扩展。安装扩展和本机通信主机后，在扩展面板同步已配置站点授权。只传规则标识、前台匹配状态、连接状态和页面活动信号；不传 URL、网页内容或输入文本。连接断开时暂停自动累计。</p>
+        <p className="hint">在 Chrome 扩展面板授权识别新网页，并同步工作站点授权。未绑定页面仅向本机发送去除参数的地址；不读取内容或输入文本。连接断开时暂停自动累计。</p>
         <p className="hint">离开工作页面后按设置暂停并保留记录。空闲结束时扣除最后输入后的尾段，阅读或思考可能少计，可稍后人工修正。</p>
       </details>
     </form>}

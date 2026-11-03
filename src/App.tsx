@@ -23,6 +23,9 @@ import "./App.css";
 import { type TodayWorkload as Today } from "./workload";
 import { TodayWorkloadStrip } from "./TodayWorkloadStrip";
 import { useMainContentHeight } from "./useMainContentHeight";
+import { PageBindingPrompt } from "./PageBindingPrompt";
+import { FinishedPagePrompt } from "./FinishedPagePrompt";
+import { SuspendedTasks } from "./SuspendedTasks";
 export default function App() {
   const session = useWorkSession();
   const appearance = useAppearance();
@@ -182,6 +185,9 @@ export default function App() {
             上次未结束的任务保持暂停。请确认后继续，软件关闭期间不计时。
           </p>
         )}
+        {monitor?.unknown_page_url && !monitor.browsing_only && <PageBindingPrompt monitor={monitor} refresh={session.refresh}/>}
+        {monitor?.finished_page_rule != null && !monitor.browsing_only && <FinishedPagePrompt monitor={monitor} refresh={session.refresh}/>}
+        {session.native && <SuspendedTasks refresh={session.refresh} version={(monitor?.revision??0)*1_000_000+(active?.id??0)}/>}
         {candidate && !active && !formOpen && (
           <section className="start-prompt" aria-label="开工确认">
             <WorkBadge
@@ -203,7 +209,7 @@ export default function App() {
             </div>
           </section>
         )}
-        {!formOpen && !active && !candidate && (session.snapshot || !session.native) && (
+        {!formOpen && !active && !candidate && !monitor?.unknown_page_url && monitor?.finished_page_rule == null && (session.snapshot || !session.native) && (
           <section className="form-card monitor-status-card" aria-label="监测状态">
             <h1>{monitor?.browsing_only ? "仅浏览 · 当前不计时" : monitor?.enabled ? "等待识别工作页面" : "自动监测未启用"}</h1>
             {monitor?.enabled && (!monitor.browser_connected || !monitor.native_available)
@@ -231,6 +237,7 @@ export default function App() {
                     view.label
                   )}
                 </h1>
+                {record?.task_name && record.task_name !== record.category && record.task_name !== name(record.category) && <div className="task-name">{record.task_name}</div>}
                 <p className="task-summary">
                   <span className="state-label" role="status">
                     {monitor?.browsing_only ? "仅浏览 · 已停表" : view.label}

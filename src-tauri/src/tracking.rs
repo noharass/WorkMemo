@@ -12,6 +12,170 @@ pub struct Notice {
 }
 
 impl Store {
+    pub(super) fn switch_page_task(&mut self, rule_id: Option<i64>, now: TimePoint) -> Result<()> {
+        let target: Option<(i64, String, Option<i64>)> = if let Some(rule_id) = rule_id {
+            self.connection.query_row(
+                "SELECT t.id,t.category,t.current_record_id FROM work_urls u JOIN work_tasks t ON t.id=u.task_id WHERE u.id=?1",
+                [rule_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            ).optional().map_err(db_error)?
+        } else {
+            None
+        };
+        let changed_rule = rule_id != self.monitor.active_rule_id;
+        self.switch_resolved_task(target, now, false, changed_rule, rule_id)
+    }
+    pub(super) fn switch_to_named_task(&mut self, task_id: i64) -> Result<()> {
+        if self.monitor.active && !self.monitor.status.native_available {
+            return Err("无法确认系统状态，暂不能切换任务。".into());
+        }
+        let target = self
+            .connection
+            .query_row(
+                "SELECT id,category,current_record_id FROM work_tasks WHERE id=?1",
+                [task_id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .optional()
+            .map_err(db_error)?
+            .ok_or("任务已变化，请刷新。")?;
+        self.switch_resolved_task(Some(target), self.clock.now(), true, false, None)
+    }
+    fn switch_resolved_task(
+        &mut self,
+        mut target: Option<(i64, String, Option<i64>)>,
+        now: TimePoint,
+        explicit: bool,
+        changed_rule: bool,
+        rule_id: Option<i64>,
+    ) -> Result<()> {
+        let current = self.active()?;
+        if !explicit
+            && current
+                .as_ref()
+                .is_some_and(|r| r.recovery_pending || r.pause_reason.as_deref() == Some("MANUAL"))
+        {
+            return Ok(());
+        }
+        if let Some((_, _, Some(id))) = &target {
+            if current
+                .as_ref()
+                .is_some_and(|r| r.id == *id && !r.is_paused && !changed_rule)
+            {
+                return Ok(());
+            }
+            let record = self.record(*id)?;
+            if record.status == "FINISHED" {
+                if explicit {
+                    return Err("任务已结束，请选择其他任务。".into());
+                } else {
+                    target = None
+                }
+            } else if (record.recovery_pending || record.pause_reason.as_deref() == Some("MANUAL"))
+                && !explicit
+            {
+                target = None;
+            }
+        }
+        if current.is_none() && target.is_none() {
+            return Ok(());
+        }
+        let duration = current.as_ref().map(|r| self.elapsed(r, now)).transpose()?;
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(db_error)?;
+        if let (Some(old), Some(total)) = (&current, duration) {
+            if !old.is_paused {
+                write_segment(&tx, self.segment.as_ref(), old.id, total, true)?;
+            }
+            tx.execute("UPDATE work_records SET status='SUSPENDED',is_paused=1,pause_reason=CASE WHEN pause_reason='MANUAL' THEN 'MANUAL' ELSE 'AWAY' END,duration_ms=?2,duration_seconds=?3 WHERE id=?1 AND status='WORKING'",
+                params![old.id,total,total/1000]).map_err(db_error)?;
+            let linked: i64 = tx
+                .query_row(
+                    "SELECT COUNT(*) FROM work_tasks WHERE current_record_id=?1",
+                    [old.id],
+                    |r| r.get(0),
+                )
+                .map_err(db_error)?;
+            if linked == 0 {
+                tx.execute(
+                    "INSERT INTO work_tasks(name,category,current_record_id) VALUES(?1,?2,?3)",
+                    params![
+                        format!("{} #{}", old.category, old.id),
+                        old.category,
+                        old.id
+                    ],
+                )
+                .map_err(db_error)?;
+            }
+        }
+        let preceding_end: Option<i64> = current
+            .as_ref()
+            .map(|old| {
+                tx.query_row(
+                    "SELECT MAX(checkpoint_time) FROM work_segments WHERE record_id=?1",
+                    [old.id],
+                    |r| r.get(0),
+                )
+                .map_err(db_error)
+            })
+            .transpose()?
+            .flatten();
+        let mut next_segment = None;
+        let mut next_id = None;
+        if let Some((task_id, category, linked_id)) = target {
+            let id = if let Some(id) = linked_id {
+                tx.execute("UPDATE work_records SET status='WORKING',is_paused=0,recovery_pending=0,pause_reason=NULL,control_mode=CASE WHEN ?3 THEN control_mode ELSE 'AUTO' END,last_input_time=?2 WHERE id=?1 AND status IN ('SUSPENDED','WORKING')",params![id,now.wall_ms,explicit]).map_err(db_error)?;
+                id
+            } else {
+                tx.execute("INSERT INTO work_records(category,quantity,remark,start_time,status,is_paused,settlement_status,source,control_mode,last_input_time) VALUES(?1,NULL,'',?2,'WORKING',0,'IN_PROGRESS','AUTO','AUTO',?2)",params![category,now.wall_ms]).map_err(db_error)?;
+                let id = tx.last_insert_rowid();
+                tx.execute(
+                    "UPDATE work_tasks SET current_record_id=?1 WHERE id=?2",
+                    params![id, task_id],
+                )
+                .map_err(db_error)?;
+                id
+            };
+            let previous_end: Option<i64> = tx
+                .query_row(
+                    "SELECT MAX(checkpoint_time) FROM work_segments WHERE record_id=?1",
+                    [id],
+                    |r| r.get(0),
+                )
+                .map_err(db_error)?;
+            let start = now
+                .wall_ms
+                .max(previous_end.unwrap_or(0))
+                .max(preceding_end.unwrap_or(0));
+            let base: i64 = tx
+                .query_row(
+                    "SELECT duration_ms FROM work_records WHERE id=?1",
+                    [id],
+                    |r| r.get(0),
+                )
+                .map_err(db_error)?;
+            let row_id = insert_segment(&tx, id, start, &self.clock_session, now.ticks_ms)?;
+            next_segment = Some(Segment {
+                id,
+                row_id,
+                base_ms: base,
+                started_ticks: now.ticks_ms,
+                started_wall: start,
+            });
+            next_id = Some(id);
+        }
+        tx.commit().map_err(db_error)?;
+        self.segment = next_segment;
+        if let Some(id) = next_id {
+            self.monitor.record_changed(id, now);
+            self.monitor.active_rule_id = rule_id;
+        } else {
+            self.monitor.record_ended(now)
+        }
+        Ok(())
+    }
+
     pub fn monitor_config(&self) -> Result<MonitorConfig> {
         let (enabled, revision, times, poll_interval_seconds, auto_resume_manual, browsing_only) = self
             .connection
@@ -57,8 +221,8 @@ impl Store {
         if !(1..=5).contains(&input.poll_interval_seconds) {
             return Err("检测间隔必须为 1 到 5 秒。".into());
         }
-        if input.rules.len() > 50 || (input.enabled && input.rules.is_empty()) {
-            return Err("请配置 1 到 50 条工作 URL 后启用自动识别。".into());
+        if input.rules.len() > 50 {
+            return Err("最多配置 50 条工作 URL。".into());
         }
         let mut seen = HashSet::new();
         let mut rules = Vec::new();
@@ -73,6 +237,27 @@ impl Store {
             rules.push((prefix, rule.category, rule.match_mode));
         }
         let current = self.monitor_config()?;
+        let mut old_bindings = std::collections::HashMap::new();
+        {
+            let mut stmt = self
+                .connection
+                .prepare("SELECT u.match_mode,u.url_prefix,u.task_id,t.category FROM work_urls u LEFT JOIN work_tasks t ON t.id=u.task_id")
+                .map_err(db_error)?;
+            for row in stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<i64>>(2)?,
+                        r.get::<_, Option<String>>(3)?,
+                    ))
+                })
+                .map_err(db_error)?
+            {
+                let (mode, url, task, task_category) = row.map_err(db_error)?;
+                old_bindings.insert((mode, url), (task, task_category));
+            }
+        }
         if input.expected_revision != current.revision {
             return Err("监测配置已变化，请重新读取。".into());
         }
@@ -93,9 +278,27 @@ impl Store {
         }
         tx.execute("DELETE FROM work_urls", []).map_err(db_error)?;
         for (prefix, category, mode) in rules {
+            let task_id =
+                old_bindings
+                    .get(&(mode.clone(), prefix.clone()))
+                    .and_then(|(id, old_category)| {
+                        (old_category.as_deref() == Some(category.as_str()))
+                            .then_some(*id)
+                            .flatten()
+                    });
+            let task_id = if let Some(id) = task_id {
+                id
+            } else {
+                tx.query_row(
+                    "SELECT id FROM work_tasks WHERE category=?1 ORDER BY id LIMIT 1",
+                    [&category],
+                    |r| r.get(0),
+                )
+                .map_err(db_error)?
+            };
             tx.execute(
-                "INSERT INTO work_urls(url_prefix,category,match_mode) VALUES(?1,?2,?3)",
-                params![prefix, category, mode],
+                "INSERT INTO work_urls(url_prefix,category,match_mode,task_id) VALUES(?1,?2,?3,?4)",
+                params![prefix, category, mode, task_id],
             )
             .map_err(db_error)?;
         }
@@ -400,6 +603,26 @@ impl Store {
             last
         });
 
+        if self.monitor.config.enabled
+            && !self.monitor.config.browsing_only
+            && page_known
+            && native_ok
+            && sample.chrome_foreground
+            && self.monitor.page.as_ref().is_some_and(|p| p.focused)
+            && self
+                .active()?
+                .is_none_or(|r| !r.recovery_pending && r.pause_reason.as_deref() != Some("MANUAL"))
+        {
+            let fresh = candidate_input.is_some_and(|last| {
+                last >= self.monitor.entered_at.unwrap_or(now.ticks_ms)
+                    && last > self.monitor.input_floor
+                    && now.ticks_ms - last <= RECENT_INPUT_MS
+            });
+            if rule.is_none() || fresh || self.active()?.is_some_and(|r| !r.is_paused) {
+                self.switch_page_task(rule.as_ref().map(|r| r.id), now)?;
+            }
+        }
+
         if !page_known
             || !self.monitor.config.enabled
             || self
@@ -417,37 +640,7 @@ impl Store {
         {
             self.monitor.browse_ready_rule = rule.as_ref().map(|r| r.id);
         }
-        // Manual pauses remain protected from deadlines. A new input after the pause,
-        // on a confirmed matching page, may explicitly resume the same record under
-        // automatic monitoring when the user has enabled this behavior.
-        if matched
-            && native_ok
-            && !self.monitor.config.browsing_only
-            && self.monitor.config.auto_resume_manual
-        {
-            if let Some(record) = self.active()?.filter(|r| {
-                r.is_paused && !r.recovery_pending && r.pause_reason.as_deref() == Some("MANUAL")
-            }) {
-                if let (Some(last), Some(entered)) = (candidate_input, self.monitor.entered_at) {
-                    if last >= entered
-                        && last > self.monitor.input_floor
-                        && now.ticks_ms - last <= RECENT_INPUT_MS
-                    {
-                        self.resume_at(
-                            record.id,
-                            TimePoint {
-                                ticks_ms: last,
-                                wall_ms: now
-                                    .wall_ms
-                                    .saturating_sub(now.ticks_ms - last)
-                                    .max(record.start_time),
-                            },
-                            "AUTO",
-                        )?;
-                    }
-                }
-            }
-        }
+        // A deliberate pause remains in force until the user explicitly resumes.
 
         if let Some(record) = self.active()?.filter(|r| !protected(r)) {
             if record.control_mode == "AUTO" && (!page_known || !native_ok) {
@@ -558,11 +751,12 @@ impl Store {
 
         if self.active()?.is_none() && matched && native_ok {
             if let (Some(last), Some(entered), Some(rule)) =
-                (candidate_input, self.monitor.entered_at, rule)
+                (candidate_input, self.monitor.entered_at, rule.clone())
             {
                 if last >= entered
                     && last > self.monitor.input_floor
                     && now.ticks_ms - last <= RECENT_INPUT_MS
+                    && !self.rule_task_finished(rule.id)?
                 {
                     if !self.monitor.config.browsing_only && self.monitor.candidate.is_none() {
                         self.monitor.candidate_sequence += 1;
@@ -618,6 +812,35 @@ impl Store {
         };
         self.monitor.status.browsing_only = self.monitor.config.browsing_only;
         self.monitor.status.start_candidate = self.monitor.candidate.clone();
+        self.monitor.status.unknown_page_url = if page_known
+            && self
+                .monitor
+                .page
+                .as_ref()
+                .is_some_and(|p| p.rule_id.is_none())
+        {
+            self.monitor.unknown_page_url.clone()
+        } else {
+            None
+        };
+        if self
+            .monitor
+            .status
+            .unknown_page_url
+            .as_deref()
+            .is_some_and(|u| self.is_ignored_page(u).unwrap_or(false))
+        {
+            self.monitor.status.unknown_page_url = None;
+        }
+        self.monitor.status.finished_page_rule = if page_known
+            && rule
+                .as_ref()
+                .is_some_and(|r| self.rule_task_finished(r.id).unwrap_or(false))
+        {
+            rule.as_ref().map(|r| r.id)
+        } else {
+            None
+        };
         self.monitor.status.browse_ready = self.monitor.config.enabled
             && page_known
             && native_ok
@@ -785,6 +1008,9 @@ impl Store {
             .find(|r| Some(r.id) == page.rule_id)
             .cloned()
             .ok_or("当前页面未匹配工作规则。")?;
+        if self.rule_task_finished(rule.id)? {
+            return Err("此网页绑定的任务已结束，请选择其他任务。".into());
+        }
         if !self.monitor.config.enabled {
             return Err("请先启用工作页面识别。".into());
         }
@@ -824,6 +1050,7 @@ impl Store {
                 false,
             )?;
         }
+        self.monitor.active_rule_id = Some(rule.id);
         Ok(())
     }
 }
