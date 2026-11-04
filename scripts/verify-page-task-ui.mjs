@@ -40,12 +40,12 @@ try{
   assert.equal(rebound.args.input.new_name,'新工作');
   await page.screenshot({path:fileURLToPath(new URL('rebound.png',output))});
   await page.goto(`${base}?state=empty&suspended`);
-  const suspended=page.getByRole('region',{name:'暂停中的任务'});
+  const suspended=page.getByRole('region',{name:'进行中的任务'});
   await suspended.waitFor();
   await page.screenshot({path:fileURLToPath(new URL('suspended.png',output))});
   await suspended.getByRole('button',{name:/已有任务/}).click();
   assert.equal(await page.evaluate(()=>window.qa.calls.some(c=>c.command==='confirm_recovery_task')),true);
-  await suspended.waitFor({state:'detached'});
+  await suspended.getByRole('button',{name:/计时中/}).waitFor();
   await page.goto(`${base}?state=empty&unknown&notice`);
   const island=page.getByRole('region',{name:'新网页处理提醒'});
   await island.waitFor();
@@ -54,5 +54,19 @@ try{
   await page.screenshot({path:fileURLToPath(new URL('island-new-page.png',output))});
   await island.getByRole('button',{name:'打开主窗口处理'}).click();
   assert.equal(await page.evaluate(()=>window.qa.calls.some(c=>c.command==='show_main')),true);
+  for (const suffix of ['', '&notice']) {
+    await page.goto(`${base}?multi=8${suffix}`);
+    if (suffix) await page.getByRole('button',{name:'展开任务与提醒'}).click();
+    const list=page.getByRole('region',{name:'进行中的任务'});
+    await list.getByRole('button',{name:'当前任务，计时中'}).waitFor();
+    assert.equal(await list.getByRole('button').count(),8);
+    await list.getByRole('button',{name:'暂停任务 2，已暂停，继续'}).click();
+    await list.getByRole('button',{name:'暂停任务 2，计时中'}).waitFor();
+    await list.getByRole('button',{name:'当前任务，已暂停，继续'}).waitFor();
+    await page.screenshot({path:fileURLToPath(new URL(suffix?'island-tasks.png':'main-tasks.png',output))});
+    await page.setViewportSize({width:360,height:600});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.setViewportSize({width:780,height:700});
+  }
   console.log('Isolated new-page binding, finished-task rebinding and suspended-task resume passed.');
 }finally{await browser.close()}

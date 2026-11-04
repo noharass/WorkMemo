@@ -8,6 +8,10 @@ return page.addInitScript(() => {
   const callbacks = new Map(), listeners = new Map(); let sequence = 0;
   const emit = (event, payload) => { for (const [id, entry] of listeners) if (entry.event === event) callbacks.get(entry.handler)?.({ event, id, payload }); };
   window.qa = { calls: [], active: params.get('state') === 'empty' ? null : record, candidate: params.has('candidate') ? { id: 21, rule_id: 1, category: '开发' } : null, unknown: params.has('unknown') ? 'https://new.example.test/work' : null, finishedRule: params.has('finished') ? 1 : null, tasks: [{id:1,name:'已有任务',category:'开发',record_id:params.has('suspended')?7:null,finished:false,suspended:params.has('suspended'),recovery_pending:params.has('suspended')}], notice: params.has('ended') ? { kind: 'ended', record: ended, idle_warning_seconds: 300, idle_end_seconds: 420 } : null, config, browse: false, fail: '', delay: 0, readsDelay: 100, emit, record };
+  if (params.has('multi')) {
+    window.qa.tasks = Array.from({length:Number(params.get('multi') || 2)}, (_,i) => ({id:i+1,name:i === 0 ? '当前任务' : `暂停任务 ${i+1}`,category:'开发',record_id:i === 0 ? 7 : 10+i,finished:false,suspended:i !== 0,recovery_pending:false}));
+    if(window.qa.active)window.qa.active.task_name='当前任务';
+  }
   window.isTauri = true;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: id => listeners.delete(id) };
   window.__TAURI_INTERNALS__ = {
@@ -35,7 +39,7 @@ return page.addInitScript(() => {
       if (command === 'get_ignored_pages') return [];
       if (command === 'bind_page') {q.unknown=null;q.config.revision++;return snapshot();}
       if (command === 'rebind_finished_page') {q.finishedRule=null;q.config.revision++;return snapshot();}
-      if (command === 'confirm_recovery_task') {q.tasks=q.tasks.map(t=>({...t,suspended:false,recovery_pending:false}));q.active={...record,is_paused:false,recovery_pending:false};return snapshot();}
+      if (command === 'confirm_recovery_task') {const target=q.tasks.find(t=>t.id===args.taskId);q.tasks=q.tasks.map(t=>({...t,suspended:t.id!==args.taskId,recovery_pending:false}));q.active={...record,id:target.record_id,task_name:target.name,is_paused:false,recovery_pending:false};return snapshot();}
       if (command === 'get_connection_status') return { state: 'ready', message: '隔离连接', version: 'fixture', identifier: 'fixture', host_name: 'fixture' };
       if (command === 'save_monitor_config') { await new Promise(r => setTimeout(r, q.delay)); q.config = { ...args.input, revision: q.config.revision + 1, rules: args.input.rules.map((r, i) => ({ ...r, id: i + 1 })) }; return structuredClone(q.config); }
       if (command === 'get_today_workload') return [];

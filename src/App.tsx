@@ -25,9 +25,10 @@ import { TodayWorkloadStrip } from "./TodayWorkloadStrip";
 import { useMainContentHeight } from "./useMainContentHeight";
 import { PageBindingPrompt } from "./PageBindingPrompt";
 import { FinishedPagePrompt } from "./FinishedPagePrompt";
-import { SuspendedTasks } from "./SuspendedTasks";
+import { TaskList, useOpenTasks } from "./TaskList";
 export default function App() {
   const session = useWorkSession();
+  const openTasks = useOpenTasks(session.snapshot, session.native);
   const appearance = useAppearance();
   const { name } = useCategoryNames();
   const presentation = usePresentation();
@@ -187,7 +188,7 @@ export default function App() {
         )}
         {monitor?.unknown_page_url && !monitor.browsing_only && <PageBindingPrompt monitor={monitor} refresh={session.refresh}/>}
         {monitor?.finished_page_rule != null && !monitor.browsing_only && <FinishedPagePrompt monitor={monitor} refresh={session.refresh}/>}
-        {session.native && <SuspendedTasks refresh={session.refresh} version={(monitor?.revision??0)*1_000_000+(active?.id??0)}/>}
+        {session.native && <TaskList {...openTasks} active={active ?? null} disabled={unavailable} onSwitch={session.switchTask}/>}
         {candidate && !active && !formOpen && (
           <section className="start-prompt" aria-label="开工确认">
             <WorkBadge

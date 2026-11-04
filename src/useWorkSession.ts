@@ -4,7 +4,7 @@ import { emit,listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { Snapshot, StartInput, SettleInput } from "./types";
 import { confirmedFinish, reconcileDeleted } from "./workView";
 
-type WorkCommand = "confirm_work" | "enter_browsing" | "start_task" | "pause_task" | "resume_task" | "finish_task" | "settle_record";
+type WorkCommand = "confirm_recovery_task" | "confirm_work" | "enter_browsing" | "start_task" | "pause_task" | "resume_task" | "finish_task" | "settle_record";
 
 export function useWorkSession() {
   const native = isTauri();
@@ -117,6 +117,7 @@ export function useWorkSession() {
   return {
     native, snapshot, loading, busy: pending !== null, pending, savedId, dataVersion,
     connectionError, commandError, refresh, recordDeleted,
+    switchTask:(taskId:number)=>run("confirm_recovery_task",{taskId}),
     confirmWork:(candidateId:number|null)=>run("confirm_work",{candidateId}),
     browse:()=>run("enter_browsing",{}),
     start: (input: StartInput, expectedActiveId: number | null = null) => run("start_task", { input, expectedActiveId }),

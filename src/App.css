@@ -572,3 +572,15 @@ button.island-action, button.island-open, button.quiet-action { border-color: tr
 .desktop-frame .monitor-status, .desktop-frame .font-preview { border-radius:var(--panel-radius); }
 .page-binding-address{overflow-wrap:anywhere;max-height:3.5em;overflow:auto}.page-binding-prompt .page-binding-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.page-binding-prompt .page-binding-options label{display:flex;align-items:center;justify-content:flex-start;gap:6px;white-space:nowrap;margin:0}.page-binding-prompt .page-binding-options input[type=radio]{width:auto;flex:none;margin:0}.page-binding-prompt .page-binding-range{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;margin:0;white-space:nowrap}.page-binding-prompt input:not([type=radio]),.page-binding-prompt select{min-width:0;max-width:100%;padding:6px 9px;border-radius:9px;border:1px solid var(--border,rgba(90,110,99,.3));background:var(--panel-background,rgba(255,255,255,.55));color:inherit}.page-binding-prompt>button{width:100%}@media(max-width:460px){.page-binding-prompt .page-binding-options{grid-template-columns:1fr}}
 .task-name{color:var(--text-muted);font-size:.84em;max-width:24em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Shared unfinished-task overview in the main window and status island. */
+.task-list{border:1px solid var(--line);border-radius:var(--panel-radius);padding:12px;margin-bottom:12px;background:rgb(var(--surface-rgb)/var(--reading-opacity));min-width:0}
+.task-list-heading{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.85em}.task-list-heading>span{color:var(--text-muted);font-variant-numeric:tabular-nums}
+.task-list-rows{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto;scrollbar-width:thin}
+.task-list .task-list-row{display:flex;align-items:center;gap:8px;width:100%;min-width:0;min-height:38px;padding:7px 9px;border-radius:10px;text-align:left;justify-content:flex-start}
+.task-list-row[aria-current=true]{border-color:var(--line);background:rgb(var(--surface-rgb)/.25)}
+.task-list-row[aria-current=true]:disabled{opacity:1;color:var(--text-primary)}
+.task-list-dot{width:6px;height:6px;flex:none;border:1px solid currentColor;border-radius:50%;opacity:.55}.task-list-row[aria-current=true] .task-list-dot{background:currentColor}
+.task-list-copy{display:flex;flex-direction:column;flex:1;min-width:0;gap:2px}.task-list-copy strong{font-size:.9em;font-weight:600;overflow-wrap:anywhere}.task-list-copy small{font-size:.75em;color:var(--text-muted)}
+.task-list-status{font-size:.75em;color:var(--text-muted);flex:none}.task-list-resume{font-size:.75em;flex:none}
+.task-list-compact{padding:9px;margin:8px 0 0;border-radius:12px}.task-list-compact .task-list-rows{max-height:190px}.task-list-compact .task-list-row{padding:6px;gap:6px}.task-list-compact .task-list-heading{font-size:11px}
