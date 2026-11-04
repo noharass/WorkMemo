@@ -55,7 +55,11 @@ node scripts/verify-multi-url.mjs
 
 0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。源码阶段与原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
 
-## 构建 v0.2.7 成品
+## 构建 v0.2.8 成品
+
+0.2.8 包含页面与任务绑定和 schema 10，详见 [RELEASE-0.2.8.md](RELEASE-0.2.8.md)。运行下方打包脚本时输出目录为 `artifacts/0.2.8`。正式构建必须使用 Tauri build，确保启用 `custom-protocol` 内嵌前端。
+
+## 0.2.7 历史记录
 
 0.2.7 发布后的页面任务自动切换仍处于源码阶段，数据库 schema 10 和隔离检查说明见 [PAGE-TASK-SWITCH-PHASE-1.md](PAGE-TASK-SWITCH-PHASE-1.md)。隔离界面脚本为 `node scripts/verify-page-task-ui.mjs`，请勿把开发构建复制到正式应用目录。
 

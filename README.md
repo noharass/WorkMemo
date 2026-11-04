@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.7/WorkMemo_0.2.7_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.8/WorkMemo_0.2.8_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.7/WorkMemo_0.2.7_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.8/WorkMemo_0.2.8_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.7">v0.2.7 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.8">v0.2.8 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -40,13 +40,13 @@
 
 ## 这次更新：补填选择、工时占比与轻透明界面
 
-**v0.2.7** 的分类待补填入口先列出记录，选中具体一条才填写；保存后返回列表，失败和冲突保留输入。辅助分析新增工时占比饼图，可点击扇区或图例筛选类别。
+**v0.2.8** 支持将网页绑定到具体任务并自动切换计时；新网页会暂停并等待选择。**v0.2.7** 的分类待补填入口先列出记录，选中具体一条才填写；保存后返回列表，失败和冲突保留输入。辅助分析新增工时占比饼图，可点击扇区或图例筛选类别。
 
 主窗、设置、状态岛和网页统一轻透明控件，减少重复说明并补齐卡片圆角。四皮肤新默认不透明度为 65%，可选 40–100%；已有透明度保持。修正灵动岛首次展开的原生区域更新，以及网页导航提示随滚动晃动的问题。
 
 默认提示音改为 FiftySounds；首次升级会切换套装，保留静音选择，旧柔和／清脆仍可选回。计时、数据库 schema 9 和权限范围保持。Windows 原生透明、区域点击、焦点和系统 DPI 验收仍有工具限制，详见发布记录。
 
-[查看 v0.2.7 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.7) · [构建校验与验收限制](docs/RELEASE-0.2.7.md)
+[查看 v0.2.8 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.8) · [构建校验与验收限制](docs/RELEASE-0.2.8.md)
 
 完整实现保留在 [0.2.7 第一阶段](docs/UPDATE-0.2.7-PHASE-1.md) 与 [反馈修订](docs/FIX-0.2.7-FEEDBACK.md)。旧版下载和阶段记录继续保留。
 
