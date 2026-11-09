@@ -4,9 +4,11 @@
 
 ## 状态与源码对应
 
-本地正式成品已构建并校验，公开资产上传及回执在完成后补记。本轮主程序、配套主机、扩展和 npm/Cargo/Tauri 版本均为 0.2.7。
+本地正式成品已构建并校验，四项公开资产已替换并完成匿名下载复核；Latest 查询返回 v0.2.7，draft=false、prerelease=false。本轮主程序、配套主机、扩展和 npm/Cargo/Tauri 版本均为 0.2.7。
 
-本次源码以前一修复提交 `80e8258ee8b815a684f0bf63dec67509b9b5c0f5` 为基础；实际资产构建提交会在发布回执记录。原 v0.2.7 标签保留在 `cb031eb7d048dd26dc18e51a335058d21a60901f`，不移动或强推标签。GitHub 自动附带的该标签源码 ZIP 是原始历史源码；本次成品源码请使用发布回执中的构建提交。既有 v0.2.8 Release 和资产保留。
+本次源码以前一修复提交 `80e8258ee8b815a684f0bf63dec67509b9b5c0f5` 为基础；实际资产构建提交为 [`37a3f08b1ed56118ae9e9881e268fe582ef5ded4`](https://github.com/noharass/WorkMemo/tree/37a3f08b1ed56118ae9e9881e268fe582ef5ded4)。原 v0.2.7 标签保留在 `cb031eb7d048dd26dc18e51a335058d21a60901f`，不移动或强推标签。GitHub 自动附带的该标签源码 ZIP 是原始历史源码；本次成品源码请使用上述构建提交。既有 v0.2.8 Release 和资产保留。
+
+公开入口：[WorkMemo v0.2.7 · 2026-11-09 入口修订](https://github.com/noharass/WorkMemo/releases/tag/v0.2.7)。Release ID `431201874` 保持。新资产先以临时名上传、核对服务端大小和 SHA256 后切换，全部匿名下载核对成功后才移除旧资产；本机原始备份保留。新安装器 Asset ID `725864365`、ZIP `725864635`、许可 `725864945`、SHA256SUMS `725865095`，最终仅四项正式名称资产。
 
 ## 本次变化与兼容性
 
@@ -34,7 +36,7 @@
 
 ## 完整本地路径与摘要
 
-输出目录 `E:\WorkMemo\artifacts\0.2.7`，旧公开四资产备份 `E:\WorkMemo\artifacts\0.2.7-before-20261109`，备份 SHA256 与 GitHub 原摘要均一致。新包核验回执 `E:\WorkMemo\artifacts\0.2.7\qa\refresh-20261109\PACKAGE-VERIFICATION.json`；公开回执完成后位于同目录 `RELEASE-RECEIPT.json`。正式构建日志 `E:\WorkMemo\artifacts\release-027-refresh-build.log`。
+输出目录 `E:\WorkMemo\artifacts\0.2.7`，旧公开四资产备份 `E:\WorkMemo\artifacts\0.2.7-before-20261109`，备份 SHA256 与 GitHub 原摘要均一致。新包核验回执 `E:\WorkMemo\artifacts\0.2.7\qa\refresh-20261109\PACKAGE-VERIFICATION.json`；公开回执位于同目录 `RELEASE-RECEIPT.json`，匿名下载副本在 `public-downloads` 子目录。正式构建日志 `E:\WorkMemo\artifacts\release-027-refresh-build.log`。
 
 | 文件 | 字节 | SHA256 |
 | --- | ---: | --- |
