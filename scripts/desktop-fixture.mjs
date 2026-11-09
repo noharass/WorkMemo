@@ -12,6 +12,7 @@ return page.addInitScript(() => {
     window.qa.tasks = Array.from({length:Number(params.get('multi') || 2)}, (_,i) => ({id:i+1,name:i === 0 ? '当前任务' : `暂停任务 ${i+1}`,category:'开发',record_id:i === 0 ? 7 : 10+i,finished:false,suspended:i !== 0,recovery_pending:false}));
     if(window.qa.active)window.qa.active.task_name='当前任务';
   }
+  window.qa.browse = params.has('browse');
   window.isTauri = true;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: id => listeners.delete(id) };
   window.__TAURI_INTERNALS__ = {

@@ -155,7 +155,7 @@ try {
       assert.equal(await page.evaluate(() => window.qa.calls.filter(c => c.command === 'confirm_work').length), 1);
       assert.equal(await page.evaluate(() => window.qa.notice.record.id), 6);
       assert.equal(await page.locator('.island-main-row').getByText('开发', { exact: true }).isVisible(), true);
-      await page.getByRole('button', { name: '展开工作提醒', exact: true }).click();
+      await page.getByRole('button', { name: '展开任务与提醒', exact: true }).click();
       await page.getByRole('button', { name: '待补全 1', exact: true }).waitFor();
       assert.equal(await page.getByRole('region', { name: '工作结束提醒' }).count(), 0);
     });

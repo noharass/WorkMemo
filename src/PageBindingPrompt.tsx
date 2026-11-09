@@ -36,6 +36,7 @@ export function PageBindingPrompt({monitor,refresh}:{monitor:MonitorStatus;refre
   if (!address)return null;
   return <section className="start-prompt page-binding-prompt" aria-label="新网页处理">
     <strong>发现新网页，计时已暂停</strong>
+    {monitor.browsing_only&&<p>当前为仅浏览，保存绑定不会开始计时。</p>}
     <p className="page-binding-address">{address}</p>
     <div className="page-binding-options" role="group" aria-label="处理方式">
       <label><input type="radio" checked={action==="existing"} onChange={()=>setAction("existing")}/>绑定已有任务</label>

@@ -186,8 +186,8 @@ export default function App() {
             上次未结束的任务保持暂停。请确认后继续，软件关闭期间不计时。
           </p>
         )}
-        {monitor?.unknown_page_url && !monitor.browsing_only && <PageBindingPrompt monitor={monitor} refresh={session.refresh}/>}
-        {monitor?.finished_page_rule != null && !monitor.browsing_only && <FinishedPagePrompt monitor={monitor} refresh={session.refresh}/>}
+        {monitor?.unknown_page_url && <PageBindingPrompt monitor={monitor} refresh={session.refresh}/>}
+        {monitor?.finished_page_rule != null && <FinishedPagePrompt monitor={monitor} refresh={session.refresh}/>}
         {session.native && <TaskList {...openTasks} active={active ?? null} disabled={unavailable} onSwitch={session.switchTask}/>}
         {candidate && !active && !formOpen && (
           <section className="start-prompt" aria-label="开工确认">
