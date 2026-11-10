@@ -65,10 +65,11 @@ export function NotificationApp() {
   const monitor = snapshot?.monitoring;
   const bindingKey = monitor?.unknown_page_url ? `new:${monitor.unknown_page_url}` : monitor?.finished_page_rule != null ? `finished:${monitor.finished_page_rule}` : null;
   const expansionKey = bindingKey ?? key;
+  const reminderLabel = bindingKey ? "网页待处理" : candidate ? "待确认开工" : visibleNotice?.kind === "ended" ? "工作量待填" : visibleNotice?.kind === "idle" ? "空闲提醒" : null;
   useEffect(() => {
     if (expansionKey === seen.current) return;
     seen.current = expansionKey;
-    if (expansionKey && !editingRef.current) setExpanded(true);
+    // New reminders update the compact hint; only an explicit user action opens the island.
     if (!expansionKey && !editingRef.current) setExpanded(false);
   }, [expansionKey]);
   const state = monitor?.browsing_only
@@ -127,13 +128,13 @@ export function NotificationApp() {
         }}>
           {active || candidate || monitor?.browse_category ? <WorkBadge category={active?.category ?? candidate?.category ?? monitor?.browse_category ?? "开发"} presentation={presentation.current} showName={false} /> : <span className="work-symbol"><Icon name="read" /></span>}
           <span className="island-info"><strong>{bindingKey ? monitor?.unknown_page_url ? "新网页待处理" : "网页任务待处理" : active ? active.task_name || name(active.category) : candidate ? name(candidate.category) : visibleNotice?.kind === "ended" ? "工作已结束" : "仅浏览"}</strong>
-            <small>{snapshot ? bindingKey ? monitor?.browsing_only ? "仅浏览 · 当前不计时" : "请打开主窗口处理绑定" : visibleNotice?.kind === "ended" ? "结果已保存 · 待填写工作量" : state : "状态不可用"}</small></span>
+            <small>{snapshot ? !expanded && reminderLabel ? `${reminderLabel} · 点箭头查看` : bindingKey ? monitor?.browsing_only ? "仅浏览 · 当前不计时" : "请打开主窗口处理绑定" : visibleNotice?.kind === "ended" ? "结果已保存 · 待填写工作量" : state : "状态不可用"}</small></span>
           {active && <strong className="island-time">{formatDuration(active.duration_seconds)}</strong>}
         </div>
         {candidate && <button type="button" className="island-action" aria-label="开始识别的工作" title={`开始记录 · ${name(candidate.category)}`} disabled={busy || !!session.connectionError} onClick={() => { void session.confirmWork(candidate.id); }}><Icon name="play" /></button>}
         {!candidate && active && !monitor?.browsing_only && <button type="button" className="island-action" aria-label={active.is_paused ? "继续记录" : "暂停记录"} disabled={busy || !!session.connectionError || active.recovery_pending} onClick={() => { void (active.is_paused ? session.resume(active.id) : session.pause(active.id)); }}><Icon name={active.is_paused ? "play" : "pause"} /></button>}
         {!candidate && monitor?.browsing_only && <button type="button" className="island-action" aria-label={active ? "继续记录" : "开始记录"} disabled={busy || !monitor.browse_ready || !!active?.recovery_pending || !!session.connectionError} onClick={() => { void session.confirmWork(null); }}><Icon name="play" /></button>}
-        {(active || openTasks.tasks.length > 0 || bindingKey || visibleNotice || candidate || editing || combinedError || (snapshot?.pending_count ?? 0) > 0) && <button type="button" className="island-action island-expand" aria-expanded={expanded} title={expanded ? "收起展开区域" : "展开任务与提醒"} aria-label={expanded ? "收起展开区域" : "展开任务与提醒"} onClick={() => {
+        {(active || openTasks.tasks.length > 0 || bindingKey || visibleNotice || candidate || editing || combinedError || (snapshot?.pending_count ?? 0) > 0) && <button type="button" className="island-action island-expand" data-reminder={!expanded && !!reminderLabel} aria-expanded={expanded} title={expanded ? "收起展开区域" : reminderLabel ? `${reminderLabel}，点击展开任务与提醒` : "展开任务与提醒"} aria-label={expanded ? "收起展开区域" : "展开任务与提醒"} onClick={() => {
           if (expanded && editing) { void later(); return; }
           setExpanded(value => !value);
         }}><Icon name={expanded ? "left" : "right"} /></button>}

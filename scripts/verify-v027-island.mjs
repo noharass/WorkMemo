@@ -21,6 +21,7 @@ async function load(params = {}, width = 780, height = 680) {
 // Native region is modelled by IPC observations; this does not prove Windows rendering.
 try {
   await load({notice:'1',candidate:'1',state:'empty'},320,420);
+  await page.getByRole('button',{name:'展开任务与提醒',exact:true}).click();
   await page.getByRole('button',{name:'开始记录',exact:true}).waitFor();
   await page.waitForTimeout(650);
   const metrics = await page.evaluate(()=>({
@@ -38,7 +39,7 @@ try {
       await page.getByRole('button',{name:'收起展开区域',exact:true}).click();
       await page.waitForTimeout(400);
       assert.equal(await page.evaluate(()=>window.qa.calls.filter(c=>c.command==='set_island_region').at(-1)?.args.height),56);
-      await page.getByRole('button',{name:'展开工作提醒',exact:true}).click();
+      await page.getByRole('button',{name:'展开任务与提醒',exact:true}).click();
       await page.waitForTimeout(400);
       assert.ok(await page.evaluate(()=>window.qa.calls.filter(c=>c.command==='set_island_region').at(-1)?.args.height)>100);
     }
@@ -46,7 +47,7 @@ try {
     await page.getByRole('button',{name:'收起展开区域',exact:true}).click();
     await page.waitForTimeout(100);
     assert.equal(await page.locator('.island-expansion').evaluate(el=>el.getBoundingClientRect().height),0);
-    await page.getByRole('button',{name:'展开工作提醒',exact:true}).click();
+    await page.getByRole('button',{name:'展开任务与提醒',exact:true}).click();
     await page.waitForTimeout(150);
     assert.ok(await page.evaluate(()=>window.qa.calls.filter(c=>c.command==='set_island_region').at(-1)?.args.height)>100);
     assert.equal(await page.getByRole('button',{name:'收起展开区域',exact:true}).getAttribute('aria-expanded'),'true');

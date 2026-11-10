@@ -28,6 +28,7 @@ fn island_presentation_key(
     notice: Option<(&str, i64)>,
     enabled: bool,
     browsing: bool,
+    binding_pending: bool,
 ) -> Option<String> {
     if let Some(id) = active {
         if notice == Some(("idle", id)) {
@@ -40,6 +41,7 @@ fn island_presentation_key(
     }
     notice
         .map(|(kind, id)| format!("{kind}:{id}"))
+        .or_else(|| (enabled && binding_pending).then(|| "page-binding".into()))
         .or_else(|| (enabled && browsing).then(|| "browsing".into()))
 }
 
@@ -116,6 +118,7 @@ impl Backend {
                 let mut active_id = None;
                 let mut candidate_id = None;
                 let mut browsing = false;
+                let mut binding_pending = false;
                 let mut runtime_failure: Option<String> = None;
                 // Sample after the preceding loop has finished creating and positioning the window.
                 // Creation emits transient move events, so those events must not overwrite saved coordinates.
@@ -196,6 +199,8 @@ impl Backend {
                                 candidate_id =
                                     snapshot.monitoring.start_candidate.as_ref().map(|c| c.id);
                                 browsing = snapshot.monitoring.browsing_only;
+                                binding_pending = snapshot.monitoring.unknown_page_url.is_some()
+                                    || snapshot.monitoring.finished_page_rule.is_some();
                                 active_id = snapshot.active.map(|record| record.id);
                             }
                             Err(error) => runtime_failure = Some(error),
@@ -208,6 +213,7 @@ impl Backend {
                     notice.as_ref().map(|n| (n.kind.as_str(), n.record.id)),
                     app_handle.state::<crate::desktop::IslandState>().enabled(),
                     browsing,
+                    binding_pending,
                 );
                 let key = key.or_else(|| {
                     app_handle
@@ -596,25 +602,39 @@ mod island_tests {
     #[test]
     fn new_work_supersedes_old_reminders_without_changing_visibility_preference() {
         assert_eq!(
-            key(None, Some(2), Some(("ended", 1)), false, false).as_deref(),
+            key(None, Some(2), Some(("ended", 1)), false, false, false).as_deref(),
             Some("candidate:2")
         );
         assert_eq!(
-            key(Some(3), None, Some(("ended", 1)), true, false).as_deref(),
+            key(Some(3), None, Some(("ended", 1)), true, false, false).as_deref(),
             Some("active:3")
         );
-        assert_eq!(key(Some(3), None, Some(("ended", 1)), false, false), None);
         assert_eq!(
-            key(None, None, Some(("ended", 1)), false, false).as_deref(),
+            key(Some(3), None, Some(("ended", 1)), false, false, false),
+            None
+        );
+        assert_eq!(
+            key(None, None, Some(("ended", 1)), false, false, false).as_deref(),
             Some("ended:1")
         );
         assert_eq!(
-            key(Some(3), None, Some(("idle", 3)), false, false).as_deref(),
+            key(Some(3), None, Some(("idle", 3)), false, false, false).as_deref(),
             Some("idle:3")
         );
         assert_eq!(
-            key(None, None, None, true, true).as_deref(),
+            key(None, None, None, true, true, false).as_deref(),
             Some("browsing")
         );
+    }
+
+    #[test]
+    fn collapsed_binding_hint_stays_visible_without_holding_or_an_active_task() {
+        assert_eq!(
+            key(None, None, None, true, false, true).as_deref(),
+            Some("page-binding")
+        );
+        assert_eq!(key(None, None, None, true, false, false), None);
+        // Respect an explicit tray hide while the page still needs processing.
+        assert_eq!(key(None, None, None, false, false, true), None);
     }
 }

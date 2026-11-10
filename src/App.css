@@ -515,6 +515,8 @@ button.today-strip:hover { background:transparent; color:var(--text-primary); }
 .island-frame .island-time { font-size:12px; }
 .island-frame button.island-action,.island-frame button.island-open { flex:0 0 22px; width:22px; height:26px; padding:3px; border-radius:8px; }
 .island-frame .island-action .icon,.island-frame .island-open .icon { width:14px; height:14px; font-size:14px; }
+.island-frame .island-expand { position:relative; }
+.island-frame .island-expand[data-reminder="true"]::after { content:""; position:absolute; top:2px; right:2px; width:5px; height:5px; border-radius:50%; background:var(--accent-text); pointer-events:none; }
 .island-expansion { width:310px; flex:none; overflow:hidden; transition:height .2s ease,opacity .2s ease,transform .2s ease; }
 .island-expansion:not(.island-reveal-enter):not(.island-reveal-appear):not(.island-reveal-leave) { overflow-y:auto; scrollbar-width:thin; }
 .island-expansion-content { padding:5px 13px 14px; font-size:12px; }

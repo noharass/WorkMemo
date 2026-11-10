@@ -34,6 +34,8 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml
 
 ### 网页组件与隔离回归
 
+2026-11-10 灵动岛源码修订增加 `node scripts/verify-island-manual-expand.mjs`，覆盖默认收起、连续切页与提醒更新、手动展开、补填草稿、收起区域 IPC、四皮肤和减少动态效果。`verify-page-task-ui.mjs`、`verify-page-binding-entry.mjs`、`verify-v027-island.mjs` 已改为显式点击展开入口；历史 v025/v026 脚本中的自动展开假设尚未全部改写，不能用它们判定本次默认收起为故障。源码范围和原生验收限制见 [FIX-ISLAND-MANUAL-EXPAND.md](FIX-ISLAND-MANUAL-EXPAND.md)。
+
 网页通过共享 `src/ui/UiProvider.tsx` 使用 Ant Design 6.6.8，保留桌面原有控件和样式。不要在网页继续手写标准按钮、选择框、表格或弹层；主题通过官方 token、语义样式及共享封装配置。未引入全局 reset，图表继续使用 ECharts。
 
 先在一个 PowerShell 窗口运行 `npm.cmd run dev -- --host 127.0.0.1`，再在另一个窗口运行：

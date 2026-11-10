@@ -76,6 +76,7 @@ try {
 
     await load(`finished&notice${suffix}`);
     const reminder = page.getByRole('region', { name: '新网页处理提醒', exact: true });
+    await page.getByRole('button', { name: '展开任务与提醒', exact: true }).click();
     await reminder.getByRole('heading', { name: '绑定任务已结束' }).waitFor();
     assert.match(await reminder.innerText(), /新建任务/);
     assert.doesNotMatch(await reminder.innerText(), /忽略/);

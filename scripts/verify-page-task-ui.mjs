@@ -48,6 +48,7 @@ try{
   await suspended.getByRole('button',{name:/计时中/}).waitFor();
   await page.goto(`${base}?state=empty&unknown&notice`);
   const island=page.getByRole('region',{name:'新网页处理提醒'});
+  await page.getByRole('button',{name:'展开任务与提醒',exact:true}).click();
   await island.waitFor();
   await page.waitForTimeout(450);
   assert.ok((await island.boundingBox())?.height>50);
