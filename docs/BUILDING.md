@@ -57,9 +57,9 @@ node scripts/verify-multi-url.mjs
 
 0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。源码阶段与原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
 
-## 构建 v0.2.7 同版本修订成品
+## 构建 v0.2.9 成品
 
-2026-11-10 按用户要求将灵动岛默认收起修正继续以 0.2.7 构建发布，包含此前入口修复、页面与任务绑定和 schema 10，详见 [RELEASE-0.2.7-ISLAND.md](RELEASE-0.2.7-ISLAND.md)。原始 0.2.7 使用 schema 9；请按构建日期、提交和 SHA256 区分成品，不以同版本号推断数据库兼容性。运行下方打包脚本时输出目录为 `artifacts/0.2.7`。正式构建必须使用 Tauri build，确保启用 `custom-protocol` 内嵌前端。原 v0.2.7 标签保持历史提交不移动，本次资产源码使用修订发布记录中的构建提交。
+2026-11-10 按用户要求将基于 0.2.8 功能的当前修正版统一发布为 0.2.9，包含灵动岛默认收起、新建／绑定入口和多任务列表，数据库仍为 schema 10，详见 [RELEASE-0.2.9.md](RELEASE-0.2.9.md)。运行下方打包脚本时输出目录为 `artifacts/0.2.9`。正式构建必须使用 Tauri build，确保启用 `custom-protocol` 内嵌前端。新 v0.2.9 标签指向本次构建提交；既有标签和发布不移动、不替换。
 
 ## 0.2.7 历史记录
 
@@ -76,16 +76,18 @@ node scripts/verify-v027-visual.mjs
 
 视觉脚本覆盖四皮肤、40/65/100% 不透明度及两种密度，网页截图只用于浏览器合成效果检查。原始音效只在素材编辑时需要，普通构建直接使用仓库 WAV，不联网下载。
 
+## 打包 v0.2.9
+
 ```powershell
 & .\scripts\package-windows.ps1
 ```
 
 脚本收集第三方许可，执行前端与 Tauri release 构建，准备浏览器组件，生成 NSIS 安装器和免安装 ZIP：
 
-- `artifacts/0.2.7/WorkMemo_0.2.7_x64-setup.exe`
-- `artifacts/0.2.7/WorkMemo_0.2.7_windows_x64.zip`
-- `artifacts/0.2.7/THIRD-PARTY-LICENSES.txt`
-- `artifacts/0.2.7/SHA256SUMS.txt`
+- `artifacts/0.2.9/WorkMemo_0.2.9_x64-setup.exe`
+- `artifacts/0.2.9/WorkMemo_0.2.9_windows_x64.zip`
+- `artifacts/0.2.9/THIRD-PARTY-LICENSES.txt`
+- `artifacts/0.2.9/SHA256SUMS.txt`
 
 脚本不启动成品或执行安装。产物、数据库、凭据和本机配置不提交 Git。相同版本重建会替换该输出目录中的同名文件。
 
