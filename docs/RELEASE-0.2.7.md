@@ -1,6 +1,6 @@
 # WorkMemo v0.2.7 Windows 成品与发布记录
 
-> 2026-11-09 用户要求以 0.2.7 同版本修订重新发布。当前成品使用 schema 10，原始成品为 schema 9；本页以下保留原始发布历史与旧摘要。新的构建、资产、源码提交、验收限制和回执见 [RELEASE-0.2.7-REFRESH.md](RELEASE-0.2.7-REFRESH.md)。原 v0.2.7 标签保留历史提交，不代表替换后资产的源码。
+> 2026-11-10 用户要求将灵动岛默认收起修正继续以 0.2.7 同版本发布。当前成品使用 schema 10，原始成品为 schema 9；本页以下保留原始发布历史与旧摘要。最新构建、资产、源码提交、验收限制和回执见 [RELEASE-0.2.7-ISLAND.md](RELEASE-0.2.7-ISLAND.md)，11-09 修订历史见 [RELEASE-0.2.7-REFRESH.md](RELEASE-0.2.7-REFRESH.md)。原 v0.2.7 标签保留历史提交，不代表替换后资产的源码。
 
 日期：2026-11-02（Asia/Shanghai）。用户明确要求「传release吧」，授权从源码及反馈修订进入 Windows 成品打包与公开发布。功能源码基线为 ffac9284ac69511fa7bd2fc5ea2743d3e71cb0d2，前序阶段记录保留。
 
