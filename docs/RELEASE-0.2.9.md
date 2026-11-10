@@ -12,7 +12,15 @@
 - 仅浏览下仍能新建／重新绑定网页，直接显示「新建任务／绑定已有任务」，保存关系保持停表。
 - 灵动岛默认收起，新网页、切页和提醒只更新短文字及静态圆点，点箭头才展开；补填草稿与未保存关闭保护保留。
 
-本次不增加新功能，不修改计时、SQLite、权限或依赖，仅统一版本和发布说明。程序完整功能源码见 [FIX-PAGE-BINDING-ENTRY-SOURCE.md](FIX-PAGE-BINDING-ENTRY-SOURCE.md) 与 [FIX-ISLAND-MANUAL-EXPAND-SOURCE.md](FIX-ISLAND-MANUAL-EXPAND-SOURCE.md)，本次版本文件及锁文件全文见 [RELEASE-0.2.9-SOURCE.md](RELEASE-0.2.9-SOURCE.md)。新 v0.2.9 标签须与实际资产构建提交一致，发布完成后在本页补入标识与回执。
+本次不增加新功能，不修改计时、SQLite、权限或依赖，仅统一版本和发布说明。程序完整功能源码见 [FIX-PAGE-BINDING-ENTRY-SOURCE.md](FIX-PAGE-BINDING-ENTRY-SOURCE.md) 与 [FIX-ISLAND-MANUAL-EXPAND-SOURCE.md](FIX-ISLAND-MANUAL-EXPAND-SOURCE.md)，本次版本文件及锁文件全文见 [RELEASE-0.2.9-SOURCE.md](RELEASE-0.2.9-SOURCE.md)。
+
+## 公开发布回执
+
+已公开 [WorkMemo v0.2.9](https://github.com/noharass/WorkMemo/releases/tag/v0.2.9)，Release ID `439965579`，draft=false、prerelease=false，匿名 Latest 查询返回 v0.2.9。构建提交与新轻量标签 v0.2.9 均为 [`1ea89a1562616aba8fd079694e1502102b03397c`](https://github.com/noharass/WorkMemo/tree/1ea89a1562616aba8fd079694e1502102b03397c)，已核对远端与 API，标签源码与资产一致；回执文档另行提交，不改变构建标签。
+
+四项资产服务端大小和 SHA256、匿名直接下载复算全部通过，公开资产恰为四项：安装器 Asset ID `730176711`、ZIP `730177013`、许可 `730177266`、SHA256SUMS `730177475`。完整回执与下载副本位于下述本地目录。
+
+发布前后比较确认旧 v0.2.7（Release ID 431201874）和 v0.2.8（433413440）的四项资产 ID、文件名、大小、摘要全部保持不变，检查回执 `E:\WorkMemo\artifacts\0.2.9\qa\PRESERVED-RELEASES.json`。未替换旧资产、移动旧标签或删除历史发布。
 
 ## 数据与兼容性
 
@@ -30,7 +38,7 @@ Node 57 项、Rust 163 项（158 库、2 helper、2 主机、1 注册）和 Carg
 
 ZIP CRC 和精确 15 文件名单通过，逐项字节与构建资源／源码一致；安装器解包后主程序、helper、profile、扩展、修复脚本与许可和 ZIP 一致。主程序 FileVersion/ProductVersion=0.2.9，helper version=0.2.9、protocol=1、identifier=com.workmemo.desktop、test_overrides=false。npm 锁定依赖图、扩展固定 key 与全部权限、Tauri 除版本外配置保持。
 
-主程序 SHA256：`75430a20df9e2d07e3f05d7178d7d01ee4417c5326c78522e2906f7e3e3b68d6`；启用 `--no-binary-patching`，安装器和 ZIP 主程序一致。本地成品已校验，公开回执完成后补记。
+主程序 SHA256：`75430a20df9e2d07e3f05d7178d7d01ee4417c5326c78522e2906f7e3e3b68d6`；启用 `--no-binary-patching`，安装器和 ZIP 主程序一致。本地成品和公开直接下载均已校验。
 
 | 文件 | 字节 | SHA256 |
 | --- | ---: | --- |
