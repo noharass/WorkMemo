@@ -6,7 +6,11 @@
 
 灵动岛默认收起，切换标签或收到提醒只更新短文字与箭头旁的静态圆点，点击箭头才展开。手动收起后不会因下一网页或候选变化重新展开；已打开的补填表单与未保存关闭保护保留。Rust 显示条件确保无活动任务时仍能显示收起的待绑定提示，并尊重托盘隐藏偏好。
 
-功能源码基线为 `b8c238867cc926ad994284589c6f9753bf1a5ff3`，完整程序与测试源码见 [FIX-ISLAND-MANUAL-EXPAND-SOURCE.md](FIX-ISLAND-MANUAL-EXPAND-SOURCE.md)。本次不修改程序代码、版本、依赖、权限或数据库结构，仅更新使用说明、发布记录并构建成品。本地成品已完成构建与校验，公开资产替换及构建提交回执在完成后补记。
+功能源码基线为 `b8c238867cc926ad994284589c6f9753bf1a5ff3`，完整程序与测试源码见 [FIX-ISLAND-MANUAL-EXPAND-SOURCE.md](FIX-ISLAND-MANUAL-EXPAND-SOURCE.md)。本次不修改程序代码、版本、依赖、权限或数据库结构，仅更新使用说明、发布记录并构建成品。本地成品与公开四资产均已完成校验，匿名 Latest 查询返回 v0.2.7；本次交付完成。
+
+资产构建源码为 [`2b9af50acc905eddd937fb131c16dbf0f945ac5d`](https://github.com/noharass/WorkMemo/tree/2b9af50acc905eddd937fb131c16dbf0f945ac5d)。公开入口：[WorkMemo v0.2.7 · 2026-11-10 灵动岛收起修订](https://github.com/noharass/WorkMemo/releases/tag/v0.2.7)，Release ID `431201874` 保持，draft=false、prerelease=false、Latest=true。
+
+新资产先以临时名称上传并核对服务端大小和 SHA256，再切换正式名称；匿名下载四项复算全部通过后才移除旧资产，本机备份保留。安装器 Asset ID `729995852`、ZIP `729995999`、许可 `729996225`、SHA256SUMS `729996364`，最终仅保留四项正式名称资产。完整公开回执 `E:\WorkMemo\artifacts\0.2.7\qa\island-20261110\RELEASE-RECEIPT.json`；匿名下载副本位于同目录 `public-downloads`。
 
 原 `v0.2.7` 标签保留历史提交 `cb031eb7d048dd26dc18e51a335058d21a60901f`，不移动、不强推；GitHub 自动标签 Source code 下载对应原始历史代码，本次资产源码须使用最终构建提交。既有 v0.2.8 发布保留。上一次 2026-11-09 成品记录和旧摘要见 [RELEASE-0.2.7-REFRESH.md](RELEASE-0.2.7-REFRESH.md)。
 
