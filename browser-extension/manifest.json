@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "WorkMemo 本地工作监测",
-  "version": "0.2.9",
-  "version_name": "0.2.9",
+  "version": "0.2.10",
+  "version_name": "0.2.10",
   "description": "授权后将去除参数的网页地址和匹配状态传给本机 WorkMemo；不读取网页内容或输入文本。",
   "minimum_chrome_version": "120",
   "permissions": [
