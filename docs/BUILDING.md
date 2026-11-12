@@ -25,6 +25,8 @@ npm.cmd run tauri dev
 
 2026-11-12 零点结束源码使用 schema 11，验收使用独立标识和隔离数据库。新增 `cargo test --locked --manifest-path src-tauri/Cargo.toml day_rollover --lib`，覆盖固定北京时间边界、全部暂停原因、重启、回滚和迁移；完整结果见 [DAY-ROLLOVER.md](DAY-ROLLOVER.md)。公开 0.2.9 安装包尚不包含此变更。
 
+同日后续网页补记录将当前源码升级为 schema 12，新增持久化请求去重表，完整备份恢复包含该表。专项为 `cargo test --locked --manifest-path src-tauri/Cargo.toml manual_entry`、`node --test tests/manual-entry.test.mjs` 和生产预览下的 `node scripts/verify-manual-entry.mjs`；网页脚本只拦截隔离 HTTP 数据，不连接正式数据库。详细命令、完整文件清单与验收限制见 [WEB-MANUAL-ENTRY.md](WEB-MANUAL-ENTRY.md)。新旧数据库不可直接降级互读，先备份；当前公开 0.2.9 成品仍是 schema 10。
+
 ```powershell
 npm.cmd test
 npm.cmd run build

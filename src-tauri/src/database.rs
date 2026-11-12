@@ -158,7 +158,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1..=11 => {}
+            1..=12 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -219,6 +219,12 @@ impl Store {
             tx.execute_batch(include_str!("../migrations/011_pause_day.sql"))
                 .map_err(db_error)?;
             tx.pragma_update(None, "user_version", 11)
+                .map_err(db_error)?;
+        }
+        if version < 12 {
+            tx.execute_batch(include_str!("../migrations/012_manual_entries.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 12)
                 .map_err(db_error)?;
         }
         let invalid: Option<String> = tx
@@ -657,6 +663,9 @@ mod settlement_tests;
 
 #[path = "day_rollover.rs"]
 mod day_rollover;
+#[path = "manual_entry.rs"]
+mod manual_entry;
+pub use manual_entry::ManualEntryInput;
 #[path = "tracking.rs"]
 mod tracking;
 pub use tracking::Notice;

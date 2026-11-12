@@ -258,7 +258,7 @@ fn schema_ten_upgrade_preserves_records_children_bindings_and_sequence() {
         .unwrap()
         .id;
     store.connection.execute("INSERT INTO work_urls(url_prefix,category,match_mode,task_id) VALUES('https://example.test/','开发','origin',?1)", [task]).unwrap();
-    store.connection.execute_batch("DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; PRAGMA user_version=10; UPDATE sqlite_sequence SET seq=999 WHERE name='work_records';").unwrap();
+    store.connection.execute_batch("DROP TABLE manual_entry_requests; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; PRAGMA user_version=10; UPDATE sqlite_sequence SET seq=999 WHERE name='work_records';").unwrap();
     let mut migrated = Store::initialize(store.connection, Box::new(clock.clone()), None).unwrap();
     assert_eq!(paused_at(&migrated, id), Some(MIDNIGHT - 2500));
     assert_eq!(migrated.record(id).unwrap().quantity, Some(2.5));
@@ -287,7 +287,7 @@ fn schema_ten_upgrade_preserves_records_children_bindings_and_sequence() {
 #[test]
 fn failed_schema_upgrade_rolls_back_the_added_column_and_version() {
     let (store, clock) = memory(MIDNIGHT - 3000);
-    store.connection.execute_batch("DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; PRAGMA user_version=10; CREATE TABLE paused_records_by_day(marker TEXT); INSERT INTO paused_records_by_day VALUES('keep');").unwrap();
+    store.connection.execute_batch("DROP TABLE manual_entry_requests; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; PRAGMA user_version=10; CREATE TABLE paused_records_by_day(marker TEXT); INSERT INTO paused_records_by_day VALUES('keep');").unwrap();
     let directory = TestDirectory::new();
     store
         .connection

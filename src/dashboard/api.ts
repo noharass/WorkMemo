@@ -63,6 +63,7 @@ export type Detail = {
 };
 export type Meta = {
   version: string;
+  manual_entry?: boolean;
   category_names: CategoryNames;
   presentation: Presentation;
   active: WorkRecord | null;

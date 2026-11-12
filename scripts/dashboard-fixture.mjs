@@ -76,6 +76,12 @@ export async function dashboardFixture(page) {
     revisions: [],
     segments: [],
     many: false,
+    manualCapability: true,
+    manualSaves: 0,
+    manualFailure: false,
+    manualDelay: 0,
+    manualLoseResponse: false,
+    manualEntries: new Map(),
   };
   const iso = (date) => date.toISOString().slice(0, 10);
   function range(query) {
@@ -211,6 +217,7 @@ export async function dashboardFixture(page) {
       return route.fulfill({
         json: {
           version: "0.2.5 · 隔离验收",
+          manual_entry: state.manualCapability,
           category_names: names,
           presentation,
           active: state.active,
@@ -242,6 +249,21 @@ export async function dashboardFixture(page) {
       return route.fulfill({
         json: { record, segments: state.segments, revisions: state.revisions },
       });
+    }
+    if (endpoint === "manual-entry") {
+      state.manualSaves++;
+      if (state.manualDelay) await new Promise(resolve => setTimeout(resolve, state.manualDelay));
+      if (state.manualFailure) return route.fulfill({ status: 500, json: { error: "隔离补录保存失败" } });
+      let record = state.manualEntries.get(body.request_id);
+      if (!record) {
+        record = { ...state.records[0], ...body, id: 1000 + state.manualEntries.size,
+          duration_seconds: Math.floor(body.duration_ms / 1000), legacy_duration_ms: body.duration_ms,
+          source: "MANUAL_ENTRY", status: "FINISHED", settlement_status: "COMPLETE", is_demo: false, revision: 0 };
+        state.manualEntries.set(body.request_id, record);
+        state.records.push(record);
+      }
+      if (state.manualLoseResponse) { state.manualLoseResponse = false; return route.abort('connectionreset'); }
+      return route.fulfill({ json: { record, segments: [], revisions: [] } });
     }
     if (endpoint === "save") {
       state.saves++;

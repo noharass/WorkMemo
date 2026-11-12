@@ -52,6 +52,7 @@ import {
   type Row,
 } from "./dashboard/api";
 import { useDashboardData } from "./dashboard/useDashboardData";
+import { ManualEntryModal } from "./dashboard/ManualEntryModal";
 import { CalendarChart, CategoryChart, DurationPieChart, TrendChart } from "./dashboard/Charts";
 import "./Dashboard.css";
 
@@ -59,6 +60,7 @@ const minDate = dayjs("1970-01-01"),
   maxDate = dayjs("9999-12-31");
 function RecordStatus({ row }: { row: Row }) {
   return (
+    <Space size={4} wrap>
     <Tag
       color={
         row.status !== "FINISHED"
@@ -74,6 +76,8 @@ function RecordStatus({ row }: { row: Row }) {
           ? "待补全"
           : "已确认"}
     </Tag>
+    {row.source === "MANUAL_ENTRY" && !row.is_demo && <Tag color="blue">人工补录</Tag>}
+    </Space>
   );
 }
 function Title({ title, description }: { title: string; description?: string }) {
@@ -95,6 +99,7 @@ function DashboardContent() {
   const { data, meta, error, online, refreshing, updatedAt, loading } =
     useDashboardData(query, refresh);
   const [actionError, setActionError] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -600,7 +605,7 @@ function DashboardContent() {
   );
   return (
     <div className="data-center">
-      <aside className="dc-sidebar" inert={!!detail || !!confirmation}>
+      <aside className="dc-sidebar" inert={!!detail || !!confirmation || manualOpen}>
         <Tooltip title="WorkMemo 工作数据中心" placement="right">
           <a
             className="dc-brand"
@@ -667,7 +672,7 @@ function DashboardContent() {
           </Tooltip>
         </div>
       </aside>
-      <div className="dc-page" inert={!!detail || !!confirmation}>
+      <div className="dc-page" inert={!!detail || !!confirmation || manualOpen}>
         <header className="dc-topbar">
           <span className="dc-breadcrumb">
             我的工作空间 <span>/ 工作总览</span>
@@ -680,6 +685,8 @@ function DashboardContent() {
                   ? `更新于 ${new Date(updatedAt).toLocaleTimeString("zh-CN", { hour12: false })}`
                   : "等待连接"}
             </span>
+            <Button type="primary" disabled={blocked || !online || !meta?.manual_entry || query.scope === "demo"}
+              onClick={() => setManualOpen(true)}>补记录</Button>
             <Button
               icon={<Icon name="refresh" />}
               onClick={() => setRefresh((value) => value + 1)}
@@ -1442,7 +1449,9 @@ function DashboardContent() {
                     ))
                   ) : (
                     <p className="dc-muted">
-                      旧记录仅保留累计工时，没有可展示的区间。
+                      {detail.record.source === "MANUAL_ENTRY" && !detail.record.is_demo
+                        ? "人工补录的有效工时，没有自动计时区间。"
+                        : "旧记录仅保留累计工时，没有可展示的区间。"}
                     </p>
                   ),
                 },
@@ -1477,6 +1486,13 @@ function DashboardContent() {
           </div>
         )}
       </BottomSheet>
+      {manualOpen && <ManualEntryModal online={online} onClose={() => setManualOpen(false)} onSaved={saved => {
+        setManualOpen(false);
+        applyQuery({ ...query, period: "day", anchor_date: localDate(new Date(saved.record.start_time)),
+          start_date: null, end_date: null, category: null, scope: "real", status: "all", page: 1 });
+        setRefresh(value => value + 1);
+        void message.success("补记录已保存，可在工作明细中查看。");
+      }} />}
       <Modal
         open={confirmOpen}
         centered

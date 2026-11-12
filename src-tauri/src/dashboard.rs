@@ -1,5 +1,5 @@
 use crate::{
-    database::{SettleInput, data_center::DashboardQuery},
+    database::{ManualEntryInput, SettleInput, data_center::DashboardQuery},
     service::{Backend, SharedStore},
 };
 use serde_json::{Value, json};
@@ -167,7 +167,7 @@ fn serve(
                 let guard = shared.lock().map_err(|_| "数据库锁异常")?;
                 let store = guard.as_ref().map_err(|e| e.clone())?;
                 return Ok(
-                    json!({"version":env!("CARGO_PKG_VERSION"),"presentation":presentation,"active":store.active()?,"category_names":store.category_names()?}),
+                    json!({"version":env!("CARGO_PKG_VERSION"),"manual_entry":true,"presentation":presentation,"active":store.active()?,"category_names":store.category_names()?}),
                 );
             }
             if !write {
@@ -175,7 +175,15 @@ fn serve(
             }
             let mut guard = shared.lock().map_err(|_| "数据库锁异常")?;
             let store = guard.as_mut().map_err(|e| e.clone())?;
+            store.expire_previous_day_pauses()?;
             let value = match path.as_str() {
+                "/api/manual-entry" => {
+                    let id = store.create_manual_entry(
+                        serde_json::from_value::<ManualEntryInput>(input)
+                            .map_err(|_| "补录参数无效")?,
+                    )?;
+                    store.dashboard_detail(id)?
+                }
                 "/api/query" => store.dashboard_query(
                     serde_json::from_value::<DashboardQuery>(input).map_err(|_| "筛选参数无效")?,
                 )?,
@@ -197,7 +205,7 @@ fn serve(
                 }
                 _ => return Err("接口不存在".into()),
             };
-            if ["/api/save", "/api/delete"].contains(&path.as_str()) {
+            if ["/api/save", "/api/delete", "/api/manual-entry"].contains(&path.as_str()) {
                 let _ = app.emit("workmemo:data-changed", ());
             }
             Ok(value)

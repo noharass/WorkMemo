@@ -10,6 +10,24 @@ body:where(:has(.data-center)) {
 .wm-modal .wm-btn:not(.wm-btn-icon-only) {
   width: auto;
 }
+.dc-manual-entry .wm-picker-clear {
+  width: auto;
+}
+.dc-manual-entry-picker button {
+  width: auto;
+}
+@media (max-width: 640px) {
+  .dc-manual-entry-picker .wm-picker-datetime-panel {
+    flex-direction: column;
+  }
+  .dc-manual-entry-picker .wm-picker-panel-container {
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+  .dc-manual-entry-picker.wm-picker-dropdown .wm-picker-time-panel .wm-picker-content {
+    height: 112px;
+  }
+}
 .data-center {
   min-height: 100vh;
   color: #243c33;

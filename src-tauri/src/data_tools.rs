@@ -171,6 +171,7 @@ impl Store {
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(db_error)?;
             let tables = [
+                "manual_entry_requests",
                 "category_names",
                 "import_sources",
                 "end_reminders",
@@ -830,6 +831,60 @@ mod tests {
         assert_eq!(target.record(1).unwrap().category, "开发");
     }
     #[test]
+    fn manual_entry_backup_restores_retry_registry_and_deleted_tombstone() {
+        let d = TestDirectory::new();
+        let path = d.db();
+        let dir = path.parent().unwrap();
+        let mut source = empty();
+        let input = |request: &str| crate::database::ManualEntryInput {
+            request_id: request.into(),
+            category: "文档".into(),
+            quantity: 3.0,
+            remark: "补录备份".into(),
+            start_time: 1,
+            end_time: 1000,
+            duration_ms: 900,
+        };
+        let id = source
+            .create_manual_entry(input("backup-manual-entry-1"))
+            .unwrap();
+        let deleted = source
+            .create_manual_entry(input("backup-manual-entry-2"))
+            .unwrap();
+        source.dashboard_delete(deleted, 0).unwrap();
+        let image = checked_image(&source.archive(dir).unwrap(), dir).unwrap();
+        let mut target = empty();
+        // Restore replaces existing registry entries before replacing records (foreign keys stay on).
+        target
+            .create_manual_entry(input("discarded-target-entry"))
+            .unwrap();
+        target.apply_image(&image.0).unwrap();
+        assert_eq!(
+            target
+                .create_manual_entry(input("backup-manual-entry-1"))
+                .unwrap(),
+            id
+        );
+        assert!(
+            target
+                .create_manual_entry(input("backup-manual-entry-2"))
+                .is_err()
+        );
+        assert_eq!(target.record(id).unwrap().duration_ms, 900);
+        assert_eq!(
+            target
+                .connection
+                .query_row("SELECT COUNT(*) FROM manual_entry_requests", [], |r| r
+                    .get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
+        let mut imported = empty();
+        assert_eq!(merge(&mut imported, &source).unwrap().imported, 1);
+        assert_eq!(imported.record(1).unwrap().source, "MANUAL_ENTRY");
+        assert_eq!(imported.record(1).unwrap().duration_ms, 900);
+    }
+    #[test]
     fn legacy_schema_backup_and_new_rule_modes_restore() {
         let d = TestDirectory::new();
         let dir = d.db().parent().unwrap().to_path_buf();
@@ -842,7 +897,7 @@ mod tests {
             target.monitor_config().unwrap().rules[0].match_mode,
             "domain_suffix"
         );
-        source.connection.execute_batch("PRAGMA foreign_keys=OFF; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
+        source.connection.execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE manual_entry_requests; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
         let image = checked_image(&source.archive(&dir).unwrap(), &dir).unwrap();
         target.apply_image(&image.0).unwrap();
         assert_eq!(
