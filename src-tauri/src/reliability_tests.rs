@@ -297,7 +297,7 @@ fn abrupt_process_exit_recovers_last_checkpoint_and_independent_appearance() {
             > 0
     );
     let clock = TestClock::new();
-    clock.advance(86_400_000);
+    clock.advance(30_000); // Same-day crash recovery; next-day expiry is tested separately.
     let mut recovered = Store::open(&directory.db(), Box::new(clock.clone())).unwrap();
     let active = recovered.snapshot().unwrap().active.unwrap();
     assert_eq!(active.id, 2);

@@ -158,7 +158,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1..=10 => {}
+            1..=11 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -215,6 +215,12 @@ impl Store {
             tx.pragma_update(None, "user_version", 10)
                 .map_err(db_error)?;
         }
+        if version < 11 {
+            tx.execute_batch(include_str!("../migrations/011_pause_day.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 11)
+                .map_err(db_error)?;
+        }
         let invalid: Option<String> = tx
             .query_row(
                 "SELECT [table] FROM pragma_foreign_key_check LIMIT 1",
@@ -230,7 +236,9 @@ impl Store {
         tx.execute("UPDATE work_segments SET state='RECOVERED',end_time=checkpoint_time WHERE state='OPEN'", [])
             .map_err(db_error)?;
         tx.execute(
-            "UPDATE work_records SET is_paused=1, recovery_pending=1,
+            "UPDATE work_records SET paused_at=COALESCE(paused_at,
+                (SELECT checkpoint_time FROM work_segments WHERE record_id=work_records.id ORDER BY id DESC LIMIT 1),
+                last_input_time,start_time),is_paused=1, recovery_pending=1,
              pause_reason=COALESCE(pause_reason,'RECOVERY') WHERE status IN ('WORKING','SUSPENDED')",
             [],
         )
@@ -316,7 +324,8 @@ impl Store {
     }
 
     fn save_running(&mut self, record: &WorkRecord, pause_reason: Option<&str>) -> Result<()> {
-        let duration = self.elapsed(record, self.clock.now())?;
+        let now = self.clock.now();
+        let duration = self.elapsed(record, now)?;
         let tx = self.connection.transaction().map_err(db_error)?;
         write_segment(
             &tx,
@@ -334,8 +343,8 @@ impl Store {
         }
         if let Some(reason) = pause_reason {
             tx.execute(
-                "UPDATE work_records SET is_paused=1,pause_reason=?1 WHERE id=?2",
-                params![reason, record.id],
+                "UPDATE work_records SET is_paused=1,pause_reason=?1,paused_at=COALESCE(paused_at,?3) WHERE id=?2",
+                params![reason, record.id,now.wall_ms.max(0)],
             )
             .map_err(db_error)?;
         }
@@ -344,6 +353,7 @@ impl Store {
     }
 
     pub fn snapshot(&mut self) -> Result<Snapshot> {
+        self.expire_previous_day_pauses()?;
         self.checkpoint()?;
         let active = self.active()?;
         let mut statement = self.connection.prepare(
@@ -370,6 +380,7 @@ impl Store {
         input: StartInput,
         expected_active_id: Option<i64>,
     ) -> Result<()> {
+        self.expire_previous_day_pauses()?;
         if self.active()?.map(|record| record.id) != expected_active_id {
             return Err("当前任务已变化，请刷新后重新确认。".into());
         }
@@ -447,6 +458,7 @@ impl Store {
     }
 
     pub fn pause(&mut self, id: i64) -> Result<()> {
+        self.expire_previous_day_pauses()?;
         let record = self.current(id)?;
         if record.is_paused {
             self.connection
@@ -489,13 +501,14 @@ impl Store {
         self.resume_at(id, self.clock.now(), mode)
     }
     fn resume_at(&mut self, id: i64, now: TimePoint, mode: &str) -> Result<()> {
+        self.expire_previous_day_pauses()?;
         let record = self.current(id)?;
         if !record.is_paused {
             return Ok(());
         }
         let tx = self.connection.transaction().map_err(db_error)?;
         tx.execute(
-            "UPDATE work_records SET is_paused=0, recovery_pending=0,pause_reason=NULL,control_mode=?2,last_input_time=?3 WHERE id=?1",
+            "UPDATE work_records SET is_paused=0, recovery_pending=0,pause_reason=NULL,paused_at=NULL,control_mode=?2,last_input_time=?3 WHERE id=?1",
             params![id,mode,now.wall_ms],
         )
         .map_err(db_error)?;
@@ -614,7 +627,7 @@ fn finish_row(
     reason: &str,
 ) -> Result<()> {
     let confirmed = confirmed.max(0);
-    tx.execute("UPDATE work_records SET status='FINISHED',is_paused=1,recovery_pending=0,pause_reason=NULL,
+    tx.execute("UPDATE work_records SET status='FINISHED',is_paused=1,recovery_pending=0,pause_reason=NULL,paused_at=NULL,
         settlement_status='PENDING',confirmed_end_time=?1,end_reason=?2,
         end_time=MAX(?3,COALESCE((SELECT MAX(checkpoint_time) FROM work_segments WHERE record_id=?4 AND duration_ms>0),CASE WHEN legacy_duration_ms>0 THEN ?1 ELSE ?3 END)) WHERE id=?4 AND status='WORKING'",
         params![confirmed,reason,start,id]).map_err(db_error)?;
@@ -642,6 +655,8 @@ pub use settlement::SettleInput;
 #[path = "settlement_tests.rs"]
 mod settlement_tests;
 
+#[path = "day_rollover.rs"]
+mod day_rollover;
 #[path = "tracking.rs"]
 mod tracking;
 pub use tracking::Notice;

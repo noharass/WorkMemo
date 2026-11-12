@@ -227,7 +227,7 @@ fn checkpoint_recovery_keeps_id_and_never_counts_downtime() {
         store.checkpoint().unwrap();
         clock.advance(800); // Simulate process death before the next checkpoint.
     }
-    clock.advance(86_400_000);
+    clock.advance(30_000); // Same Beijing day; cross-day expiry has dedicated tests.
     let mut reopened = Store::open(&directory.db(), Box::new(clock.clone())).unwrap();
     let restored = reopened.snapshot().unwrap().active.unwrap();
     assert_eq!(restored.id, task);

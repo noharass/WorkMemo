@@ -51,7 +51,7 @@ fn empty_quantity_finishes_durably_without_blocking_next_work() {
         assert_ne!(store.active().unwrap().unwrap().id, first);
         assert_eq!(store.snapshot().unwrap().pending_count, 1);
     }
-    clock.advance(86_400_000);
+    clock.advance(30_000); // Recovery within the same Beijing day remains resumable.
     let mut reopened = Store::open(&directory.db(), Box::new(clock)).unwrap();
     assert_eq!(reopened.pending_records().unwrap()[0].id, first);
     reopened.settle(settle(first, 0.0)).unwrap();
@@ -134,7 +134,7 @@ fn intervals_and_record_checkpoint_are_atomic_and_recover_at_last_checkpoint() {
             .execute_batch("DROP TRIGGER reject_record;")
             .unwrap();
     }
-    clock.advance(86_400_000);
+    clock.advance(30_000); // Same-day recovery keeps this atomic checkpoint scenario resumable.
     let mut store = Store::open(&directory.db(), Box::new(clock.clone())).unwrap();
     let recovered = store.active().unwrap().unwrap();
     assert_eq!(recovered.duration_ms, 1500);

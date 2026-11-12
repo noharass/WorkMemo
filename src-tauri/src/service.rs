@@ -303,6 +303,7 @@ pub(crate) async fn access<T: Send + 'static>(
             .lock()
             .map_err(|_| "本地数据服务异常，请重新打开应用。")?;
         let store = guard.as_mut().map_err(|e| e.clone())?;
+        store.expire_previous_day_pauses()?;
         observe_sound(store, false);
         let result = action(store);
         observe_sound(store, true);

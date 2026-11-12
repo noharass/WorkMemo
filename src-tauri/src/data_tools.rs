@@ -842,7 +842,7 @@ mod tests {
             target.monitor_config().unwrap().rules[0].match_mode,
             "domain_suffix"
         );
-        source.connection.execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
+        source.connection.execute_batch("PRAGMA foreign_keys=OFF; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
         let image = checked_image(&source.archive(&dir).unwrap(), &dir).unwrap();
         target.apply_image(&image.0).unwrap();
         assert_eq!(
@@ -890,6 +890,50 @@ mod tests {
             .unwrap();
         assert_eq!(mapped, task);
     }
+    #[test]
+    fn full_restore_keeps_pause_date_and_expiration_excludes_downtime() {
+        let d = TestDirectory::new();
+        let database_path = d.db();
+        let dir = database_path.parent().unwrap();
+        let clock = TestClock::new();
+        let midnight = 16 * 3_600_000;
+        clock.jump_wall(midnight - 1000 - clock.now().wall_ms);
+        let mut source = Store::initialize(
+            Connection::open_in_memory().unwrap(),
+            Box::new(clock.clone()),
+            None,
+        )
+        .unwrap();
+        start(&mut source);
+        let id = source.active().unwrap().unwrap().id;
+        clock.advance(100);
+        source.pause(id).unwrap();
+        let image = checked_image(&source.archive(dir).unwrap(), dir).unwrap();
+        let mut target = Store::initialize(
+            Connection::open_in_memory().unwrap(),
+            Box::new(clock.clone()),
+            None,
+        )
+        .unwrap();
+        target.apply_image(&image.0).unwrap();
+        assert_eq!(
+            target
+                .connection
+                .query_row(
+                    "SELECT paused_at FROM work_records WHERE id=?1",
+                    [id],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+            midnight - 900
+        );
+        clock.advance(900);
+        assert!(target.snapshot().unwrap().active.is_none());
+        assert_eq!(target.record(id).unwrap().status, "FINISHED");
+        assert_eq!(target.record(id).unwrap().duration_ms, 100);
+        assert_eq!(target.pending_records().unwrap().len(), 1);
+    }
+
     fn empty() -> Store {
         Store::initialize(
             Connection::open_in_memory().unwrap(),

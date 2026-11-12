@@ -23,6 +23,8 @@ npm.cmd run tauri dev
 
 ## 检查
 
+2026-11-12 零点结束源码使用 schema 11，验收使用独立标识和隔离数据库。新增 `cargo test --locked --manifest-path src-tauri/Cargo.toml day_rollover --lib`，覆盖固定北京时间边界、全部暂停原因、重启、回滚和迁移；完整结果见 [DAY-ROLLOVER.md](DAY-ROLLOVER.md)。公开 0.2.9 安装包尚不包含此变更。
+
 ```powershell
 npm.cmd test
 npm.cmd run build

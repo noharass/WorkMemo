@@ -48,6 +48,7 @@ impl Store {
         changed_rule: bool,
         rule_id: Option<i64>,
     ) -> Result<()> {
+        self.expire_previous_day_pauses()?;
         let current = self.active()?;
         if !explicit
             && current
@@ -88,8 +89,8 @@ impl Store {
             if !old.is_paused {
                 write_segment(&tx, self.segment.as_ref(), old.id, total, true)?;
             }
-            tx.execute("UPDATE work_records SET status='SUSPENDED',is_paused=1,pause_reason=CASE WHEN pause_reason='MANUAL' THEN 'MANUAL' ELSE 'AWAY' END,duration_ms=?2,duration_seconds=?3 WHERE id=?1 AND status='WORKING'",
-                params![old.id,total,total/1000]).map_err(db_error)?;
+            tx.execute("UPDATE work_records SET status='SUSPENDED',is_paused=1,paused_at=COALESCE(paused_at,?4),pause_reason=CASE WHEN pause_reason='MANUAL' THEN 'MANUAL' ELSE 'AWAY' END,duration_ms=?2,duration_seconds=?3 WHERE id=?1 AND status='WORKING'",
+                params![old.id,total,total/1000,now.wall_ms.max(0)]).map_err(db_error)?;
             let linked: i64 = tx
                 .query_row(
                     "SELECT COUNT(*) FROM work_tasks WHERE current_record_id=?1",
@@ -125,7 +126,7 @@ impl Store {
         let mut next_id = None;
         if let Some((task_id, category, linked_id)) = target {
             let id = if let Some(id) = linked_id {
-                tx.execute("UPDATE work_records SET status='WORKING',is_paused=0,recovery_pending=0,pause_reason=NULL,control_mode=CASE WHEN ?3 THEN control_mode ELSE 'AUTO' END,last_input_time=?2 WHERE id=?1 AND status IN ('SUSPENDED','WORKING')",params![id,now.wall_ms,explicit]).map_err(db_error)?;
+                tx.execute("UPDATE work_records SET status='WORKING',is_paused=0,recovery_pending=0,pause_reason=NULL,paused_at=NULL,control_mode=CASE WHEN ?3 THEN control_mode ELSE 'AUTO' END,last_input_time=?2 WHERE id=?1 AND status IN ('SUSPENDED','WORKING')",params![id,now.wall_ms,explicit]).map_err(db_error)?;
                 id
             } else {
                 tx.execute("INSERT INTO work_records(category,quantity,remark,start_time,status,is_paused,settlement_status,source,control_mode,last_input_time) VALUES(?1,NULL,'',?2,'WORKING',0,'IN_PROGRESS','AUTO','AUTO',?2)",params![category,now.wall_ms]).map_err(db_error)?;
@@ -273,8 +274,8 @@ impl Store {
             if !record.is_paused {
                 write_segment(&tx, self.segment.as_ref(), record.id, duration, true)?;
             }
-            tx.execute("UPDATE work_records SET duration_ms=?1,duration_seconds=?2,is_paused=1,pause_reason=?3,control_mode=?4 WHERE id=?5",
-                params![duration,duration/1000,if input.enabled{"MONITOR"}else{"MANUAL"},if input.enabled{"AUTO"}else{"MANUAL"},record.id]).map_err(db_error)?;
+            tx.execute("UPDATE work_records SET duration_ms=?1,duration_seconds=?2,is_paused=1,paused_at=COALESCE(paused_at,?6),pause_reason=?3,control_mode=?4 WHERE id=?5",
+                params![duration,duration/1000,if input.enabled{"MONITOR"}else{"MANUAL"},if input.enabled{"AUTO"}else{"MANUAL"},record.id,now.wall_ms.max(0)]).map_err(db_error)?;
         }
         tx.execute("DELETE FROM work_urls", []).map_err(db_error)?;
         for (prefix, category, mode) in rules {
@@ -422,7 +423,11 @@ impl Store {
         )
         .map_err(db_error)?;
         let total:i64=tx.query_row("SELECT legacy_duration_ms+COALESCE((SELECT SUM(duration_ms) FROM work_segments WHERE record_id=?1),0) FROM work_records WHERE id=?1",[record.id],|r|r.get(0)).map_err(db_error)?;
-        tx.execute("UPDATE work_records SET duration_ms=?1,duration_seconds=?2,is_paused=1,pause_reason=?3 WHERE id=?4",params![total,total/1000,if finish{None}else{Some(reason)},record.id]).map_err(db_error)?;
+        let paused_wall = confirmed
+            .wall_ms
+            .saturating_sub(confirmed.ticks_ms.saturating_sub(cutoff))
+            .max(0);
+        tx.execute("UPDATE work_records SET duration_ms=?1,duration_seconds=?2,is_paused=1,pause_reason=?3,paused_at=CASE WHEN ?5 THEN NULL ELSE COALESCE(paused_at,?6) END WHERE id=?4",params![total,total/1000,if finish{None}else{Some(reason)},record.id,finish,paused_wall]).map_err(db_error)?;
         if finish {
             finish_row(&tx, record.id, record.start_time, confirmed.wall_ms, reason)?;
         }
@@ -432,6 +437,7 @@ impl Store {
             self.monitor.record_ended(confirmed);
             self.monitor.input_floor = cutoff;
         }
+        self.expire_previous_day_pauses()?;
         Ok(())
     }
 
@@ -478,6 +484,7 @@ impl Store {
     }
 
     pub fn monitor_tick(&mut self, sample: NativeSample, now: TimePoint) -> Result<()> {
+        self.expire_previous_day_pauses()?;
         if !self.monitor.active {
             return Ok(());
         }
@@ -957,7 +964,7 @@ impl Store {
             if !r.is_paused {
                 write_segment(&tx, self.segment.as_ref(), r.id, duration, true)?;
             }
-            tx.execute("UPDATE work_records SET duration_ms=?1,duration_seconds=?2,is_paused=1,pause_reason='MANUAL' WHERE id=?3",params![duration,duration/1000,r.id]).map_err(db_error)?;
+            tx.execute("UPDATE work_records SET duration_ms=?1,duration_seconds=?2,is_paused=1,paused_at=COALESCE(paused_at,?4),pause_reason='MANUAL' WHERE id=?3",params![duration,duration/1000,r.id,now.wall_ms.max(0)]).map_err(db_error)?;
         }
         tx.execute(
             "UPDATE monitoring_settings SET browsing_only=1 WHERE id=1",
