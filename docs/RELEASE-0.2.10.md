@@ -16,3 +16,30 @@
 本地成品目录 `E:\WorkMemo\artifacts\0.2.10`，构建日志 `E:\WorkMemo\artifacts\release-0210-build.log`，测试日志 `E:\WorkMemo\artifacts\release-0210-node.log` 与 `E:\WorkMemo\artifacts\release-0210-rust.log`。更新文件为 `E:\WorkMemo\package.json`、`package-lock.json`、`src-tauri\Cargo.toml`、`src-tauri\Cargo.lock`、`src-tauri\tauri.conf.json`、`browser-extension\manifest.json`、`README.md` 和 `docs\USER-GUIDE.md`；完整代码保存在对应文件。工作区原有未跟踪的 `docs\DYNAMIC-ISLAND-PLAN.md` 未纳入提交。
 
 PowerShell 复查：`npm.cmd test`、`cargo test --locked --manifest-path src-tauri/Cargo.toml`、`& .\scripts\package-windows.ps1`、`Get-Content .\artifacts\0.2.10\SHA256SUMS.txt`。预期测试和构建成功，下载后按 SHA256SUMS 核对；实际窗口和扩展验收请使用隔离测试数据。Git 同步使用 `git fetch origin main`、`git push origin HEAD:main`，再比较 `git rev-parse HEAD` 与 `git ls-remote origin refs/heads/main`，不强推。
+
+## 2026-11-14 保持 0.2.10 并复核公开成品
+
+用户要求仍上传为 0.2.10。现场核对 GitHub：既有 Release ID 442923799，tag v0.2.10，非草稿、非预发布，Latest 仍为 v0.2.10。当前应用代码与构建提交 ee76bba664c9361927dcf3ad25116effdb8e209e 无差异，本轮仅增加网页审查文档及隔离取证脚本，因此保留现有四项发布资产和标签，不重新构建或重复替换相同成品。
+
+实际重新无认证下载安装器、ZIP、第三方许可和校验文件，四项大小、服务器 SHA256 摘要、本地原文件与公开下载复算全部一致，摘要仍为上表值。NEW FILE（本地证据，Git忽略）：E:\WorkMemo\artifacts\0.2.10\reverification-2026-11-14\receipt.json 及四项公开下载副本。完整复核脚本在 E:\WorkMemo\artifacts\verify-release-0210.py；凭据仅从既有Git凭据助手读取至内存，不写入文件或URL。
+
+网络恢复后已推送此前审查提交60bc47f，现场比较本地HEAD与远程main均为60bc47f3f41b8534f2c4efaf4bc33028c7596ce7。当前回执另作提交同步；既有v0.2.10标签保持指向构建提交。原有未跟踪docs/DYNAMIC-ISLAND-PLAN.md保留。审查发现的三项可访问性问题和JS体积建议尚未修复；此次上传要求不作为批准新增功能或修复阶段，原生验收范围不扩大。
+
+UPDATE：E:\WorkMemo\docs\RELEASE-0.2.10.md。没有应用代码变更，完整代码仍在原项目文件。复核PowerShell命令：
+
+```powershell
+Set-Location E:\WorkMemo
+python artifacts\verify-release-0210.py
+# 预期：四项public_verified为true，Latest为v0.2.10。
+git diff --stat ee76bba664c9361927dcf3ad25116effdb8e209e HEAD -- src src-tauri browser-extension package.json package-lock.json
+# 预期：没有应用代码差异。
+git add -- docs/RELEASE-0.2.10.md
+git diff --cached --check
+git commit -m "docs: verify existing v0.2.10 public assets"
+git push origin main
+git rev-parse HEAD
+git ls-remote origin refs/heads/main refs/tags/v0.2.10
+git status --short --branch
+```
+
+兼容性仍为既有Windows x64、WebView2、未签名安装包和schema 12备份限制；未重新执行Windows构建、安装卸载或真实任务操作。
