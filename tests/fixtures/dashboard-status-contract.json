@@ -1,0 +1,15 @@
+{
+  "records": [
+    { "id": 1, "status": "WORKING", "settlement_status": "IN_PROGRESS" },
+    { "id": 2, "status": "SUSPENDED", "settlement_status": "IN_PROGRESS" },
+    { "id": 3, "status": "FINISHED", "settlement_status": "PENDING" },
+    { "id": 4, "status": "FINISHED", "settlement_status": "COMPLETE" }
+  ],
+  "expected": {
+    "all": [1, 2, 3, 4],
+    "working": [1],
+    "unfinished": [1, 2],
+    "pending": [3],
+    "complete": [4]
+  }
+}

@@ -15,7 +15,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import type { EChartsOption } from "echarts";
 import type { Data } from "./api";
 import type { Presentation } from "../desktopPreferences";
-import { localDate } from "../history";
+import { formatQuantity, localDate } from "../history";
 import { useCategoryNames } from "../categoryNames";
 import { useMediaQuery } from "../ui/UiProvider";
 
@@ -115,8 +115,8 @@ export function TrendChart({ trend, range }: Pick<Data, "trend" | "range">) {
           hideOverlap: true,
           showMinLabel: true,
           showMaxLabel: true,
-          formatter: (value: string) =>
-            range.trend_unit === "hour" ? value : value.slice(5),
+          // Backend buckets already contain canonical HH:mm, YYYY-MM-DD or YYYY-MM.
+          // Keep the year so different years cannot collapse to the same axis label.
         },
       },
       yAxis: {
@@ -163,7 +163,17 @@ export function CategoryChart({
       animation: !reduced,
       animationDuration: 240,
       animationDurationUpdate: 160,
-      tooltip: { ...tooltip, trigger: "axis" },
+      tooltip: {
+        ...tooltip,
+        trigger: "axis",
+        valueFormatter: (value: unknown) => {
+          const amount = Number(value);
+          if (metric !== "duration") return formatQuantity(amount);
+          return amount > 0 && amount < 0.01
+            ? `${(amount * 3600).toLocaleString("zh-CN", { maximumFractionDigits: 3 })} 秒（不足 0.01 小时）`
+            : `${amount.toLocaleString("zh-CN", { maximumFractionDigits: 4 })} 小时`;
+        },
+      },
       grid: { left: 12, right: 22, top: 25, bottom: 28, containLabel: true },
       xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef2f0" } } },
       yAxis: {
@@ -182,7 +192,7 @@ export function CategoryChart({
             name: name(x.category),
             value:
               metric === "duration"
-                ? Number((x.duration_ms / 3600000).toFixed(2))
+                ? x.duration_ms / 3600000
                 : x.quantity,
             itemStyle: {
               color: presentation.categories[x.category]?.color,

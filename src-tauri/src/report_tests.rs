@@ -235,3 +235,49 @@ fn period_validation_rejects_bad_dates_and_legacy_custom_ranges_still_work() {
     assert_eq!(result["range"]["trend_unit"], "month");
     assert_eq!(result["totals"]["records"], 2);
 }
+
+#[test]
+fn unfinished_status_matches_browser_contract_and_preserves_legacy_working_filter() {
+    let s = store();
+    let contract: Value = serde_json::from_str(include_str!(
+        "../../tests/fixtures/dashboard-status-contract.json"
+    ))
+    .unwrap();
+    for row in contract["records"].as_array().unwrap() {
+        let status = row["status"].as_str().unwrap();
+        let settlement = row["settlement_status"].as_str().unwrap();
+        s.connection.execute(
+            "INSERT INTO work_records(id,category,quantity,start_time,end_time,duration_ms,duration_seconds,status,is_paused,settlement_status)
+             VALUES(?1,'开发',?2,0,?3,1000,1,?4,?5,?6)",
+            params![row["id"].as_i64().unwrap(),if settlement == "COMPLETE" {Some(0.0)} else {None},
+                if status == "FINISHED" {Some(1000)} else {None},status,status != "WORKING",settlement],
+        ).unwrap();
+    }
+    for paused in [false, true] {
+        s.connection
+            .execute(
+                "UPDATE work_records SET is_paused=?1 WHERE status='WORKING'",
+                [paused],
+            )
+            .unwrap();
+        for (status, expected) in contract["expected"].as_object().unwrap() {
+            let value = s
+                .dashboard_query(DashboardQuery {
+                    status: status.clone(),
+                    ..Default::default()
+                })
+                .unwrap();
+            let mut ids: Vec<i64> = value["records"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|row| row["id"].as_i64().unwrap())
+                .collect();
+            ids.sort_unstable();
+            assert_eq!(json!(ids), *expected, "{status}, paused={paused}");
+            if status == "unfinished" {
+                assert_eq!(value["totals"]["records"], 0);
+            }
+        }
+    }
+}

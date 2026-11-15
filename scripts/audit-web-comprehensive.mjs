@@ -80,7 +80,7 @@ try {
    let hook=f.memoizedState;
    while(hook && typeof hook.memoizedState?.current?.getOption!=='function') hook=hook.next;
    const axis=hook.memoizedState.current.getOption().xAxis[0];
-   return {dates:axis.data,labels:axis.data.map(axis.axisLabel.formatter)};
+   return {dates:axis.data,labels:axis.data.map(value=>typeof axis.axisLabel.formatter==='function'?axis.axisLabel.formatter(value):value)};
   });
   await shot(page,'monthly-axis');
   await context.close();
@@ -89,7 +89,7 @@ try {
   const {context,page,state}=await setup();
   await page.route('**/api/query',route=>route.fulfill({status:503,contentType:'text/plain',body:'busy'}));
   await page.getByRole('button',{name:'刷新连接',exact:true}).click();
-  await page.getByText('连接授权已失效，请从 WorkMemo 重新打开数据中心。',{exact:true}).waitFor();
+  await page.getByText('WorkMemo 正忙，请稍后刷新连接。',{exact:true}).waitFor();
   result.scenarios.nonJson503={visible:await page.locator('.dc-notice').first().innerText(),manualEnabled:await page.getByRole('button',{name:'补记录',exact:true}).isEnabled()};
   await context.close();
  }
@@ -104,7 +104,7 @@ try {
    inflight--;finished++;
   });
   for(let i=0;i<8;i++) {
-   await page.getByRole('button',{name:'刷新连接',exact:true}).click();
+   await page.getByRole('button',{name:'刷新连接',exact:true}).evaluate(button=>button.click());
    await page.waitForTimeout(100);
   }
   await page.waitForTimeout(2700);

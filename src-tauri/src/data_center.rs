@@ -51,12 +51,13 @@ impl Store {
         }
         let scope = if q.scope.is_empty() { "real" } else { &q.scope };
         if !["real", "demo", "all"].contains(&scope)
-            || !["", "all", "pending", "complete", "working"].contains(&q.status.as_str())
+            || !["", "all", "pending", "complete", "working", "unfinished"]
+                .contains(&q.status.as_str())
         {
             return Err("数据筛选无效。".into());
         }
         let tx = self.connection.unchecked_transaction().map_err(db_error)?;
-        let filter = "(?1='all' OR is_demo=CASE WHEN ?1='demo' THEN 1 ELSE 0 END) AND (?2 IS NULL OR date(start_time/1000,'unixepoch','localtime')>=?2) AND (?3 IS NULL OR date(start_time/1000,'unixepoch','localtime')<=?3) AND (?4 IS NULL OR category=?4) AND (?5='' OR ?5='all' OR (?5='pending' AND settlement_status='PENDING') OR (?5='complete' AND settlement_status='COMPLETE') OR (?5='working' AND status='WORKING'))";
+        let filter = "(?1='all' OR is_demo=CASE WHEN ?1='demo' THEN 1 ELSE 0 END) AND (?2 IS NULL OR date(start_time/1000,'unixepoch','localtime')>=?2) AND (?3 IS NULL OR date(start_time/1000,'unixepoch','localtime')<=?3) AND (?4 IS NULL OR category=?4) AND (?5='' OR ?5='all' OR (?5='pending' AND settlement_status='PENDING') OR (?5='complete' AND settlement_status='COMPLETE') OR (?5='working' AND status='WORKING') OR (?5='unfinished' AND status IN ('WORKING','SUSPENDED')))";
         let args = params![scope, q.start_date, q.end_date, q.category, q.status];
         let record_count: i64 = self
             .connection

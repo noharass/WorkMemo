@@ -35,6 +35,7 @@ export function useDashboardData(query: Query, refresh: number) {
   const names = useRef("");
   const { accept } = useCategoryNames();
   useEffect(() => {
+    const controller = new AbortController();
     let stopped = false;
     let reading = false;
     setError("");
@@ -43,7 +44,7 @@ export function useDashboardData(query: Query, refresh: number) {
       if (reading) return;
       reading = true;
       try {
-        const metadata = await api<Meta>("meta");
+        const metadata = await api<Meta>("meta", undefined, { signal: controller.signal });
         if (stopped) return;
         setMeta((previous) =>
           equal(previous, metadata) ? previous : metadata,
@@ -53,9 +54,9 @@ export function useDashboardData(query: Query, refresh: number) {
           names.current = nameKey;
           accept(metadata.category_names);
         }
-        setOnline(true);
-        const rows = await api<Data>("query", query);
+        const rows = await api<Data>("query", query, { signal: controller.signal });
         if (stopped) return;
+        setOnline(true);
         setSnapshot((previous) => {
           const value = reconcile(
             previous.key === key ? previous.value : null,
@@ -68,10 +69,10 @@ export function useDashboardData(query: Query, refresh: number) {
         setUpdatedAt(Date.now());
         setError("");
       } catch (e) {
-        if (stopped) return;
+        if (stopped || controller.signal.aborted) return;
         setError(e instanceof Error ? e.message : String(e));
-        if (!(e instanceof ApiError) || e.status === 0 || e.status === 403)
-          setOnline(false);
+        // Business validation can fail while the connection is healthy.
+        setOnline(e instanceof ApiError && e.kind === "business");
       } finally {
         reading = false;
         if (!stopped) setRefreshing(false);
@@ -87,6 +88,7 @@ export function useDashboardData(query: Query, refresh: number) {
     window.addEventListener("focus", focus);
     return () => {
       stopped = true;
+      controller.abort();
       clearInterval(timer);
       window.removeEventListener("focus", focus);
     };

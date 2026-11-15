@@ -23,6 +23,8 @@ npm.cmd run tauri dev
 
 ## 检查
 
+2026-11-15 网页阶段A完成源码修正：新增`unfinished`筛选，旧`working` API含义不变，不迁移数据库。状态、图表及请求恢复专项为`node scripts/verify-web-phase-a.mjs`，使用`WORKMEMO_PLAYWRIGHT`和`WORKMEMO_WEB_URL`指向已有Playwright与生产资源预览；共享状态契约同时由Node及Rust测试校验。完整命令、源码和验收范围见[WEB-PHASE-A.md](WEB-PHASE-A.md)。当前公开0.2.10成品尚未包含本轮修正。
+
 2026-11-12 零点结束源码使用 schema 11，验收使用独立标识和隔离数据库。新增 `cargo test --locked --manifest-path src-tauri/Cargo.toml day_rollover --lib`，覆盖固定北京时间边界、全部暂停原因、重启、回滚和迁移；完整结果见 [DAY-ROLLOVER.md](DAY-ROLLOVER.md)。公开 0.2.9 安装包尚不包含此变更。
 
 同日后续网页补记录将当前源码升级为 schema 12，新增持久化请求去重表，完整备份恢复包含该表。专项为 `cargo test --locked --manifest-path src-tauri/Cargo.toml manual_entry`、`node --test tests/manual-entry.test.mjs` 和生产预览下的 `node scripts/verify-manual-entry.mjs`；网页脚本只拦截隔离 HTTP 数据，不连接正式数据库。详细命令、完整文件清单与验收限制见 [WEB-MANUAL-ENTRY.md](WEB-MANUAL-ENTRY.md)。新旧数据库不可直接降级互读，先备份；当前公开 0.2.9 成品仍是 schema 10。

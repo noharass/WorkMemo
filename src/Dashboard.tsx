@@ -53,6 +53,7 @@ import {
 } from "./dashboard/api";
 import { useDashboardData } from "./dashboard/useDashboardData";
 import { ManualEntryModal } from "./dashboard/ManualEntryModal";
+import { recordStatusLabel } from "./dashboard/recordStatus";
 import { CalendarChart, CategoryChart, DurationPieChart, TrendChart } from "./dashboard/Charts";
 import "./Dashboard.css";
 
@@ -70,11 +71,7 @@ function RecordStatus({ row }: { row: Row }) {
             : "success"
       }
     >
-      {row.status !== "FINISHED"
-        ? "进行中"
-        : row.settlement_status === "PENDING"
-          ? "待补全"
-          : "已确认"}
+      {recordStatusLabel(row)}
     </Tag>
     {row.source === "MANUAL_ENTRY" && !row.is_demo && <Tag color="blue">人工补录</Tag>}
     </Space>
@@ -519,7 +516,7 @@ function DashboardContent() {
           <span className="dc-number">{formatQuantity(row.quantity)}</span>
         ) : (
           <span className="dc-muted">
-            {row.status === "FINISHED" ? "待补填" : "进行中"}
+            {row.status === "FINISHED" ? "待补填" : "未结算"}
           </span>
         ),
     },
@@ -689,6 +686,7 @@ function DashboardContent() {
               onClick={() => setManualOpen(true)}>补记录</Button>
             <Button
               icon={<Icon name="refresh" />}
+              disabled={refreshing}
               onClick={() => setRefresh((value) => value + 1)}
             >
               刷新连接
@@ -861,7 +859,7 @@ function DashboardContent() {
                     { value: "all", label: "全部状态" },
                     { value: "pending", label: "待补全" },
                     { value: "complete", label: "已确认" },
-                    { value: "working", label: "进行中" },
+                    { value: "unfinished", label: "未结束" },
                   ]}
                   onChange={(value) =>
                     setFilters({ ...filters, status: value })
@@ -907,7 +905,7 @@ function DashboardContent() {
             <div className="dc-filter-summary">
               {JSON.stringify(filters) !== JSON.stringify(query)
                 ? "筛选条件已修改，点击应用筛选后更新结果。"
-                : `当前已应用 · ${data ? reportRangeLabel(data.range) : "正在读取周期"} · ${query.category ? name(query.category) : "全部类别"} · ${({ all: "全部状态", pending: "待补全", complete: "已确认", working: "进行中" } as Record<string, string>)[query.status]}`}
+                : `当前已应用 · ${data ? reportRangeLabel(data.range) : "正在读取周期"} · ${query.category ? name(query.category) : "全部类别"} · ${({ all: "全部状态", pending: "待补全", complete: "已确认", unfinished: "未结束", working: "活动任务" } as Record<string, string>)[query.status]}`}
             </div>
           </Card>
           <section className="dc-kpis" aria-label="工作数据汇总">

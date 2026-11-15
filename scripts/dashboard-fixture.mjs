@@ -152,7 +152,8 @@ export async function dashboardFixture(page) {
         (!resolved.end_date || date <= resolved.end_date) &&
         (!query.category || row.category === query.category) &&
         (query.status === "all" ||
-          (query.status === "working" && row.status !== "FINISHED") ||
+          (query.status === "working" && row.status === "WORKING") ||
+          (query.status === "unfinished" && ["WORKING", "SUSPENDED"].includes(row.status)) ||
           (query.status === "pending" && row.settlement_status === "PENDING") ||
           (query.status === "complete" && row.settlement_status === "COMPLETE"))
       );
