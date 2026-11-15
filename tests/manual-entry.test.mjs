@@ -16,3 +16,12 @@ test('补录拒绝缺失数量、无效时间、未来时间和超长休息', ()
   }
   assert.equal(validate({ remark: '😀'.repeat(2000) }).ok, true);
 });
+
+test('补录校验标识出错字段，时间关系错误定位到时间摘要', () => {
+  for (const [input,field] of [[{quantity:''},'quantity'],[{category:''},'category'],[{remark:'😀'.repeat(2001)},'remark'],[{end:999},'time'],[{end:400001},'time'],[{rest:'7'},'rest']]) {
+    const result=validate(input);
+    assert.equal(result.ok,false);
+    assert.equal(result.field,field);
+    assert.ok(result.error);
+  }
+});

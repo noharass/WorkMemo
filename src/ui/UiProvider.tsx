@@ -30,9 +30,15 @@ export function UiProvider({ children }: { children: ReactNode }) {
         colorInfo: "#287b63",
         colorSuccess: "#287b63",
         colorText: "#243c33",
-        colorTextSecondary: "#65796f",
+        colorTextSecondary: "#52685b",
+        colorTextTertiary: "#52685b",
+        colorTextDescription: "#52685b",
+        colorTextPlaceholder: "#52685b",
+        colorWarningText: "#805500",
+        gold: "#805500",
+        blue: "#135eb3",
         colorBgLayout: "#f4f7f5",
-        colorBorder: "#dce6df",
+        colorBorder: "#75897d",
         colorBorderSecondary: "#e9efeb",
         colorError: "#b74251",
         colorInfoBg: "#eef7f2",
@@ -67,7 +73,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
         },
         Table: {
           headerBg: "rgb(246 249 247 / 55%)",
-          headerColor: "#65796f",
+          headerColor: "#52685b",
           rowHoverBg: "#f7faf8",
           cellPaddingBlock: 16,
         },
@@ -88,6 +94,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
       locale={zhCN}
       theme={theme}
       button={{ autoInsertSpace: false }}
+      form={{requiredMark:(label,{required}) => <>{required && <span className="dc-required-mark" aria-hidden="true">*</span>}{label}</>}}
     >
       <App className="wm-ui-root">{children}</App>
     </ConfigProvider>

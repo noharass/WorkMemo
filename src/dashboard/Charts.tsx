@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useId, useMemo, useRef } from "react";
+import { ChartDataTable } from "./ChartDataTable";
 import { init, use as registerCharts, type ECharts } from "echarts/core";
 import { BarChart, LineChart, HeatmapChart, PieChart } from "echarts/charts";
 import { Button, Empty } from "antd";
@@ -41,10 +42,12 @@ const tooltip = {
 const Chart = memo(function Chart({
   option,
   label,
+  descriptionId,
   onCategory,
 }: {
   option: EChartsOption;
   label: string;
+  descriptionId?: string;
   onCategory?: (name: string) => void;
 }) {
   const node = useRef<HTMLDivElement>(null);
@@ -86,10 +89,11 @@ const Chart = memo(function Chart({
       lazyUpdate: true,
     });
   }, [option]);
-  return <div ref={node} className="dc-chart" role="img" aria-label={label} />;
+  return <div ref={node} className="dc-chart" role="img" aria-label={label} aria-describedby={descriptionId} />;
 });
 
 export function TrendChart({ trend, range }: Pick<Data, "trend" | "range">) {
+  const descriptionId = useId();
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)");
   const option = useMemo<EChartsOption>(
     () => ({
@@ -111,7 +115,7 @@ export function TrendChart({ trend, range }: Pick<Data, "trend" | "range">) {
         axisLine: { lineStyle: { color: "#dce7e0" } },
         axisTick: { show: false },
         axisLabel: {
-          color: "#718078",
+          color: "#52685b",
           hideOverlap: true,
           showMinLabel: true,
           showMaxLabel: true,
@@ -123,7 +127,7 @@ export function TrendChart({ trend, range }: Pick<Data, "trend" | "range">) {
         type: "value",
         name: "小时",
         min: 0,
-        axisLabel: { color: "#718078" },
+        axisLabel: { color: "#52685b" },
         splitLine: { lineStyle: { color: "#edf2ef", type: "dashed" } },
       },
       series: [
@@ -142,7 +146,11 @@ export function TrendChart({ trend, range }: Pick<Data, "trend" | "range">) {
     }),
     [trend, range, reduced],
   );
-  return <Chart option={option} label="有效工时趋势" />;
+  return <>
+    <Chart option={option} label="有效工时趋势" descriptionId={descriptionId} />
+    <p id={descriptionId} className="dc-chart-hint">展开数据表可读取各周期工时，按秒显示。</p>
+    <ChartDataTable title="趋势" rows={trend.map(row => ({label:row.date,duration_ms:row.duration_ms}))} />
+  </>;
 }
 
 export function CategoryChart({
@@ -249,7 +257,7 @@ export function DurationPieChart({ categories, presentation, onCategory }: {
     <Chart option={option} label="按类别汇总的工时占比" onCategory={onCategory} />
     <ul className="dc-pie-legend" aria-label="工时占比明细">
       {slices.map(slice => <li key={slice.category}>
-        <Button type="text" style={{ width: "100%" }} onClick={() => onCategory(slice.category)} aria-label={`${name(slice.category)}：${formatDuration(slice.value / 1000)}，${slice.percentLabel}，筛选此类别`}>
+        <Button type="text" style={{ width: "100%" }} onClick={() => onCategory(slice.category)} aria-label={`${name(slice.category)} ${slice.percentLabel}，工时 ${formatDuration(slice.value / 1000)}，筛选此类别`}>
           <i aria-hidden="true" style={{ background: presentation.categories[slice.category]?.color }} />
           <span className="dc-pie-name" title={name(slice.category)}>{name(slice.category)}</span>
           <span className="dc-pie-value">{slice.percentLabel}</span>
@@ -263,6 +271,7 @@ export function CalendarChart({
   calendar,
   range,
 }: Pick<Data, "calendar" | "range">) {
+  const descriptionId = useId();
   const reduced = useMediaQuery("(prefers-reduced-motion: reduce)");
   const option = useMemo<EChartsOption>(() => {
     const end = range.end_date ?? localDate(new Date());
@@ -302,8 +311,8 @@ export function CalendarChart({
         left: "center",
         top: 32,
         yearLabel: { show: false },
-        monthLabel: { nameMap: "cn", color: "#65796f" },
-        dayLabel: { firstDay: 1, nameMap: "cn", color: "#718078" },
+        monthLabel: { nameMap: "cn", color: "#52685b" },
+        dayLabel: { firstDay: 1, nameMap: "cn", color: "#52685b" },
         splitLine: { lineStyle: { color: "#dce6df" } },
         itemStyle: { borderWidth: 3, borderColor: "#fff", color: "#ebedf0" },
       },
@@ -317,5 +326,9 @@ export function CalendarChart({
       ],
     };
   }, [calendar, range, reduced]);
-  return <Chart option={option} label="筛选范围内的有效工时工作日历" />;
+  return <>
+    <Chart option={option} label="筛选范围内的有效工时工作日历" descriptionId={descriptionId} />
+    <p id={descriptionId} className="dc-chart-hint">展开数据表可读取日历中的日期及工时，按秒显示。</p>
+    <ChartDataTable title="工作日历" rows={calendar.map(([label,duration_ms]) => ({label,duration_ms}))} />
+  </>;
 }

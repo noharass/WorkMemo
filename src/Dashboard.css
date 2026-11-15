@@ -139,17 +139,17 @@ body:where(:has(.data-center)) {
 }
 .dc-breadcrumb {
   font-size: 12px;
-  color: #64796d;
+  color: #52685b;
   white-space: nowrap;
 }
 .dc-breadcrumb > span {
-  color: #89998f;
+  color: #52685b;
   margin-left: 12px;
 }
 .dc-sync {
   display: inline-block;
   min-width: 118px;
-  color: #89998f;
+  color: #52685b;
   font-size: 11px;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -170,7 +170,7 @@ body:where(:has(.data-center)) {
   display: block;
   font-size: 10px;
   letter-spacing: 0.16em;
-  color: #86998d;
+  color: #52685b;
   margin-bottom: 6px;
   font-weight: 600;
 }
@@ -181,7 +181,7 @@ body:where(:has(.data-center)) {
 }
 .dc-heading p {
   font-size: 13px;
-  color: #718579;
+  color: #52685b;
 }
 .dc-notice {
   margin-block: 14px;
@@ -231,7 +231,7 @@ body:where(:has(.data-center)) {
   padding-top: 12px;
   min-height: 30px;
   font-size: 11px;
-  color: #7b8e81;
+  color: #52685b;
   overflow-wrap: anywhere;
 }
 .dc-kpis {
@@ -246,7 +246,7 @@ body:where(:has(.data-center)) {
   justify-content: space-between;
   gap: 8px;
   font-size: 12px;
-  color: #718579;
+  color: #52685b;
 }
 .dc-kpi-label .icon {
   color: #87a58f;
@@ -265,11 +265,11 @@ body:where(:has(.data-center)) {
   font-size: 12px;
   font-weight: 400;
   margin-left: 8px;
-  color: #7b8e81;
+  color: #52685b;
 }
 .dc-kpi p {
   font-size: 11px;
-  color: #7b8e81;
+  color: #52685b;
 }
 .dc-card {
   min-width: 0;
@@ -282,7 +282,7 @@ body:where(:has(.data-center)) {
 .dc-card-title p {
   margin-top: 4px;
   font-size: 11px;
-  color: #7b8e81;
+  color: #52685b;
   font-weight: 400;
 }
 .dc-report-quantity strong {
@@ -298,7 +298,7 @@ body:where(:has(.data-center)) {
   display: block;
   margin-top: 3px;
   font-size: 11px;
-  color: #7b8e81;
+  color: #52685b;
 }
 .dc-number {
   white-space: nowrap;
@@ -309,12 +309,12 @@ body:where(:has(.data-center)) {
   font-variant-numeric: tabular-nums;
 }
 .dc-muted {
-  color: #7b8e81;
+  color: #52685b;
   font-size: 12px;
 }
 .dc-report-note {
   padding: 14px 24px;
-  color: #7b8e81;
+  color: #52685b;
   font-size: 11px;
 }
 .dc-report-cards {
@@ -330,7 +330,7 @@ body:where(:has(.data-center)) {
 }
 .dc-report-cards dt {
   font-size: 11px;
-  color: #7b8e81;
+  color: #52685b;
   margin-bottom: 6px;
 }
 .dc-report-cards dd {
@@ -368,7 +368,7 @@ body:where(:has(.data-center)) {
   gap: 4px;
   padding-bottom: 8px;
   font-size: 10px;
-  color: #7b8e81;
+  color: #52685b;
 }
 .dc-heat-legend i {
   width: 11px;
@@ -389,12 +389,12 @@ body:where(:has(.data-center)) {
   flex-wrap: wrap;
 }
 .dc-pagination > span {
-  color: #7b8e81;
+  color: #52685b;
   font-size: 11px;
 }
 .dc-page-footer {
   text-align: center;
-  color: #899c8f;
+  color: #52685b;
   font-size: 11px;
   padding: 12px 0 28px;
 }
@@ -438,7 +438,7 @@ body:where(:has(.data-center)) {
 }
 .dc-record-summary small {
   display: block;
-  color: #7b8e81;
+  color: #52685b;
   font-size: 11px;
 }
 .dc-detail-times {
@@ -450,7 +450,7 @@ body:where(:has(.data-center)) {
   align-items: center;
   gap: 16px;
   margin-bottom: 16px;
-  color: #7b8e81;
+  color: #52685b;
 }
 .dc-detail-quantity strong {
   color: #284d3a;
@@ -619,3 +619,30 @@ body:where(:has(.data-center)) {
   .dc-auxiliary-grid .dc-calendar { grid-column:1/-1; }
 }
 @media (max-width:759px) { .dc-auxiliary-grid { grid-template-columns:minmax(0,1fr); } }
+
+.dc-announcer {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+.dc-chart-hint { color: #52685b; font-size: 12px; padding: 8px 12px; }
+.dc-chart-data { margin: 0 8px 8px; }
+.dc-error-summary { scroll-margin-block: 20px; }
+.data-center :is(button, a, [role="button"]):focus-visible,
+.dc-sheet-root button:focus-visible,
+.wm-modal button:focus-visible,
+.dc-error-summary:focus {
+  outline: 2px solid #287b63; outline-offset: 3px;
+}
+@media (forced-colors: active) {
+  .data-center, .dc-sheet-root .wm-drawer-section, .wm-modal .wm-modal-container {
+    background: Canvas !important; color: CanvasText !important; backdrop-filter: none !important;
+  }
+  .data-center :is(button, a, [role="button"], input, textarea, [role="combobox"]):focus-visible,
+  .dc-sheet-root :is(button, input, textarea, [role="combobox"]):focus-visible,
+  .wm-modal :is(button, input, textarea, [role="combobox"]):focus-visible,
+  .dc-error-summary:focus {
+    outline: 2px solid Highlight !important; outline-offset: 3px;
+  }
+  .data-center .wm-card, .dc-chart-data, .dc-record-summary { border: 1px solid CanvasText; }
+}
+.dc-required-mark { color: #b74251; margin-inline-end: 4px; }

@@ -109,8 +109,8 @@ try {
     const state = await setup(); await goto(); await expand();
     const legend = page.getByRole('list', { name: '工时占比明细' });
     assert.equal(await legend.getByRole('button').count(), 3);
-    await legend.getByRole('button', { name: /评测：02:40:00，62.75%/ }).waitFor();
-    await legend.getByRole('button', { name: /代码开发：01:15:00，29.41%/ }).waitFor();
+    await legend.getByRole('button', { name: /评测 62.75%，工时 02:40:00/ }).waitFor();
+    await legend.getByRole('button', { name: /代码开发 29.41%，工时 01:15:00/ }).waitFor();
     assert.equal(await legend.locator('i').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(59, 130, 246)');
     const pie = page.getByRole('img', { name: '按类别汇总的工时占比' });
     const box = await pie.boundingBox();

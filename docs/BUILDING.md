@@ -23,6 +23,8 @@ npm.cmd run tauri dev
 
 ## 检查
 
+2026-11-16 网页阶段B完成表单语义、错误焦点、颜色/强制颜色、静默轮询、图表数据表和弹层隔离修正。新增 `node scripts/verify-web-phase-b.mjs`；可选 `WORKMEMO_AXE` 运行自动可访问性扫描，`WORKMEMO_CONTRAST=1` 使用本机 Python/Pillow 测量实际合成背景。完整命令、源码和人工验收边界见 [WEB-PHASE-B.md](WEB-PHASE-B.md)。当前公开 0.2.10 安装包仍未包含 A/B 源码修正。
+
 2026-11-15 网页阶段A完成源码修正：新增`unfinished`筛选，旧`working` API含义不变，不迁移数据库。状态、图表及请求恢复专项为`node scripts/verify-web-phase-a.mjs`，使用`WORKMEMO_PLAYWRIGHT`和`WORKMEMO_WEB_URL`指向已有Playwright与生产资源预览；共享状态契约同时由Node及Rust测试校验。完整命令、源码和验收范围见[WEB-PHASE-A.md](WEB-PHASE-A.md)。当前公开0.2.10成品尚未包含本轮修正。
 
 2026-11-12 零点结束源码使用 schema 11，验收使用独立标识和隔离数据库。新增 `cargo test --locked --manifest-path src-tauri/Cargo.toml day_rollover --lib`，覆盖固定北京时间边界、全部暂停原因、重启、回滚和迁移；完整结果见 [DAY-ROLLOVER.md](DAY-ROLLOVER.md)。公开 0.2.9 安装包尚不包含此变更。

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { loopTabWithin } from "./ui/loopTabWithin";
 import {
   Alert,
   App as AntApp,
@@ -38,7 +39,7 @@ import {
 } from "./reportPeriod";
 import { useCategoryNames } from "./categoryNames";
 import { DEFAULT_PRESENTATION, WorkBadge } from "./desktopPreferences";
-import { validateWorkInput } from "./workInput";
+import { validateWorkInput, type InputErrors } from "./workInput";
 import { Icon } from "./Icon";
 import { UiProvider, useMediaQuery } from "./ui/UiProvider";
 import { BottomSheet } from "./ui/BottomSheet";
@@ -106,6 +107,13 @@ function DashboardContent() {
     remark: "",
   });
   const [editorError, setEditorError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<InputErrors>({});
+  const [filterError, setFilterError] = useState("");
+  const [announcement, setAnnouncement] = useState("");
+  const requestedRefresh = useRef(false);
+  const previousOnline = useRef<boolean | null>(null);
+  const editorSummary = useRef<HTMLDivElement>(null);
+  const confirmSummary = useRef<HTMLDivElement>(null);
   const [detailStale, setDetailStale] = useState(false);
   const [pendingQuery, setPendingQuery] = useState<Query | null>(null);
   const [pendingData, setPendingData] = useState<Data | null>(null);
@@ -146,6 +154,35 @@ function DashboardContent() {
           : String(detail.record.quantity)) ||
       fields.remark !== detail.record.remark);
   const blocked = busy || confirmation !== null;
+  const overlayOpen = sheetOpen || !!detail || !!confirmation || manualOpen;
+
+  useEffect(() => {
+    if (overlayOpen) {
+      requestedRefresh.current = false; setAnnouncement("");
+    } else if (requestedRefresh.current && !refreshing) {
+      requestedRefresh.current = false;
+      setAnnouncement(online && !error ? "工作数据已刷新。" : "");
+    } else if (online && previousOnline.current === false) {
+      setAnnouncement("与 WorkMemo 的连接正常。");
+    }
+    previousOnline.current = online;
+  }, [online, refreshing, overlayOpen, error]);
+
+  useEffect(() => {
+    if (!editorError || busy) return;
+    const frame = requestAnimationFrame(() => {
+      if (confirmation) { confirmSummary.current?.focus(); return; }
+      const field = Object.keys(fieldErrors)[0];
+      if (field && editing) document.getElementById(`dc-${field}`)?.focus();
+      else editorSummary.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [editorError, busy, confirmation, fieldErrors, editing]);
+  function editField(field: keyof typeof fields, value: string) {
+    setFields(previous => ({...previous,[field]:value}));
+    setFieldErrors(previous => {const next = {...previous};delete next[field];return next;});
+    setEditorError("");
+  }
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -164,6 +201,12 @@ function DashboardContent() {
   }, [editing, sheetOpen, confirmation, detail?.record.id]);
   function applyQuery(value: Query) {
     setFilters(value);
+    if (value.period === "custom" && value.start_date && value.end_date && value.start_date > value.end_date) {
+      setFilterError("开始日期不能晚于结束日期。");
+      requestAnimationFrame(() => document.getElementById("dc-filter-date-end")?.focus());
+      return;
+    }
+    setFilterError("");
     setQuery(value);
   }
   function selectPeriod(period: ReportPeriod) {
@@ -194,6 +237,7 @@ function DashboardContent() {
   }
   function showDetail(value: Detail, edit: boolean) {
     setDetail(value);
+    setFieldErrors({});
     setDetailStale(false);
     setFields({
       category: value.record.category,
@@ -298,12 +342,14 @@ function DashboardContent() {
       true,
     );
     if (!result.ok) {
+      setFieldErrors(result.errors);
       setEditorError(Object.values(result.errors).join(" "));
       return false;
     }
     if (result.input.quantity === null) return false;
     busyRef.current = true;
     setBusy(true);
+    setFieldErrors({});
     setEditorError("");
     let committed = false;
     try {
@@ -587,22 +633,27 @@ function DashboardContent() {
     change: (value: string | null) => void,
     required = false,
   ) => (
-    <Form.Item label={label}>
+    <Form.Item label={label} htmlFor={`dc-filter-date-${required ? "anchor" : label === "开始日期" ? "start" : "end"}`} validateStatus={filterError && !required ? "error" : undefined}>
       <DatePicker
+        id={`dc-filter-date-${required ? "anchor" : label === "开始日期" ? "start" : "end"}`}
+        aria-required={required}
+        aria-invalid={!!filterError && !required}
+        aria-describedby={filterError && !required ? "dc-filter-error" : undefined}
         aria-label={label}
         value={value ? dayjs(value) : null}
         minDate={minDate}
         maxDate={maxDate}
         allowClear={!required}
         format="YYYY-MM-DD"
-        onChange={(date) => change(date?.format("YYYY-MM-DD") ?? null)}
+        onChange={(date) => {setFilterError("");change(date?.format("YYYY-MM-DD") ?? null);}}
         inputReadOnly={false}
       />
     </Form.Item>
   );
   return (
     <div className="data-center">
-      <aside className="dc-sidebar" inert={!!detail || !!confirmation || manualOpen}>
+      <div className="dc-announcer" role="status" aria-atomic="true">{announcement}</div>
+      <aside className="dc-sidebar" inert={overlayOpen}>
         <Tooltip title="WorkMemo 工作数据中心" placement="right">
           <a
             className="dc-brand"
@@ -669,13 +720,13 @@ function DashboardContent() {
           </Tooltip>
         </div>
       </aside>
-      <div className="dc-page" inert={!!detail || !!confirmation || manualOpen}>
+      <div className="dc-page" inert={overlayOpen}>
         <header className="dc-topbar">
           <span className="dc-breadcrumb">
             我的工作空间 <span>/ 工作总览</span>
           </span>
           <Space size={12}>
-            <span className="dc-sync" aria-live="polite">
+            <span className="dc-sync">
               {refreshing
                 ? "正在刷新…"
                 : updatedAt
@@ -687,7 +738,7 @@ function DashboardContent() {
             <Button
               icon={<Icon name="refresh" />}
               disabled={refreshing}
-              onClick={() => setRefresh((value) => value + 1)}
+              onClick={() => {requestedRefresh.current = true;setAnnouncement("");setRefresh((value) => value + 1);}}
             >
               刷新连接
             </Button>
@@ -815,6 +866,7 @@ function DashboardContent() {
               )}
             </div>
             <Form
+              aria-label="工作报表筛选"
               layout="vertical"
               className="dc-filter-form"
               onFinish={() => applyQuery({ ...filters, page: 1 })}
@@ -838,8 +890,9 @@ function DashboardContent() {
                   true,
                 )
               )}
-              <Form.Item label="类别">
+              <Form.Item label="类别" htmlFor="dc-filter-category">
                 <Select
+                  id="dc-filter-category"
                   aria-label="筛选工作类别"
                   value={filters.category ?? ""}
                   options={[
@@ -851,8 +904,9 @@ function DashboardContent() {
                   }
                 />
               </Form.Item>
-              <Form.Item label="状态">
+              <Form.Item label="状态" htmlFor="dc-filter-status">
                 <Select
+                  id="dc-filter-status"
                   aria-label="筛选记录状态"
                   value={filters.status}
                   options={[
@@ -866,8 +920,9 @@ function DashboardContent() {
                   }
                 />
               </Form.Item>
-              <Form.Item label="数据范围">
+              <Form.Item label="数据范围" htmlFor="dc-filter-scope">
                 <Select
+                  id="dc-filter-scope"
                   aria-label="数据范围"
                   value={filters.scope}
                   options={[
@@ -902,6 +957,7 @@ function DashboardContent() {
                 </Button>
               </div>
             </Form>
+            {filterError && <Alert id="dc-filter-error" type="error" showIcon title={filterError} className="dc-notice" />}
             <div className="dc-filter-summary">
               {JSON.stringify(filters) !== JSON.stringify(query)
                 ? "筛选条件已修改，点击应用筛选后更新结果。"
@@ -1340,59 +1396,56 @@ function DashboardContent() {
             {editing ? (
               <Form
                 id="dc-editor"
+                aria-label="工作量编辑"
+                noValidate
                 layout="vertical"
                 onFinish={() => {
                   void save();
                 }}
                 disabled={blocked}
               >
-                <Form.Item label="工作类别" htmlFor="dc-category">
+                <Form.Item label="工作类别" htmlFor="dc-category" required help={fieldErrors.category && <span id="dc-category-error">{fieldErrors.category}</span>} validateStatus={fieldErrors.category ? "error" : undefined}>
                   <Select
                     id="dc-category"
+                    aria-required
+                    aria-invalid={!!fieldErrors.category}
+                    aria-describedby={fieldErrors.category ? "dc-category-error" : undefined}
                     value={fields.category}
                     options={categoryOptions}
-                    onChange={(value) =>
-                      setFields((previous) => ({
-                        ...previous,
-                        category: value,
-                      }))
-                    }
+                    onChange={(value) => editField("category", value)}
                     getPopupContainer={(element) => element.parentElement!}
                   />
                 </Form.Item>
                 <Form.Item
                   label="工作量"
                   htmlFor="dc-quantity"
-                  extra="0 表示已确认无产出；支持小数和科学计数，最大 10 亿。"
+                  required
+                  help={fieldErrors.quantity && <span id="dc-quantity-error">{fieldErrors.quantity}</span>}
+                  validateStatus={fieldErrors.quantity ? "error" : undefined}
+                  extra={<span id="dc-quantity-hint">0 表示已确认无产出；支持小数和科学计数，最大 10 亿。</span>}
                 >
                   <Input
                     id="dc-quantity"
+                    required
+                    aria-invalid={!!fieldErrors.quantity}
+                    aria-describedby={`dc-quantity-hint${fieldErrors.quantity ? " dc-quantity-error" : ""}`}
                     ref={quantityInput}
                     type="text"
                     inputMode="decimal"
                     autoComplete="off"
                     placeholder="填写本次工作量"
                     value={fields.quantity}
-                    onChange={(event) =>
-                      setFields((previous) => ({
-                        ...previous,
-                        quantity: event.target.value,
-                      }))
-                    }
+                    onChange={(event) => editField("quantity", event.target.value)}
                   />
                 </Form.Item>
-                <Form.Item label="备注" htmlFor="dc-remark">
+                <Form.Item label="备注" htmlFor="dc-remark" help={fieldErrors.remark && <span id="dc-remark-error">{fieldErrors.remark}</span>} validateStatus={fieldErrors.remark ? "error" : undefined} extra={<span id="dc-remark-hint">最多 2000 个字符。</span>}>
                   <Input.TextArea
                     id="dc-remark"
-                    maxLength={4000}
+                    aria-invalid={!!fieldErrors.remark}
+                    aria-describedby={`dc-remark-hint${fieldErrors.remark ? " dc-remark-error" : ""}`}
                     rows={5}
                     value={fields.remark}
-                    onChange={(event) =>
-                      setFields((previous) => ({
-                        ...previous,
-                        remark: event.target.value,
-                      }))
-                    }
+                    onChange={(event) => editField("remark", event.target.value)}
                   />
                 </Form.Item>
                 <p className="dc-muted">
@@ -1417,12 +1470,12 @@ function DashboardContent() {
               </div>
             )}
             {editorError && (
-              <Alert
+              <div ref={editorSummary} role="group" tabIndex={-1} className="dc-error-summary" aria-label="工作记录操作错误"><Alert
                 type="error"
                 showIcon
                 title={editorError}
                 className="dc-notice"
-              />
+              /></div>
             )}
             <Collapse
               className="dc-audit"
@@ -1492,6 +1545,7 @@ function DashboardContent() {
         void message.success("补记录已保存，可在工作明细中查看。");
       }} />}
       <Modal
+        modalRender={node => <div onKeyDown={loopTabWithin} style={{display:"contents"}}>{node}</div>}
         open={confirmOpen}
         centered
         width={460}
@@ -1594,12 +1648,12 @@ function DashboardContent() {
           </p>
         )}
         {editorError && (
-          <Alert
+          <div ref={confirmSummary} role="group" tabIndex={-1} className="dc-error-summary" aria-label="确认操作错误"><Alert
             className="dc-notice"
             type="error"
             title={editorError}
             showIcon
-          />
+          /></div>
         )}
       </Modal>
     </div>
