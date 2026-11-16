@@ -1,4 +1,6 @@
-# WorkMemo v0.2.11 使用说明
+# WorkMemo v0.2.12 使用说明
+
+v0.2.12 将趋势/日历工时数据表改为小时/分钟，简化详情、补填和确认弹窗过渡，修复日期面板被后台刷新重置月份的问题。数据库仍为 schema 12，从 v0.2.10 / v0.2.11 更新无需新增迁移。
 
 v0.2.11 修正网页报表的未结束状态、短工时精度、跨年标签和连接恢复；补齐字段错误定位、键盘焦点、趋势/日历数据表及自定义趋势的空白周期。网页加载也避开了未使用的桌面代码。数据库仍为 schema 12，从 v0.2.10 更新无需新增迁移。
 
@@ -12,10 +14,10 @@ WorkMemo 是 Windows 本地工作记录工具。可以手动计时，也可以�
 
 适用于 Windows 10 / 11 x64，需要 Microsoft Edge WebView2 Runtime。
 
-- **安装版**：运行 `WorkMemo_0.2.11_x64-setup.exe`，按向导安装。缺少 WebView2 时需要联网安装 Microsoft 官方运行环境。
-- **免安装版**：完整解压 `WorkMemo_0.2.11_windows_x64.zip`，打开 `WorkMemo/workmemo.exe`。主程序旁边的浏览器组件、`extension` 文件夹和修复脚本都请保留。缺少 WebView2 时，从 [Microsoft 官网](https://developer.microsoft.com/microsoft-edge/webview2/)安装。
+- **安装版**：运行 `WorkMemo_0.2.12_x64-setup.exe`，按向导安装。缺少 WebView2 时需要联网安装 Microsoft 官方运行环境。
+- **免安装版**：完整解压 `WorkMemo_0.2.12_windows_x64.zip`，打开 `WorkMemo/workmemo.exe`。主程序旁边的浏览器组件、`extension` 文件夹和修复脚本都请保留。缺少 WebView2 时，从 [Microsoft 官网](https://developer.microsoft.com/microsoft-edge/webview2/)安装。
 - 不需要开发工具或数据库服务。免安装表示程序不用安装；记录仍存放在当前 Windows 用户的数据目录，不会随解压文件夹移动。
-- 从 [WorkMemo v0.2.11 正式版](https://github.com/noharass/WorkMemo/releases/tag/v0.2.11)下载安装版或完整 ZIP。程序暂未签名，可用随附 `SHA256SUMS.txt` 核对下载文件。
+- 从 [WorkMemo v0.2.12 正式版](https://github.com/noharass/WorkMemo/releases/tag/v0.2.12)下载安装版或完整 ZIP。程序暂未签名，可用随附 `SHA256SUMS.txt` 核对下载文件。
 
 ## 手动记录一段工作
 

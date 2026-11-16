@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.11/WorkMemo_0.2.11_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.12/WorkMemo_0.2.12_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.11/WorkMemo_0.2.11_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.12/WorkMemo_0.2.12_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.11">v0.2.11 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.12">v0.2.12 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -38,15 +38,13 @@
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## 这次更新：网页报表与可访问性修正
+## 这次更新：网页工时、弹窗与日期筛选修正
 
-**v0.2.11** 让未结束筛选正确包含计时、暂停和挂起任务；短工时保留精度，跨年趋势保留年份。连接繁忙、授权失效和超时有不同提示，刷新和保存失败时继续保护输入。
+**v0.2.12** 将趋势和工作日历数据表的有效工时改为小时/分钟；详情、补填及确认弹窗采用短距离淡入过渡，减少移动卡片的模糊开销。日期筛选翻到上个月或上一年后，不再因后台刷新跳回已选月份。
 
-表单校验会定位到错误字段，修正后清除对应错误；后台轮询减少重复播报。趋势和工作日历可展开为数据表，键盘操作和多层弹窗焦点更完整，文字及高对比度模式更清晰。自定义趋势补齐空白周期，长范围自动聚合；网页不再加载未使用的桌面代码和样式。
+数据库仍为 schema 12，从 v0.2.10 / v0.2.11 更新无需新增迁移；更旧版本升级前请备份。Windows x64 成品未签名，需 WebView2。实际机器的流畅体感、Narrator、系统 DPI、实际扩展联动和安装卸载未全部复验，详情见发布记录。
 
-数据库仍为 schema 12，从 v0.2.10 更新无需新增迁移；更旧版本升级前请备份。Windows x64 成品未签名，需 WebView2。真实 Narrator、系统 DPI、实际扩展联动和安装卸载未全部复验，详情见发布记录。
-
-[查看 v0.2.11 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.11) · [构建校验与验收限制](docs/RELEASE-0.2.11.md)
+[查看 v0.2.12 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.12) · [构建校验与验收限制](docs/RELEASE-0.2.12.md)
 
 历史版本和开发阶段记录继续保留在 docs 与 Releases 中。
 

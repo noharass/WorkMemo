@@ -23,6 +23,8 @@ npm.cmd run tauri dev
 
 ## 检查
 
+2026-11-16 用户指定发布0.2.12，包含三项网页体验修正；发布命令、实际结果和限制见 [RELEASE-0.2.12.md](RELEASE-0.2.12.md)。
+
 2026-11-16 网页三项反馈修正与新增 `node scripts/verify-web-feedback.mjs` 见 [WEB-FEEDBACK-FIX.md](WEB-FEEDBACK-FIX.md)，公开 0.2.11 未替换。
 
 2026-11-16 用户确认新版本0.2.11公开发布，应用与扩展版本统一，数据库仍schema12。生产构建、发布流程、完整校验及未完成的原生验收见 [RELEASE-0.2.11.md](RELEASE-0.2.11.md)。
@@ -73,16 +75,16 @@ node scripts/verify-multi-url.mjs
 
 0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。源码阶段与原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
 
-## 构建 v0.2.11
+## 构建 v0.2.12
 
-当前版本正式成品输出 artifacts/0.2.11；v0.2.10 资产和标签保留。先停止当前项目使用 node_modules 的 Vite 进程，保留真实工作任务和独立桌面预览，再执行：
+当前版本正式成品输出 artifacts/0.2.12；v0.2.11 资产和标签保留。先停止当前项目使用 node_modules 的 Vite 进程，保留真实工作任务和独立桌面预览，再执行：
 
 ```powershell
 & .\scripts\package-windows.ps1
-& .\scripts\verify-windows-candidate.ps1 -Directory artifacts/0.2.11 -PreserveDirectory artifacts/0.2.10
+& .\scripts\verify-windows-candidate.ps1 -Directory artifacts/0.2.12 -PreserveDirectory artifacts/0.2.11
 ```
 
-校验器默认读取当前版本；PreserveDirectory 可显式验证旧版本目录，未提供时不声称已核对旧资产。独立原生 HTTP 核验默认使用 package.json 版本，也可通过 WORKMEMO_NATIVE_VERSION 指定明确的旧预览版本，不能把旧预览结果记为新程序启动通过。发布脚本使用 Python 标准库和既有 Git 凭据助手，分 inspect / prepare / publish / verify；具体可复核命令见 RELEASE-0.2.11.md。
+校验器默认读取当前版本；PreserveDirectory 可显式验证旧版本目录，未提供时不声称已核对旧资产。独立原生 HTTP 核验默认使用 package.json 版本，也可通过 WORKMEMO_NATIVE_VERSION 指定明确的旧预览版本，不能把旧预览结果记为新程序启动通过。发布脚本使用 Python 标准库和既有 Git 凭据助手，分 inspect / prepare / publish / verify；具体可复核命令见 RELEASE-0.2.12.md。
 
 ## 构建网页改造候选（0.2.10，尚未公开）
 
