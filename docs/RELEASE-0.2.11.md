@@ -1,6 +1,6 @@
-# WorkMemo v0.2.11 构建与发布记录
+# WorkMemo v0.2.11 发布回执
 
-2026-11-16，用户明确选择发布新版本并指定 0.2.11。当前已完成构建与检查，尚待本轮实际公开发布和匿名下载核验；最终回执将在发布后补齐，不以本记录代替发布成功。
+2026-11-16，按用户明确指定，已公开 [WorkMemo v0.2.11](https://github.com/noharass/WorkMemo/releases/tag/v0.2.11)，Release ID 446559551，非草稿、非预发布、正式 Latest。公开时间为 2026-11-16 11:06:47（北京时间）。构建提交及新标签 v0.2.11 指向 `5858d9312c7af2d1bc20e50a5bfc9f92ddab2e04`。
 
 本版包含网页 A/B/C 修正：未结束状态筛选、工时精度与跨年标签、连接错误与恢复、表单语义和错误焦点、静默轮询、图表数据表、弹层隔离、自定义趋势连续性及有界聚合、网页/桌面入口分离。应用仍使用 schema 12，从 0.2.10 更新不新增数据库迁移；旧版升级前备份，不支持直接降级读取新数据库。
 
@@ -13,6 +13,12 @@
 - 本次 0.2.11 生产资源下重新执行完整网页、5组补录、5组待补填、A 5组、B 7组、C 7组以及实际 Chromium 125/150/200% 缩放检查，全部通过；B 的6个axe状态无报告违规但仍有 incomplete，30个代表文字样本最低4.67:1。
 - 既有 D 阶段桌面任务/状态岛隔离回归和用户对 0.2.10 独立验收窗口的显示/透明/操作“正常”回执保留。当前用户预览不关闭，未为了版本变更重启它，也未把该旧预览记为 0.2.11 正式程序已启动通过。
 - 真实 Narrator、Windows 系统 DPI、原生四皮肤逐项、实际扩展联动、安装卸载和实际登录仍未全部复验。未运行正式 0.2.11 程序或安装器去接触真实任务；发布只交付成品，不隐瞒这些限制。
+
+## 实际公开核验
+
+四项资产的 GitHub 服务器大小及 SHA256 与下表一致；公开 Release 页面无认证访问成功，安装器、ZIP、许可及校验文件分别无认证下载并复算全部通过。前后比较旧 v0.2.10 的四个资产 ID、大小、摘要及标签目标，保持不变。原版本与候选文件保留，未移动任何旧标签。
+
+本地 public-receipt.json 保存最终公开回执，public-verified 目录保存无认证下载副本；GitHub API 匿名额度耗尽时仅元数据 GET 使用既有认证，公开页面和下载请求不带认证。发布回执另行提交到 main，v0.2.11 标签保留在上述构建提交，不移动到纯文档回执提交。
 
 ## 本地成品
 
@@ -35,7 +41,7 @@ NEW FILE：E:\WorkMemo\scripts\publish-release.py，固定 noharass/WorkMemo 的
 
 发布工具遵循 [GitHub Release API](https://docs.github.com/en/rest/releases/releases)，先创建草稿、上传并比对四项服务器摘要，再公开为稳定 Latest。既有 Git 凭据助手仅向内存返回凭据，认证仅发送到固定 GitHub API / uploads 主机且不跟随认证重定向；不把 token 写入文件或 URL，不删除资产或标签，不修改全局身份/代理。匿名 API 额度耗尽时元数据 GET 可使用既有认证；公开页面与文件下载始终使用单独的无认证客户端。
 
-本地忽略证据在 E:\WorkMemo\artifacts\0.2.11\package-verification.json、previous-release.json、prepared-release.json、published-release.json、public-receipt.json、public-verified 及 RELEASE-NOTES.md（部分在后续发布步骤生成）。日志在 E:\WorkMemo\artifacts\release-0211-{node,rust,fmt,build,web,manual,pending,a,b,c,zoom,package-check,inspect}.log。D 阶段旧预览和真实 HTTP 证据不冒称为新版本原生启动证据。
+本地忽略证据在 E:\WorkMemo\artifacts\0.2.11\package-verification.json、previous-release.json、prepared-release.json、published-release.json、public-receipt.json、public-verified 及 RELEASE-NOTES.md（发布步骤现已实际生成）。日志在 E:\WorkMemo\artifacts\release-0211-{node,rust,fmt,build,web,manual,pending,a,b,c,zoom,package-check,inspect}.log。D 阶段旧预览和真实 HTTP 证据不冒称为新版本原生启动证据。
 
 ## PowerShell 命令与预期
 
@@ -74,4 +80,4 @@ git status --short --branch
 
 127.0.0.1:7890 是此机既有本地代理，仅通过单条命令使用，其他机器按实际网络设置调整或不传。直连 Git 不稳定时使用 git -c http.proxy=http://127.0.0.1:7890 -c http.version=HTTP/1.1 的单次参数，不改全局配置。先确认新标签尚不存在，拒绝修改属于其他构建的既有 Release；网络中断后按工具步骤读取实际状态再恢复，不盲目重复非幂等请求。
 
-公开后预期：Release 非草稿/非预发布且为 Latest，tag 指向已核对构建提交；四项服务器大小/摘要和匿名下载后复算一致，旧0.2.10资产ID/大小/摘要和标签目标保持不变。完成后仅补充发布回执并同步，不自动进入新功能阶段。
+上述公开后检查已实际完成：Release 为正式 Latest，tag 匹配构建提交，四项匿名下载复算一致，旧0.2.10资产与标签不变。最终回执另作提交同步；本次发布收尾结束，不自动进入新功能阶段。
