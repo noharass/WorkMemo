@@ -35,6 +35,7 @@ import { formatQuantity, localDate } from "./history";
 import {
   shiftPeriod,
   reportRangeLabel,
+  trendAggregationLabel,
   type ReportPeriod,
 } from "./reportPeriod";
 import { useCategoryNames } from "./categoryNames";
@@ -1102,7 +1103,7 @@ function DashboardContent() {
             title={
               <Title
                 title="工作趋势"
-                description={`${data?.range.trend_unit === "hour" ? "按开始小时汇总" : data?.range.trend_unit === "month" ? "按开始月份汇总" : "按开始日期汇总"} · 已结束记录的有效工时`}
+                description={`${trendAggregationLabel(data?.range)} · 已结束记录的有效工时`}
               />
             }
             styles={{ body: { padding: "12px 8px 8px" } }}

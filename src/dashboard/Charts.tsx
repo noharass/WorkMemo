@@ -146,6 +146,7 @@ export function TrendChart({ trend, range }: Pick<Data, "trend" | "range">) {
     }),
     [trend, range, reduced],
   );
+  if (!trend.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前范围没有已结束记录。" />;
   return <>
     <Chart option={option} label="有效工时趋势" descriptionId={descriptionId} />
     <p id={descriptionId} className="dc-chart-hint">展开数据表可读取各周期工时，按秒显示。</p>

@@ -281,3 +281,162 @@ fn unfinished_status_matches_browser_contract_and_preserves_legacy_working_filte
         }
     }
 }
+
+#[test]
+fn custom_trend_fills_leap_day_and_selected_edges_without_inventing_records() {
+    let s = store();
+    ended(&s, "2024-02-28 12:00:00", "评测", Some(0.0), true, 1, false);
+    ended(&s, "2024-03-01 12:00:00", "评测", None, false, 2000, false);
+    let q = || DashboardQuery {
+        period: "custom".into(),
+        start_date: Some("2024-02-27".into()),
+        end_date: Some("2024-03-02".into()),
+        ..Default::default()
+    };
+    let r = s.dashboard_query(q()).unwrap();
+    let rows = r["trend"].as_array().unwrap();
+    assert_eq!(rows.len(), 5);
+    assert_eq!(rows[0]["date"], "2024-02-27");
+    assert_eq!(
+        rows[2],
+        json!({"date":"2024-02-29","duration_ms":0,"quantity":0,"records":0})
+    );
+    assert_eq!(rows[1]["duration_ms"], 1);
+    assert_eq!(rows[1]["records"], 1);
+    assert_eq!(rows[3]["records"], 1);
+    assert_eq!(r["totals"]["records"], 2);
+    assert_eq!(r["totals"]["pending"], 1);
+    let mut empty = q();
+    empty.category = Some("文档".into());
+    assert!(
+        s.dashboard_query(empty).unwrap()["trend"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn custom_trend_uses_selected_span_and_bounds_extreme_month_buckets() {
+    let s = store();
+    ended(
+        &s,
+        "2026-10-29 12:00:00",
+        "评测",
+        Some(2.5),
+        true,
+        1234,
+        false,
+    );
+    for (start, end, expected, step) in [
+        ("2026-01-01", "2026-12-31", 12, 1),
+        ("1970-01-01", "9999-12-31", 1190, 81),
+    ] {
+        let r = s
+            .dashboard_query(DashboardQuery {
+                period: "custom".into(),
+                start_date: Some(start.into()),
+                end_date: Some(end.into()),
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(r["range"]["trend_unit"], "month");
+        assert_eq!(r["range"]["trend_step"], step);
+        let rows = r["trend"].as_array().unwrap();
+        assert_eq!(rows.len(), expected);
+        assert!(rows.len() <= 1200);
+        assert_eq!(
+            rows.iter()
+                .map(|v| v["duration_ms"].as_i64().unwrap())
+                .sum::<i64>(),
+            1234
+        );
+        assert_eq!(
+            rows.iter()
+                .map(|v| v["records"].as_i64().unwrap())
+                .sum::<i64>(),
+            1
+        );
+        assert_eq!(
+            rows.iter()
+                .map(|v| v["quantity"].as_f64().unwrap())
+                .sum::<f64>(),
+            2.5
+        );
+    }
+    ended(&s, "9999-12-31 12:00:00", "评测", Some(1.0), true, 7, false);
+    let r = s
+        .dashboard_query(DashboardQuery {
+            period: "custom".into(),
+            start_date: Some("1970-01-01".into()),
+            end_date: Some("9999-12-31".into()),
+            ..Default::default()
+        })
+        .unwrap();
+    let last = r["trend"].as_array().unwrap().last().unwrap();
+    assert_eq!(last["date"], "9995-10");
+    assert_eq!(last["duration_ms"], 7);
+    assert_eq!(last["records"], 1);
+}
+
+#[test]
+fn custom_trend_matches_shared_browser_contract() {
+    let s = store();
+    let contract: Value = serde_json::from_str(include_str!(
+        "../../tests/fixtures/dashboard-trend-contract.json"
+    ))
+    .unwrap();
+    for row in contract["records"].as_array().unwrap() {
+        let quantity = row["quantity"].as_f64();
+        ended(
+            &s,
+            &format!("{} 12:00:00", row["date"].as_str().unwrap()),
+            row["category"].as_str().unwrap(),
+            quantity,
+            quantity.is_some(),
+            row["duration_ms"].as_i64().unwrap(),
+            false,
+        );
+    }
+    for case in contract["cases"].as_array().unwrap() {
+        let q: DashboardQuery = serde_json::from_value(case["query"].clone()).unwrap();
+        let r = s.dashboard_query(q).unwrap();
+        let e = &case["expected"];
+        let rows = r["trend"].as_array().unwrap();
+        assert_eq!(r["range"]["trend_unit"], e["unit"], "{}", case["name"]);
+        assert_eq!(r["range"]["trend_step"], e["step"]);
+        assert_eq!(rows.len(), e["count"].as_u64().unwrap() as usize);
+        assert_eq!(
+            rows.first().map(|r| &r["date"]).unwrap_or(&Value::Null),
+            &e["first"]
+        );
+        assert_eq!(
+            rows.last().map(|r| &r["date"]).unwrap_or(&Value::Null),
+            &e["last"]
+        );
+        assert_eq!(
+            rows.iter()
+                .map(|r| r["duration_ms"].as_i64().unwrap())
+                .sum::<i64>(),
+            e["duration_ms"].as_i64().unwrap()
+        );
+        assert_eq!(
+            rows.iter()
+                .map(|r| r["records"].as_i64().unwrap())
+                .sum::<i64>(),
+            e["records"].as_i64().unwrap()
+        );
+        assert_eq!(r["totals"]["records"], e["records"]);
+        let actual: serde_json::Map<String, Value> = rows
+            .iter()
+            .filter(|r| r["duration_ms"] != 0)
+            .map(|r| {
+                (
+                    r["date"].as_str().unwrap().to_string(),
+                    r["duration_ms"].clone(),
+                )
+            })
+            .collect();
+        assert_eq!(Value::Object(actual), e["nonzero"]);
+    }
+}

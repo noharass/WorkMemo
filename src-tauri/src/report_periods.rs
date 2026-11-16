@@ -7,6 +7,9 @@ pub struct ReportRange {
     pub start_date: Option<String>,
     pub end_date: Option<String>,
     pub trend_unit: String,
+    pub trend_step: u32,
+    #[serde(skip)]
+    month_origin: i64,
 }
 
 impl ReportRange {
@@ -36,6 +39,8 @@ impl ReportRange {
                 start_date: q.start_date.clone(),
                 end_date: q.end_date.clone(),
                 trend_unit: "day".into(),
+                trend_step: 1,
+                month_origin: 0,
             });
         }
         let anchor = match &q.anchor_date {
@@ -56,7 +61,68 @@ impl ReportRange {
             start_date: Some(start),
             end_date: Some(end),
             trend_unit: if period == "day" { "hour" } else { "day" }.into(),
+            trend_step: 1,
+            month_origin: 0,
         })
+    }
+
+    /// Empty custom reports remain empty; missing days in complete local history are zero.
+    /// Explicit boundaries win, otherwise use the filtered ended records' local dates.
+    pub fn trend_buckets(
+        &mut self,
+        c: &Connection,
+        extent: Option<(i64, i64)>,
+    ) -> Result<Vec<String>> {
+        if self.period != "custom" {
+            return self.buckets(c);
+        }
+        let Some((first, last)) = extent else {
+            return Ok(Vec::new());
+        };
+        let (start, end): (String, String) = c.query_row(
+            "SELECT COALESCE(?1,date(?3/1000,'unixepoch','localtime')),COALESCE(?2,date(?4/1000,'unixepoch','localtime'))",
+            params![self.start_date,self.end_date,first,last], |r| Ok((r.get(0)?,r.get(1)?)),
+        ).map_err(db_error)?;
+        let days: i64 = c
+            .query_row(
+                "SELECT CAST(julianday(?2)-julianday(?1) AS INTEGER)",
+                params![start, end],
+                |r| r.get(0),
+            )
+            .map_err(db_error)?;
+        if days <= 120 {
+            return c.prepare("WITH RECURSIVE days(day) AS (SELECT ?1 UNION ALL SELECT date(day,'+1 day') FROM days WHERE day<?2 LIMIT 121) SELECT day FROM days")
+                .map_err(db_error)?.query_map(params![start,end], |r|r.get(0)).map_err(db_error)?.collect::<rusqlite::Result<Vec<String>>>().map_err(db_error);
+        }
+        self.trend_unit = "month".into();
+        let index = |date: &str| -> i64 {
+            date[..4].parse::<i64>().unwrap() * 12 + date[5..7].parse::<i64>().unwrap() - 1
+        };
+        let first_month = index(&start);
+        let last_month = index(&end);
+        // A year-9999 boundary must not allocate tens of thousands of monthly points.
+        self.trend_step = ((last_month - first_month + 1 + 1199) / 1200) as u32;
+        self.month_origin = first_month;
+        Ok((first_month..=last_month)
+            .step_by(self.trend_step as usize)
+            .map(|month| format!("{:04}-{:02}", month / 12, month % 12 + 1))
+            .collect())
+    }
+
+    pub fn trend_group(&self) -> String {
+        match self.trend_unit.as_str() {
+            "hour" => "strftime('%H:00',start_time/1000,'unixepoch','localtime')".into(),
+            "month" if self.trend_step > 1 => {
+                let month = "(CAST(strftime('%Y',start_time/1000,'unixepoch','localtime') AS INTEGER)*12+CAST(strftime('%m',start_time/1000,'unixepoch','localtime') AS INTEGER)-1)";
+                let bucket = format!(
+                    "({0}+(({month}-{0})/{1})*{1})",
+                    self.month_origin, self.trend_step
+                );
+                format!("printf('%04d-%02d',{bucket}/12,{bucket}%12+1)")
+            }
+            "month" => "strftime('%Y-%m',start_time/1000,'unixepoch','localtime')".into(),
+            _ => "date(start_time/1000,'unixepoch','localtime')".into(),
+        }
     }
 
     pub fn buckets(&self, c: &Connection) -> Result<Vec<String>> {

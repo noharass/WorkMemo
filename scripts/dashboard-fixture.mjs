@@ -109,6 +109,7 @@ export async function dashboardFixture(page) {
       start_date: start,
       end_date: end,
       trend_unit: query.period === "day" ? "hour" : "day",
+      trend_step: 1,
     };
   }
   function aggregate(rows) {
@@ -165,6 +166,24 @@ export async function dashboardFixture(page) {
         category,
         ...aggregate(ended.filter((row) => row.category === category)),
       }));
+    const dayKey = row => iso(new Date(row.start_time + 8 * 3600000));
+    const monthIndex = date => Number(date.slice(0,4))*12+Number(date.slice(5,7))-1;
+    const monthKey = index => `${Math.floor(index/12).toString().padStart(4,"0")}-${String(index%12+1).padStart(2,"0")}`;
+    let customBuckets=[], origin=0;
+    if(query.period === "custom" && ended.length) {
+      const dates=ended.map(dayKey).sort();
+      const start=resolved.start_date||dates[0],end=resolved.end_date||dates.at(-1);
+      const days=(Date.parse(end+"T12:00:00Z")-Date.parse(start+"T12:00:00Z"))/86400000;
+      if(days<=120)customBuckets=Array.from({length:days+1},(_,i)=>iso(new Date(Date.parse(start+"T12:00:00Z")+i*86400000)));
+      else {
+        resolved.trend_unit="month";origin=monthIndex(start);
+        const months=monthIndex(end)-origin+1;
+        resolved.trend_step=Math.ceil(months/1200);
+        customBuckets=Array.from({length:Math.ceil(months/resolved.trend_step)},(_,i)=>monthKey(origin+i*resolved.trend_step));
+      }
+    }
+    const bucketKey = row => resolved.trend_unit === "month"
+      ? monthKey(origin+Math.floor((monthIndex(dayKey(row))-origin)/resolved.trend_step)*resolved.trend_step) : dayKey(row);
     const buckets =
       query.period === "day"
         ? Array.from(
@@ -172,7 +191,7 @@ export async function dashboardFixture(page) {
             (_, hour) => String(hour).padStart(2, "0") + ":00",
           )
         : query.period === "custom"
-          ? [fixtureDate]
+          ? customBuckets
           : Array.from({ length: 32 }, (_, i) => {
               const date = new Date(resolved.start_date + "T12:00:00Z");
               date.setUTCDate(date.getUTCDate() + i);
@@ -185,7 +204,7 @@ export async function dashboardFixture(page) {
           query.period === "day"
             ? new Date(row.start_time + 8 * 3600000).getUTCHours() ===
               Number(date.slice(0, 2))
-            : iso(new Date(row.start_time + 8 * 3600000)) === date,
+            : bucketKey(row) === date,
         ),
       ),
     }));
@@ -196,7 +215,7 @@ export async function dashboardFixture(page) {
       totals: aggregate(ended),
       categories,
       trend,
-      monthly: false,
+      monthly: resolved.trend_unit === "month",
       calendar: ended.length
         ? [[fixtureDate, aggregate(ended).duration_ms]]
         : [],

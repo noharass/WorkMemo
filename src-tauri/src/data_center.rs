@@ -73,24 +73,16 @@ impl Store {
             &format!("SELECT COUNT(*),COALESCE(SUM(duration_ms),0),COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),COALESCE(SUM(settlement_status='PENDING'),0),MIN(start_time),MAX(start_time) FROM work_records WHERE {report_filter}"),args,
             |r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?))
         ).map_err(db_error)?;
-        let months = range.period == "custom"
-            && first.zip(last).is_some_and(|(a, b)| b - a > 120 * 86400000);
-        if months {
-            range.trend_unit = "month".into();
-        }
-        let group = match range.trend_unit.as_str() {
-            "hour" => "strftime('%H:00',start_time/1000,'unixepoch','localtime')",
-            "month" => "strftime('%Y-%m',start_time/1000,'unixepoch','localtime')",
-            _ => "date(start_time/1000,'unixepoch','localtime')",
-        };
+        let buckets = range.trend_buckets(&self.connection, first.zip(last))?;
+        let months = range.trend_unit == "month";
+        let group = range.trend_group();
         let mut trend:Vec<Value>=self.connection.prepare(&format!("SELECT {group} AS period,SUM(duration_ms),COALESCE(SUM(CASE WHEN settlement_status='COMPLETE' THEN quantity ELSE 0 END),0),COUNT(*) FROM work_records WHERE {report_filter} GROUP BY period ORDER BY period")).map_err(db_error)?.query_map(args,|r|Ok(json!({"date":r.get::<_,String>(0)?,"duration_ms":r.get::<_,i64>(1)?,"quantity":r.get::<_,f64>(2)?,"records":r.get::<_,i64>(3)?}))).map_err(db_error)?.collect::<rusqlite::Result<_>>().map_err(db_error)?;
-        if range.period != "custom" {
+        if !buckets.is_empty() {
             let mut by_date: std::collections::BTreeMap<String, Value> = trend
                 .into_iter()
                 .map(|v| (v["date"].as_str().unwrap().to_string(), v))
                 .collect();
-            trend = range
-                .buckets(&self.connection)?
+            trend = buckets
                 .into_iter()
                 .map(|date| {
                     by_date.remove(&date).unwrap_or_else(

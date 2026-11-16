@@ -7,6 +7,14 @@ export interface ReportRange {
   start_date: string | null;
   end_date: string | null;
   trend_unit: "hour" | "day" | "month";
+  // Optional so a new web build can still read an older backend's unit-sized buckets.
+  trend_step?: number;
+}
+export function trendAggregationLabel(range?: ReportRange): string {
+  if (range?.trend_unit === "hour") return "按开始小时汇总";
+  if (range?.trend_unit === "month") return (range.trend_step ?? 1) > 1
+    ? `每 ${range.trend_step} 个月汇总（标签为起始月份）` : "按开始月份汇总";
+  return "按开始日期汇总";
 }
 export function shiftPeriod(period: ReportPeriod, anchor: string, direction: number): string | null {
   const date = new Date(`${anchor}T12:00:00`);
