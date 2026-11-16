@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
+const expectedVersion=process.env.WORKMEMO_NATIVE_VERSION||JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8')).version;
 const path=process.env.WORKMEMO_NATIVE_ENDPOINT;
 assert.ok(path,'Set WORKMEMO_NATIVE_ENDPOINT to the isolated preview endpoint file');
 assert.match(path,/com\.workmemo\.test\.webacceptance[\\/]dashboard\.endpoint\.json$/);
@@ -22,7 +23,7 @@ try{
  });
  const denied=await context.request.get(origin.origin+'/api/meta');assert.equal(denied.status(),403);
  const meta=await context.request.get(origin.origin+'/api/meta',{headers:{Authorization:'Bearer '+endpoint.token}});
- assert.equal(meta.status(),200);const version=(await meta.json()).version;assert.equal(version,'0.2.10');
+ assert.equal(meta.status(),200);const version=(await meta.json()).version;assert.equal(version,expectedVersion);
  const response=await page.goto(origin.origin+'/dashboard#token='+endpoint.token);
  assert.equal(response.status(),200);assert.match(response.headers()['content-security-policy'],/script-src 'self'/);
  await page.getByRole('heading',{name:'工作总览',exact:true}).waitFor();
