@@ -1,5 +1,5 @@
 ﻿[CmdletBinding()]
-param()
+param([string]$OutputDirectory)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -22,6 +22,15 @@ $running = Get-Process -Name workmemo -ErrorAction SilentlyContinue | Where-Obje
     -not $_.Path -or [IO.Path]::GetFullPath($_.Path) -eq $releaseExecutable
 }
 if ($running) { throw 'The build output is running or cannot be identified. Close that copy before packaging.' }
+$artifactRoot = [IO.Path]::GetFullPath((Join-Path $taskRoot 'artifacts'))
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    $output = Join-Path $artifactRoot $version
+} else {
+    $output = [IO.Path]::GetFullPath($(if ([IO.Path]::IsPathRooted($OutputDirectory)) { $OutputDirectory } else { Join-Path $taskRoot $OutputDirectory }))
+    if (-not $output.StartsWith($artifactRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'A custom output directory must be inside the workspace artifacts directory.'
+    }
+}
 
 Push-Location $taskRoot
 try {
@@ -35,7 +44,6 @@ try {
     $setupName = "WorkMemo_${version}_x64-setup.exe"
     $setup = Join-Path $taskRoot "src-tauri/target/release/bundle/nsis/$setupName"
     if (-not (Test-Path -LiteralPath $setup -PathType Leaf)) { throw "Installer not found: $setup" }
-    $output = Join-Path $taskRoot "artifacts/$version"
     [System.IO.Directory]::CreateDirectory($output) | Out-Null
     $notices = Join-Path $output 'THIRD-PARTY-LICENSES.txt'
     Copy-Item -LiteralPath (Join-Path $taskRoot 'docs/THIRD-PARTY-LICENSES.txt') -Destination $notices -Force

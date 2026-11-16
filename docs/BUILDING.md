@@ -23,6 +23,8 @@ npm.cmd run tauri dev
 
 ## 检查
 
+2026-11-16 网页阶段D已完成自动验收和0.2.10候选构建，新增实际Chromium浏览器缩放、独立原生HTTP和成品内容核验。用户手动确认独立桌面窗口显示、透明和操作正常；Narrator/系统DPI/扩展联动/安装卸载未全验收。完整路径、命令、校验值和待确认发布边界见 [WEB-PHASE-D.md](WEB-PHASE-D.md)。公开0.2.10资产未替换。
+
 2026-11-16 网页阶段C完成自定义趋势补零、有界日/月聚合和桌面入口动态加载；新增 `node scripts/verify-web-phase-c.mjs`，性能测量为 `node scripts/measure-web-phase-c.mjs`（`WORKMEMO_MEASUREMENT=after`，每次三组并覆盖同名证据）。Node/Rust 共用趋势场景契约。完整数据规则、前后 trace、命令和原生验收边界见 [WEB-PHASE-C.md](WEB-PHASE-C.md)。当前公开 0.2.10 安装包未包含 A/B/C 修正。
 
 2026-11-16 网页阶段B完成表单语义、错误焦点、颜色/强制颜色、静默轮询、图表数据表和弹层隔离修正。新增 `node scripts/verify-web-phase-b.mjs`；可选 `WORKMEMO_AXE` 运行自动可访问性扫描，`WORKMEMO_CONTRAST=1` 使用本机 Python/Pillow 测量实际合成背景。完整命令、源码和人工验收边界见 [WEB-PHASE-B.md](WEB-PHASE-B.md)。当前公开 0.2.10 安装包仍未包含 A/B 源码修正。
@@ -66,6 +68,17 @@ node scripts/verify-multi-url.mjs
 这些浏览器回归使用隔离 HTTP／IPC 数据，不对真实任务发送操作。新版网页回归以 `test:web` 为准。0.2.7 将分类连续补填改为先选记录、保存后返回列表；历史命令 verify-v025-followup.mjs 转到新的 verify-v027-web.mjs，桌面收高仍由 verify-v025.mjs 检查。旧网页脚本中的原生 select、侧抽屉及清空统计的断言对应历史布局，不能当作新版的验收入口。新截图和结果写入 `artifacts/web-ui/qa`；CSS 缩放和模拟 IPC 不等于 Windows 原生透明、系统 DPI 或实际浏览器扩展验收。完整说明见 [WEB-UI-UPDATE.md](WEB-UI-UPDATE.md)。
 
 0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。源码阶段与原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
+
+## 构建网页改造候选（0.2.10，尚未公开）
+
+先停止当前项目使用 node_modules 的 Vite 预览，避免 Windows 原生模块占用；保留真实应用任务。使用单独目录，不覆盖已有版本成品：
+
+```powershell
+& .\scripts\package-windows.ps1 -OutputDirectory artifacts/web-phase-d/candidate-0.2.10
+& .\scripts\verify-windows-candidate.ps1
+```
+
+自定义输出限定在当前工作区 artifacts 内；不传参数仍沿用原 artifacts/版本号 目录，可能覆盖同名文件。成品核验脚本的旧资产保留检查需要 artifacts/0.2.10 中原四项文件。独立原生查看配置为 src-tauri/tauri.web-acceptance.conf.json，不能把该 debug 验收实例当作正式安装包。全部命令和人工限制见 WEB-PHASE-D.md。
 
 ## 构建 v0.2.9 成品
 
