@@ -1,6 +1,6 @@
 # WorkMemo v0.2.12 发布记录
 
-2026-11-16，用户明确要求“上传成0.2.12”。目标为新增正式 GitHub Release，保留 v0.2.11 及历史资产。最终公开回执将在发布并验证后追加，准备记录不代表已经公开。
+2026-11-16，按用户明确要求已公开 [WorkMemo v0.2.12](https://github.com/noharass/WorkMemo/releases/tag/v0.2.12)，正式 Latest、非草稿、非预发布。Release ID 446605307，公开时间北京时间 2026-11-16 12:26:01。构建提交和新标签 v0.2.12 均指向 `27d227184a3fff47c7baf51a38af46350c0e62c7`，v0.2.11 及历史资产保持不变。
 
 ## 更新与兼容性
 
@@ -12,7 +12,7 @@
 
 Node 69项、Cargo格式检查、Rust库180项及helper2项已通过，doc-test为0项。默认 cargo test 因用户正在查看的 debug/workmemo.exe 被占用失败，因此改为 --lib、--bin workmemo-browser 和 --doc，不强制关闭用户预览；两个 integration 测试目标未在本轮重跑，不宣称完整 cargo test 通过。正式 release 编译在独立输出目录执行，不覆盖正在运行的 debug 预览。
 
-修复阶段已通过生产网页完整回归、反馈专项6组、B阶段7组。本轮版本化之后的构建、成品核验和网页专项结果在末尾补充。真实 Narrator、Windows系统DPI、原生四皮肤逐项、扩展联动、安装卸载、登录场景和所有硬件上的动画体感尚未全部复验。用户正在查看的独立 0.2.11 预览保持运行，不冒称为 0.2.12 正式程序启动通过，不触碰正式工作数据库。
+修复阶段已通过生产网页完整回归、反馈专项6组、B阶段7组。本轮版本化之后的构建、成品核验和网页专项均通过，结果见下文。真实 Narrator、Windows系统DPI、原生四皮肤逐项、扩展联动、安装卸载、登录场景和所有硬件上的动画体感尚未全部复验。用户正在查看的独立 0.2.11 预览保持运行，不冒称为 0.2.12 正式程序启动通过，不触碰正式工作数据库。
 
 ## 路径与完整源码
 
@@ -82,4 +82,12 @@ TypeScript/Vite生产构建、Tauri Windows x64 release、浏览器helper版本/
 | THIRD-PARTY-LICENSES.txt | 2570495 | 998efb4d5965b2fd8fe366b023a3b45855adc91dafabda9d20d195a6b8107b2c |
 | SHA256SUMS.txt | 288 | c6da10df6d4a8a944b779950be23c8eea9a0731de02cdc2b6d4fd0720bec4329 |
 
-本地发布工具的旧版本检查已完成，Latest当前为v0.2.11，尚无v0.2.12 Release。公开发布及匿名下载核验将在最后追加回执。证据见 artifacts/0.2.12/package-verification.json、previous-release.json 和 artifacts/release-0212-{build,feedback,web}.log。
+本地发布工具的旧版本检查已完成，Latest当前为v0.2.11，尚无v0.2.12 Release。公开发布及匿名下载核验均已完成，见下方回执。证据见 artifacts/0.2.12/package-verification.json、previous-release.json 和 artifacts/release-0212-{build,feedback,web}.log。
+
+## 最终公开回执
+
+四项公开资产的服务器大小/SHA256与本地逐项一致；公开Release页面无认证访问成功；安装器、ZIP、许可及校验文件分别无认证下载并复算通过。Latest=v0.2.12，Release ID=446605307，draft=false，prerelease=false。核对前后旧v0.2.11四项资产ID、大小、摘要与标签目标保持不变。
+
+回执位于 E:\WorkMemo\artifacts\0.2.12\public-receipt.json，公开下载副本位于 public-verified，准备/公开阶段分别为 prepared-release.json、published-release.json。v0.2.12标签保留在27d2271构建提交；本最终文档回执另行提交main，不移动发布标签。
+
+正式成品已交付，用户原独立预览保持运行。未为验收结束、删除或新增真实工作任务；未执行安装器、未声称真实机器上的全部原生验收通过。本次收尾完成，不自动增加功能。
