@@ -1,0 +1,35 @@
+/* Keep Ant Design's lifecycle and reduced-motion handling. Animate only the
+   composited panel/opacity, without scaling text or travelling a full screen. */
+@media (prefers-reduced-motion: no-preference) {
+  .wm-modal.wm-zoom-enter-active,
+  .wm-modal.wm-zoom-appear-active {
+    animation-name: wm-overlay-in;
+    animation-timing-function: ease-out;
+  }
+  .wm-modal.wm-zoom-leave-active {
+    animation-name: wm-overlay-out;
+    animation-timing-function: ease-in;
+  }
+  .wm-drawer .wm-drawer-panel-motion-bottom-enter,
+  .wm-drawer .wm-drawer-panel-motion-bottom-appear,
+  .wm-drawer .wm-drawer-panel-motion-bottom-leave-active {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  .wm-drawer .wm-drawer-panel-motion-bottom-enter-active,
+  .wm-drawer .wm-drawer-panel-motion-bottom-appear-active {
+    transform: none;
+    opacity: 1;
+  }
+  .wm-drawer .wm-drawer-content-wrapper {
+    transition-property: transform, opacity;
+  }
+}
+@keyframes wm-overlay-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes wm-overlay-out {
+  from { transform: none; opacity: 1; }
+  to { transform: translateY(8px); opacity: 0; }
+}

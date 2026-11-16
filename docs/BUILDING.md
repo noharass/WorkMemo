@@ -23,6 +23,8 @@ npm.cmd run tauri dev
 
 ## 检查
 
+2026-11-16 网页三项反馈修正与新增 `node scripts/verify-web-feedback.mjs` 见 [WEB-FEEDBACK-FIX.md](WEB-FEEDBACK-FIX.md)，公开 0.2.11 未替换。
+
 2026-11-16 用户确认新版本0.2.11公开发布，应用与扩展版本统一，数据库仍schema12。生产构建、发布流程、完整校验及未完成的原生验收见 [RELEASE-0.2.11.md](RELEASE-0.2.11.md)。
 
 2026-11-16 网页阶段D已完成自动验收和0.2.10候选构建，新增实际Chromium浏览器缩放、独立原生HTTP和成品内容核验。用户手动确认独立桌面窗口显示、透明和操作正常；Narrator/系统DPI/扩展联动/安装卸载未全验收。完整路径、命令、校验值和待确认发布边界见 [WEB-PHASE-D.md](WEB-PHASE-D.md)。公开0.2.10资产未替换。

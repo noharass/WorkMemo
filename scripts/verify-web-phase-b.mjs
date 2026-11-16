@@ -100,11 +100,11 @@ try{
  {
   const state=await setup();await page.getByRole('button',{name:'查看趋势数据',exact:true}).click();
   const trend=page.getByRole('table',{name:'趋势数据',exact:true});await trend.waitFor();assert.match(await trend.innerText(),/周期/);
-  const expected=state.data(state.currentQuery).trend[9].duration_ms/1000;assert.match(await trend.innerText(),new RegExp(expected.toLocaleString('zh-CN').replaceAll(',','[,]')));
+  const expected=state.data(state.currentQuery).trend[9].duration_ms;assert.ok((await trend.innerText()).includes(`${Math.floor(expected/3600000)}小时${Math.floor(expected%3600000/60000)}分钟`));
   await page.getByRole('button',{name:'辅助分析',exact:true}).click();await page.getByRole('button',{name:'查看工作日历数据',exact:true}).click();
   const calendar=page.getByRole('table',{name:'工作日历数据',exact:true});await calendar.waitFor();assert.match(await calendar.innerText(),/2026-10-29/);
   await axe('chart-data');await page.emulateMedia({forcedColors:'active'});
-  await calendar.getByRole('columnheader',{name:'有效工时（秒）',exact:true}).waitFor();
+  await calendar.getByRole('columnheader',{name:'有效工时（小时/分钟）',exact:true}).waitFor();
   const chartButton=page.getByRole('button',{name:'查看工作日历数据',exact:true});await chartButton.focus();await page.keyboard.press("Shift+Tab");await page.keyboard.press("Tab");await focused(chartButton);
   assert.notEqual(await chartButton.evaluate(el=>getComputedStyle(el).outlineStyle),'none');
   await page.screenshot({path:fileURLToPath(new URL('forced-colors.png',output))});

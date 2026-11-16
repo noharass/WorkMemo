@@ -1,5 +1,9 @@
 # WorkMemo 第八阶段：最终检查与 Windows 交付
 
+## 2026-11-16 网页三项反馈修正（源码）
+
+工时数据表改为小时/分钟；稳定筛选日期对象，避免轮询重置浏览月份；Modal/Drawer 改短距离过渡并取消详情弹层模糊。69项Node、前端生产构建、完整网页回归、B阶段7组、反馈专项6组通过。未操作真实任务、未重打公开0.2.11、未重验原生流畅度。完整交付见 [WEB-FEEDBACK-FIX.md](WEB-FEEDBACK-FIX.md) 与 [WEB-FEEDBACK-FIX-SOURCE.md](WEB-FEEDBACK-FIX-SOURCE.md)。
+
 ## 2026-11-12 v0.2.10 正式发布
 
 用户要求上传为 0.2.10。已构建并公开 Windows x64 安装版、免安装 ZIP、第三方许可和校验文件，四项公开下载的摘要均与本地一致。版本标签指向 ee76bba；Node 59、Rust 181 项通过。升级数据库至 schema 12，需事先备份；原生透明窗口、真实扩展交互和安装卸载未在本次实机验收。详见 [RELEASE-0.2.10.md](RELEASE-0.2.10.md)。

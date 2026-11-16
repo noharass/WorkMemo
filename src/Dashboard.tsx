@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   Collapse,
-  DatePicker,
   Descriptions,
   Empty,
   Form,
@@ -24,7 +23,6 @@ import {
   type InputRef,
   type TableColumnsType,
 } from "antd";
-import dayjs from "dayjs";
 import {
   CATEGORIES,
   formatDuration,
@@ -54,13 +52,12 @@ import {
   type Row,
 } from "./dashboard/api";
 import { useDashboardData } from "./dashboard/useDashboardData";
+import { FilterDateField } from "./dashboard/FilterDateField";
 import { ManualEntryModal } from "./dashboard/ManualEntryModal";
 import { recordStatusLabel } from "./dashboard/recordStatus";
 import { CalendarChart, CategoryChart, DurationPieChart, TrendChart } from "./dashboard/Charts";
 import "./Dashboard.css";
 
-const minDate = dayjs("1970-01-01"),
-  maxDate = dayjs("9999-12-31");
 function RecordStatus({ row }: { row: Row }) {
   return (
     <Space size={4} wrap>
@@ -634,22 +631,8 @@ function DashboardContent() {
     change: (value: string | null) => void,
     required = false,
   ) => (
-    <Form.Item label={label} htmlFor={`dc-filter-date-${required ? "anchor" : label === "开始日期" ? "start" : "end"}`} validateStatus={filterError && !required ? "error" : undefined}>
-      <DatePicker
-        id={`dc-filter-date-${required ? "anchor" : label === "开始日期" ? "start" : "end"}`}
-        aria-required={required}
-        aria-invalid={!!filterError && !required}
-        aria-describedby={filterError && !required ? "dc-filter-error" : undefined}
-        aria-label={label}
-        value={value ? dayjs(value) : null}
-        minDate={minDate}
-        maxDate={maxDate}
-        allowClear={!required}
-        format="YYYY-MM-DD"
-        onChange={(date) => {setFilterError("");change(date?.format("YYYY-MM-DD") ?? null);}}
-        inputReadOnly={false}
-      />
-    </Form.Item>
+    <FilterDateField label={label} value={value} required={required} error={filterError}
+      onChange={next => { setFilterError(""); change(next); }} />
   );
   return (
     <div className="data-center">

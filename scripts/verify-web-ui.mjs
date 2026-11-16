@@ -605,8 +605,9 @@ try {
       return window.motionFrames;
     });
     assert.ok(
-      animation.some((frame) => frame.y > settled.y + 20),
-      "official bottom motion must move the panel",
+      animation.some((frame) => frame.y > settled.y + 1) &&
+      animation.every((frame) => Math.abs(frame.y - settled.y) <= 13),
+      "panel motion stays within a short 12px transition",
     );
     assert.ok(
       animation.every((frame) => frame.locked),

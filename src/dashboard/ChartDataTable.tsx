@@ -11,7 +11,7 @@ export function ChartDataTable({ title, rows }: {
       locale={{emptyText:"当前范围没有有效工时数据。"}}
       columns={[
         {title:"周期",dataIndex:"label",rowScope:"row"},
-        {title:"有效工时（秒）",dataIndex:"duration_ms",render:(value:number)=>(value / 1000).toLocaleString("zh-CN",{maximumFractionDigits:3})},
+        {title:"有效工时（小时/分钟）",dataIndex:"duration_ms",render:(value:number)=>`${Math.floor(value / 3_600_000)}小时${Math.floor(value % 3_600_000 / 60_000)}分钟${value > 0 && value < 60_000 ? "（不足1分钟）" : ""}`},
       ]} />,
   }]} />;
 }
