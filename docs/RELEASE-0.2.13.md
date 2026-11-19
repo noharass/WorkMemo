@@ -63,3 +63,9 @@ git status --short --branch
 | WorkMemo_0.2.13_windows_x64.zip | 5171610 | `e94a6427ef0c1c97554c7b7d91bdf5c750a38fa10aac3a86fc269f4aad028943` |
 | THIRD-PARTY-LICENSES.txt | 2570495 | `998efb4d5965b2fd8fe366b023a3b45855adc91dafabda9d20d195a6b8107b2c` |
 | SHA256SUMS.txt | 288 | `854a5e336606d675aa404bab517c9b8f09f8f2c3a15077f099a1ac40131246d4` |
+
+## 公开发布回执
+
+北京时间 2026-11-19 15:13:30 公开为正式 Latest，Release ID 为 `450993439`。新标签 `v0.2.13` 指向构建提交 `65d42874f98f4c9fc12a18a565cb48289c1e6b91`。四项资产从 GitHub 匿名下载后与上表的字节数及 SHA256 全部一致。同期复核了 v0.2.12 发布的四项资产和原标签目标。[GitHub Release](https://github.com/noharass/WorkMemo/releases/tag/v0.2.13)
+
+本地公开校验回执位于 `E:\WorkMemo\artifacts\0.2.13\public-receipt.json`。发布回执另行同步到 `main`。
