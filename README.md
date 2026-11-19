@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.12/WorkMemo_0.2.12_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.13/WorkMemo_0.2.13_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.12/WorkMemo_0.2.12_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.13/WorkMemo_0.2.13_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.12">v0.2.12 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.13">v0.2.13 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -38,13 +38,13 @@
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## 这次更新：网页工时、弹窗与日期筛选修正
+## 这次更新：待办清单
 
-**v0.2.12** 将趋势和工作日历数据表的有效工时改为小时/分钟；详情、补填及确认弹窗采用短距离淡入过渡，减少移动卡片的模糊开销。日期筛选翻到上个月或上一年后，不再因后台刷新跳回已选月份。
+**v0.2.13** 新增待办清单。主窗口的「待补全」旁和灵动岛展开区都能打开待办。一条待办可以记录多段工时，由你决定何时勾完。删除待办后，之前的工作记录仍可查询。
 
-数据库仍为 schema 12，从 v0.2.10 / v0.2.11 更新无需新增迁移；更旧版本升级前请备份。Windows x64 成品未签名，需 WebView2。实际机器的流畅体感、Narrator、系统 DPI、实际扩展联动和安装卸载未全部复验，详情见发布记录。
+本次升级将数据库迁移至 schema 13，完整备份包含待办及其工时关联。升级前请备份。Windows x64 成品未签名，需 WebView2。
 
-[查看 v0.2.12 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.12) · [构建校验与验收限制](docs/RELEASE-0.2.12.md)
+[查看 v0.2.13 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.13) · [构建校验与验收记录](docs/RELEASE-0.2.13.md)
 
 历史版本和开发阶段记录继续保留在 docs 与 Releases 中。
 
