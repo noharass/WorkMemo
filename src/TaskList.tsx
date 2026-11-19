@@ -32,6 +32,7 @@ export function TaskList({tasks, error, active, disabled, onSwitch, compact = fa
       const category = name(t.category);
       const status = running ? "计时中" : t.recovery_pending || (t.current && active?.recovery_pending) ? "待恢复" : "已暂停";
       return <button type="button" className="task-list-row secondary" key={t.record_id} aria-current={t.current ? "true" : undefined}
+        data-record-id={t.record_id}
         aria-label={`${t.name}，${status}${running ? "" : "，继续"}`} disabled={disabled || running || t.id < 0}
         onClick={() => { void onSwitch(t.id); }}>
         <span className="task-list-dot" aria-hidden="true"/><span className="task-list-copy"><strong>{t.name}</strong>{t.name !== category && <small>{category}</small>}</span>

@@ -23,6 +23,8 @@ npm.cmd run tauri dev
 
 ## 检查
 
+2026-11-19 待办清单源码使用 schema 13。待办、计时关联和完整备份验证使用独立数据目录。PowerShell 构建、回归和 Windows 原生验收命令见 [待办交付](TODO.md)。
+
 2026-11-16 用户指定发布0.2.12，包含三项网页体验修正；发布命令、实际结果和限制见 [RELEASE-0.2.12.md](RELEASE-0.2.12.md)。
 
 2026-11-16 网页三项反馈修正与新增 `node scripts/verify-web-feedback.mjs` 见 [WEB-FEEDBACK-FIX.md](WEB-FEEDBACK-FIX.md)，公开 0.2.11 未替换。

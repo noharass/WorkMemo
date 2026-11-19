@@ -11,6 +11,7 @@ interface Props {
   minimal?: boolean;
   switching?: boolean;
   starting?: boolean;
+  cancelLabel?: string;
   onCancel?: () => void;
   onStart: (input: StartInput) => Promise<boolean>;
 }
@@ -25,6 +26,7 @@ export function WorkForm({
   disabled,
   switching = false,
   starting = false,
+  cancelLabel,
   onStart,
   onCancel,
 }: Props) {
@@ -74,6 +76,7 @@ export function WorkForm({
           <select
             aria-label="工作类别"
             ref={categoryRef}
+            autoFocus={!!cancelLabel}
             value={category}
             disabled={disabled}
             aria-invalid={Boolean(errors.category)}
@@ -154,7 +157,7 @@ export function WorkForm({
         <Icon name="play" />
         <span>{starting ? "正在开始…" : "开始工作"}</span>
       </button>
-      {onCancel && <button type="button" className="cancel-switch" disabled={starting} onClick={onCancel}><Icon name="left" />{switching ? "取消切换" : "返回监测状态"}</button>}
+      {onCancel && <button type="button" className="cancel-switch" disabled={starting} onClick={onCancel}><Icon name="left" />{cancelLabel ?? (switching ? "取消切换" : "返回监测状态")}</button>}
     </form>
   );
 }

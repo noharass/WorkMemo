@@ -1055,6 +1055,7 @@ impl Store {
                 "AUTO",
                 now,
                 false,
+                None,
             )?;
         }
         self.monitor.active_rule_id = Some(rule.id);

@@ -51,6 +51,174 @@ fn id(store: &Store) -> i64 {
     store.active().unwrap().unwrap().id
 }
 
+#[test]
+fn todo_crud_is_persistent_and_keeps_pending_order() {
+    let directory = TestDirectory::new();
+    let clock = TestClock::new();
+    let mut store = Store::open(&directory.db(), Box::new(clock.clone())).unwrap();
+    for invalid in ["　", "工作\n内容", "有\0字", &"🌱".repeat(81)] {
+        assert!(store.create_todo(invalid).is_err());
+    }
+    store.create_todo("　检查记录 🌱 ").unwrap();
+    store.create_todo("复查").unwrap();
+    let first = store.list_todos().unwrap().remove(0);
+    assert_eq!(first.title, "检查记录 🌱");
+    store.rename_todo(&first.id, "改名").unwrap();
+    store.set_todo_completed(&first.id, true).unwrap();
+    clock.advance(1000);
+    store.set_todo_completed(&first.id, true).unwrap();
+    assert_eq!(store.list_todos().unwrap()[1].completed_at, Some(1_000_000));
+    assert!(store.snapshot().unwrap().recent_records.is_empty());
+    drop(store);
+
+    let store = Store::open(&directory.db(), Box::new(clock)).unwrap();
+    let items = store.list_todos().unwrap();
+    assert_eq!(items[0].title, "复查");
+    assert_eq!(items[1].title, "改名");
+    assert_eq!(items[1].completed_at, Some(1_000_000));
+    store.set_todo_completed(&first.id, false).unwrap();
+    assert_eq!(store.list_todos().unwrap()[0].id, first.id);
+    store.delete_todo(&first.id).unwrap();
+    assert_eq!(store.list_todos().unwrap().len(), 1);
+    assert!(store.rename_todo(&first.id, "下标失效").is_err());
+}
+
+#[test]
+fn todo_can_be_timed_more_than_once_and_keeps_existing_records() {
+    let (mut store, clock) = memory();
+    store.create_todo("检查记录").unwrap();
+    let todo = store.list_todos().unwrap().remove(0).id;
+    store.start_checked(input(), None, Some(&todo)).unwrap();
+    let first = id(&store);
+    assert_eq!(store.list_todos().unwrap()[0].open_record_id, Some(first));
+    assert!(store.start_checked(input(), None, Some(&todo)).is_err());
+    clock.advance(2400);
+    store.pause(first).unwrap();
+    clock.advance(800);
+    assert!(
+        store
+            .start_checked(input(), Some(first), Some(&todo))
+            .is_err()
+    );
+    assert_eq!(id(&store), first);
+    store.rename_todo(&todo, "检查修订记录").unwrap();
+    store.resume(first).unwrap();
+    clock.advance(500);
+    store.finish(first).unwrap();
+    assert_eq!(store.list_todos().unwrap()[0].completed_at, None);
+    assert_eq!(store.list_todos().unwrap()[0].open_record_id, None);
+    store.start_checked(input(), None, Some(&todo)).unwrap();
+    let second = id(&store);
+    assert_ne!(first, second);
+    store.set_todo_completed(&todo, true).unwrap();
+    assert_eq!(store.list_todos().unwrap()[0].open_record_id, Some(second));
+    store.delete_todo(&todo).unwrap();
+    assert_eq!(id(&store), second);
+    let record = store.record(first).unwrap();
+    assert_eq!(record.task_name.as_deref(), Some("检查记录"));
+    assert_eq!(record.duration_ms, 2900);
+    let record = store.record(second).unwrap();
+    assert_eq!(record.task_name.as_deref(), Some("检查修订记录"));
+    assert!(!record.is_paused);
+    assert!(store.list_todos().unwrap().is_empty());
+}
+
+#[test]
+fn todo_switch_rejects_stale_or_completed_items_and_rolls_back_failed_association() {
+    let (mut store, clock) = memory();
+    store.create_todo("继续写文档").unwrap();
+    let todo = store.list_todos().unwrap().remove(0).id;
+    store.start(input()).unwrap();
+    let previous = id(&store);
+    clock.advance(7000);
+    assert!(
+        store
+            .start_checked(input(), Some(previous), Some(&todo))
+            .is_err()
+    );
+    store.pause(previous).unwrap();
+    assert!(
+        store
+            .start_checked(input(), Some(previous), Some("missing-todo"))
+            .is_err()
+    );
+    store.set_todo_completed(&todo, true).unwrap();
+    assert!(
+        store
+            .start_checked(input(), Some(previous), Some(&todo))
+            .is_err()
+    );
+    store.set_todo_completed(&todo, false).unwrap();
+    store.connection.execute_batch("CREATE TRIGGER fail_todo_link BEFORE INSERT ON todo_work_records BEGIN SELECT RAISE(ABORT,'injected'); END;").unwrap();
+    assert!(
+        store
+            .start_checked(input(), Some(previous), Some(&todo))
+            .is_err()
+    );
+    let current = store.active().unwrap().unwrap();
+    assert_eq!(current.id, previous);
+    assert_eq!(current.duration_ms, 7000);
+    assert!(current.is_paused);
+    assert!(store.pending_records().unwrap().is_empty());
+    assert_eq!(store.list_todos().unwrap()[0].open_record_id, None);
+    store
+        .connection
+        .execute_batch("DROP TRIGGER fail_todo_link;")
+        .unwrap();
+    store
+        .start_checked(input(), Some(previous), Some(&todo))
+        .unwrap();
+    assert_eq!(store.pending_records().unwrap()[0].id, previous);
+    assert_eq!(
+        store.list_todos().unwrap()[0].open_record_id,
+        Some(id(&store))
+    );
+}
+
+#[test]
+fn todo_links_resume_after_reopening_and_suspend_in_existing_task_list() {
+    let directory = TestDirectory::new();
+    let clock = TestClock::new();
+    let (first, todo);
+    {
+        let mut store = Store::open(&directory.db(), Box::new(clock.clone())).unwrap();
+        store.create_todo("等待恢复").unwrap();
+        todo = store.list_todos().unwrap().remove(0).id;
+        store.start_checked(input(), None, Some(&todo)).unwrap();
+        first = id(&store);
+        clock.advance(2200);
+        store.pause(first).unwrap();
+    }
+    let mut store = Store::open(&directory.db(), Box::new(clock)).unwrap();
+    assert!(store.active().unwrap().unwrap().recovery_pending);
+    assert_eq!(store.list_todos().unwrap()[0].open_record_id, Some(first));
+    let target = store
+        .page_tasks()
+        .unwrap()
+        .into_iter()
+        .find(|task| task.record_id == Some(first))
+        .unwrap();
+    store.confirm_recovery_task(target.id).unwrap();
+    assert_eq!(id(&store), first);
+    let other = store
+        .page_tasks()
+        .unwrap()
+        .into_iter()
+        .find(|task| task.record_id.is_none())
+        .unwrap();
+    store.confirm_recovery_task(other.id).unwrap();
+    assert_eq!(store.record(first).unwrap().status, "SUSPENDED");
+    assert_eq!(store.list_todos().unwrap()[0].open_record_id, Some(first));
+    let current = id(&store);
+    store.pause(current).unwrap();
+    assert!(
+        store
+            .start_checked(input(), Some(current), Some(&todo))
+            .is_err()
+    );
+    assert_eq!(id(&store), current);
+}
+
 pub(super) struct TestDirectory(PathBuf);
 impl TestDirectory {
     pub(super) fn new() -> Self {

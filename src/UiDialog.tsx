@@ -2,15 +2,15 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Icon } from "./Icon";
 
 /** Presentation-only dialogs keep Escape, focus trapping and focus restoration native. */
-export function UiDialog({ open, onClose, title, id, children, closeDisabled = false }: {
-  open: boolean; onClose: () => void; title: string; id: string; children: ReactNode; closeDisabled?: boolean;
+export function UiDialog({ open, onClose, title, id, children, closeDisabled = false, className }: {
+  open: boolean; onClose: () => void; title: string; id: string; children: ReactNode; closeDisabled?: boolean; className?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (open && !dialog.current?.open) dialog.current?.showModal();
     if (!open && dialog.current?.open) dialog.current?.close();
   }, [open]);
-  return <dialog ref={dialog} className="ui-dialog" aria-labelledby={id}
+  return <dialog ref={dialog} className={className ? `ui-dialog ${className}` : "ui-dialog"} aria-labelledby={id}
     onCancel={(event) => { event.preventDefault(); if (!closeDisabled) onClose(); }}>
     <div className="settings-heading">
       <h2 id={id}>{title}</h2>

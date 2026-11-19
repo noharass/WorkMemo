@@ -78,7 +78,9 @@ export function NotificationApp() {
       : "仅浏览 · 当前不计时"
     : candidate
       ? "准备开始工作？"
-      : active?.recovery_pending
+      : !active
+        ? "当前不计时"
+        : active.recovery_pending
         ? "上次工作待恢复"
         : active?.pause_reason === "MANUAL"
           ? "手动暂停 · 已停表"
@@ -127,17 +129,17 @@ export function NotificationApp() {
           if (event.button === 0) void getCurrentWindow().startDragging().then(() => invoke("fit_island_position")).catch(e => setError(String(e)));
         }}>
           {active || candidate || monitor?.browse_category ? <WorkBadge category={active?.category ?? candidate?.category ?? monitor?.browse_category ?? "开发"} presentation={presentation.current} showName={false} /> : <span className="work-symbol"><Icon name="read" /></span>}
-          <span className="island-info"><strong>{bindingKey ? monitor?.unknown_page_url ? "新网页待处理" : "网页任务待处理" : active ? active.task_name || name(active.category) : candidate ? name(candidate.category) : visibleNotice?.kind === "ended" ? "工作已结束" : "仅浏览"}</strong>
+          <span className="island-info"><strong>{bindingKey ? monitor?.unknown_page_url ? "新网页待处理" : "网页任务待处理" : active ? active.task_name || name(active.category) : candidate ? name(candidate.category) : visibleNotice?.kind === "ended" ? "工作已结束" : monitor?.browsing_only ? "仅浏览" : "待机"}</strong>
             <small>{snapshot ? !expanded && reminderLabel ? `${reminderLabel} · 点箭头查看` : bindingKey ? monitor?.browsing_only ? "仅浏览 · 当前不计时" : "请打开主窗口处理绑定" : visibleNotice?.kind === "ended" ? "结果已保存 · 待填写工作量" : state : "状态不可用"}</small></span>
           {active && <strong className="island-time">{formatDuration(active.duration_seconds)}</strong>}
         </div>
         {candidate && <button type="button" className="island-action" aria-label="开始识别的工作" title={`开始记录 · ${name(candidate.category)}`} disabled={busy || !!session.connectionError} onClick={() => { void session.confirmWork(candidate.id); }}><Icon name="play" /></button>}
         {!candidate && active && !monitor?.browsing_only && <button type="button" className="island-action" aria-label={active.is_paused ? "继续记录" : "暂停记录"} disabled={busy || !!session.connectionError || active.recovery_pending} onClick={() => { void (active.is_paused ? session.resume(active.id) : session.pause(active.id)); }}><Icon name={active.is_paused ? "play" : "pause"} /></button>}
         {!candidate && monitor?.browsing_only && <button type="button" className="island-action" aria-label={active ? "继续记录" : "开始记录"} disabled={busy || !monitor.browse_ready || !!active?.recovery_pending || !!session.connectionError} onClick={() => { void session.confirmWork(null); }}><Icon name="play" /></button>}
-        {(active || openTasks.tasks.length > 0 || bindingKey || visibleNotice || candidate || editing || combinedError || (snapshot?.pending_count ?? 0) > 0) && <button type="button" className="island-action island-expand" data-reminder={!expanded && !!reminderLabel} aria-expanded={expanded} title={expanded ? "收起展开区域" : reminderLabel ? `${reminderLabel}，点击展开任务与提醒` : "展开任务与提醒"} aria-label={expanded ? "收起展开区域" : "展开任务与提醒"} onClick={() => {
+        <button type="button" className="island-action island-expand" data-reminder={!expanded && !!reminderLabel} aria-expanded={expanded} title={expanded ? "收起展开区域" : reminderLabel ? `${reminderLabel}，点击展开任务与提醒` : "展开任务与提醒"} aria-label={expanded ? "收起展开区域" : "展开任务与提醒"} onClick={() => {
           if (expanded && editing) { void later(); return; }
           setExpanded(value => !value);
-        }}><Icon name={expanded ? "left" : "right"} /></button>}
+        }}><Icon name={expanded ? "left" : "right"} /></button>
         <button type="button" className="island-open" aria-label="打开WorkMemo" onClick={() => { void invoke("show_main", {settlement:false}).catch(e => setError(String(e))); }}><Icon name="open" /></button>
       </div>
       <IslandExpansion open={expanded} onError={setError} onCollapsed={() => { setEditing(null); setDiscard(false); setDirty(false); }}>
@@ -167,6 +169,9 @@ export function NotificationApp() {
         </section> : null}
         {!editing && <TaskList {...openTasks} active={active} compact disabled={busy || !!session.connectionError} onSwitch={session.switchTask}/>}
         {!editing && (snapshot?.pending_count ?? 0) > 0 && <button type="button" className="text-button" onClick={() => { void dashboard.open("pending"); }}>待补全 {snapshot?.pending_count}</button>}
+        {!editing && <button type="button" className="text-button" onClick={() => {
+          void invoke("open_todos").then(() => setExpanded(false)).catch(error => setError(`无法打开待办：${String(error)}`));
+        }}>待办</button>}
       </IslandExpansion>
       {combinedError && !expanded && <span className="island-error" role="alert" aria-label={combinedError} title={combinedError}>!</span>}
     </div>

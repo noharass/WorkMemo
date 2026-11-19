@@ -6,7 +6,7 @@ use crate::{
 use crate::{
     clock::{Clock, SystemClock},
     database::{
-        HistoryPage, HistoryQuery, Notice, Result, SettleInput, Snapshot, StartInput, Store,
+        HistoryPage, HistoryQuery, Notice, Result, SettleInput, Snapshot, StartInput, Store, Todo,
         WorkRecord,
     },
 };
@@ -43,6 +43,7 @@ fn island_presentation_key(
         .map(|(kind, id)| format!("{kind}:{id}"))
         .or_else(|| (enabled && binding_pending).then(|| "page-binding".into()))
         .or_else(|| (enabled && browsing).then(|| "browsing".into()))
+        .or_else(|| enabled.then(|| "ready".into()))
 }
 
 pub struct Backend {
@@ -361,14 +362,109 @@ pub async fn get_snapshot(state: State<'_, Backend>) -> Result<Snapshot> {
 
 #[tauri::command]
 pub async fn start_task(
+    window: tauri::WebviewWindow,
     state: State<'_, Backend>,
     input: StartInput,
     expected_active_id: Option<i64>,
+    todo_id: Option<String>,
 ) -> Result<Snapshot> {
+    if todo_id.is_some() {
+        require_main(&window)?;
+    }
     execute(state.inner.clone(), move |store| {
-        store.start_checked(input, expected_active_id)
+        store.start_checked(input, expected_active_id, todo_id.as_deref())
     })
     .await
+}
+
+fn require_main(window: &tauri::WebviewWindow) -> Result<()> {
+    if window.label() == "main" {
+        Ok(())
+    } else {
+        Err("请在 WorkMemo 主窗口管理待办。".into())
+    }
+}
+
+#[tauri::command]
+pub async fn list_todos(
+    window: tauri::WebviewWindow,
+    state: State<'_, Backend>,
+) -> Result<Vec<Todo>> {
+    require_main(&window)?;
+    access(state.inner.clone(), |store| store.list_todos()).await
+}
+
+#[tauri::command]
+pub async fn create_todo(
+    window: tauri::WebviewWindow,
+    state: State<'_, Backend>,
+    title: String,
+) -> Result<()> {
+    require_main(&window)?;
+    access(state.inner.clone(), move |store| store.create_todo(&title)).await
+}
+
+#[tauri::command]
+pub async fn rename_todo(
+    window: tauri::WebviewWindow,
+    state: State<'_, Backend>,
+    id: String,
+    title: String,
+) -> Result<()> {
+    require_main(&window)?;
+    access(state.inner.clone(), move |store| {
+        store.rename_todo(&id, &title)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn set_todo_completed(
+    window: tauri::WebviewWindow,
+    state: State<'_, Backend>,
+    id: String,
+    completed: bool,
+) -> Result<()> {
+    require_main(&window)?;
+    access(state.inner.clone(), move |store| {
+        store.set_todo_completed(&id, completed)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn delete_todo(
+    window: tauri::WebviewWindow,
+    state: State<'_, Backend>,
+    id: String,
+) -> Result<()> {
+    require_main(&window)?;
+    access(state.inner.clone(), move |store| store.delete_todo(&id)).await
+}
+
+#[derive(Default)]
+pub struct TodoNavigation(AtomicBool);
+
+#[tauri::command]
+pub fn open_todos(window: tauri::WebviewWindow, state: State<'_, TodoNavigation>) -> Result<()> {
+    if window.label() != "notice" {
+        return Err("请通过灵动岛打开待办。".into());
+    }
+    let app = window.app_handle();
+    crate::desktop::show_main(app, false)?;
+    // The main webview can still be loading when the island is ready.
+    state.0.store(true, Ordering::Release);
+    app.emit_to("main", "workmemo:open-todos", ())
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn take_todo_open_request(
+    window: tauri::WebviewWindow,
+    state: State<'_, TodoNavigation>,
+) -> Result<bool> {
+    require_main(&window)?;
+    Ok(state.0.swap(false, Ordering::AcqRel))
 }
 
 #[tauri::command]
@@ -634,7 +730,11 @@ mod island_tests {
             key(None, None, None, true, false, true).as_deref(),
             Some("page-binding")
         );
-        assert_eq!(key(None, None, None, true, false, false), None);
+        assert_eq!(
+            key(None, None, None, true, false, false).as_deref(),
+            Some("ready")
+        );
+        assert_eq!(key(None, None, None, false, false, false), None);
         // Respect an explicit tray hide while the page still needs processing.
         assert_eq!(key(None, None, None, false, false, true), None);
     }

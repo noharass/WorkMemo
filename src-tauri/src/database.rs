@@ -107,6 +107,10 @@ fn read_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkRecord> {
     })
 }
 
+#[path = "todos.rs"]
+mod todos;
+pub use todos::Todo;
+
 impl Store {
     pub fn open(path: &Path, clock: Box<dyn Clock>) -> Result<Self> {
         if let Some(parent) = path.parent() {
@@ -158,7 +162,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1..=12 => {}
+            1..=13 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -225,6 +229,12 @@ impl Store {
             tx.execute_batch(include_str!("../migrations/012_manual_entries.sql"))
                 .map_err(db_error)?;
             tx.pragma_update(None, "user_version", 12)
+                .map_err(db_error)?;
+        }
+        if version < 13 {
+            tx.execute_batch(include_str!("../migrations/013_todos.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 13)
                 .map_err(db_error)?;
         }
         let invalid: Option<String> = tx
@@ -385,19 +395,29 @@ impl Store {
         &mut self,
         input: StartInput,
         expected_active_id: Option<i64>,
+        todo_id: Option<&str>,
     ) -> Result<()> {
         self.expire_previous_day_pauses()?;
-        if self.active()?.map(|record| record.id) != expected_active_id {
+        let active = self.active()?;
+        if active.as_ref().map(|record| record.id) != expected_active_id {
             return Err("当前任务已变化，请刷新后重新确认。".into());
         }
-        self.start(input)
+        if todo_id.is_some() && active.is_some_and(|record| record.recovery_pending) {
+            return Err("请先处理上次待恢复的任务。".into());
+        }
+        self.start_manual(input, todo_id)
     }
 
+    #[cfg(test)]
     pub fn start(&mut self, input: StartInput) -> Result<()> {
+        self.start_manual(input, None)
+    }
+
+    fn start_manual(&mut self, input: StartInput, todo_id: Option<&str>) -> Result<()> {
         if self.monitor.active && !self.monitor.status.native_available {
             return Err("当前无法确认系统活动状态，暂不能开始计时；已有记录保持保存。".into());
         }
-        self.start_at(input, "MANUAL_START", self.clock.now(), true)
+        self.start_at(input, "MANUAL_START", self.clock.now(), true, todo_id)
     }
 
     fn start_at(
@@ -406,6 +426,7 @@ impl Store {
         source: &str,
         now: TimePoint,
         allow_switch: bool,
+        todo_id: Option<&str>,
     ) -> Result<()> {
         if !["评测", "质检", "开发", "文档"].contains(&input.category.as_str()) {
             return Err("请选择工作类别。".into());
@@ -431,6 +452,9 @@ impl Store {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(db_error)?;
+        let todo_title = todo_id
+            .map(|id| todos::title_for_start(&tx, id))
+            .transpose()?;
         if let Some(previous) = previous {
             finish_row(&tx, previous.id, previous.start_time, now.wall_ms, "SWITCH")?;
         }
@@ -440,7 +464,18 @@ impl Store {
         if source == "MANUAL_START" {
             tx.execute(
                 "INSERT INTO work_tasks(name,category,current_record_id) VALUES(?1,?2,?3)",
-                params![format!("{} #{}", input.category, id), input.category, id],
+                params![
+                    todo_title.unwrap_or_else(|| format!("{} #{}", input.category, id)),
+                    input.category,
+                    id
+                ],
+            )
+            .map_err(db_error)?;
+        }
+        if let Some(todo_id) = todo_id {
+            tx.execute(
+                "INSERT INTO todo_work_records(record_id,todo_id) VALUES(?1,?2)",
+                params![id, todo_id],
             )
             .map_err(db_error)?;
         }

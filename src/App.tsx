@@ -26,6 +26,7 @@ import { useMainContentHeight } from "./useMainContentHeight";
 import { PageBindingPrompt } from "./PageBindingPrompt";
 import { FinishedPagePrompt } from "./FinishedPagePrompt";
 import { TaskList, useOpenTasks } from "./TaskList";
+import { TodoDialog, type Todo } from "./TodoDialog";
 export default function App() {
   const session = useWorkSession();
   const openTasks = useOpenTasks(session.snapshot, session.native);
@@ -39,6 +40,7 @@ export default function App() {
     input: StartInput;
     id: number;
     category: string;
+    todoId?: string;
   } | null>(null);
   const [navigationError, setNavigationError] = useState("");
   const [migrationFound, setMigrationFound] = useState(false);
@@ -48,7 +50,10 @@ export default function App() {
   const [switchingFrom, setSwitchingFrom] = useState<number | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [workDraft, setWorkDraft] = useState(emptyWorkDraft);
+  const [todoOpen, setTodoOpen] = useState(false);
+  const [todoWork, setTodoWork] = useState<{ todo: Todo; draft: ReturnType<typeof emptyWorkDraft> } | null>(null);
   const workspace = useRef<HTMLElement>(null);
+  const currentWork = useRef<HTMLElement>(null);
   const heightError = useMainContentHeight(workspace, !!session.snapshot);
   const active = session.snapshot?.active;
   const view = workView(session);
@@ -117,9 +122,61 @@ export default function App() {
       void p.then((f) => f());
     };
   }, [session.native]);
+  useEffect(() => {
+    if (!session.native) return;
+    let stopped = false;
+    const reportError = (error: unknown) => { if (!stopped) setNavigationError(`无法打开待办：${String(error)}`); };
+    const openRequested = async () => {
+      if (stopped) return;
+      try {
+        if (await invoke<boolean>("take_todo_open_request") && !stopped) setTodoOpen(true);
+      } catch (error) {
+        reportError(error);
+      }
+    };
+    const subscription = listen("workmemo:open-todos", () => { void openRequested(); });
+    void subscription.then(openRequested, reportError);
+    return () => {
+      stopped = true;
+      void subscription.then(stop => stop(), () => {});
+    };
+  }, [session.native]);
   const switching = switchingFrom !== null;
   const formOpen = switching || newTaskOpen;
   const switchValid = !!active?.is_paused && !active.recovery_pending && active.id === switchingFrom;
+  const todoStartHint = formOpen ? "请先返回当前任务表单。"
+    : active?.recovery_pending ? "请先处理上次待恢复的任务。"
+    : active && !active.is_paused ? "请先暂停或结束当前计时。"
+    : unavailable ? "计时暂不可用。" : "";
+
+  function startTodo(todo: Todo) {
+    if (todoStartHint) return;
+    setTodoWork({ todo, draft: emptyWorkDraft() });
+    setTodoOpen(false);
+    if (active) setSwitchingFrom(active.id);
+    else setNewTaskOpen(true);
+  }
+
+  function showTodoWork(recordId: number) {
+    if (formOpen) return;
+    setTodoOpen(false);
+    requestAnimationFrame(() => {
+      if (active?.id === recordId) currentWork.current?.focus();
+      else workspace.current?.querySelector<HTMLButtonElement>(`[data-record-id="${recordId}"]`)?.focus();
+    });
+  }
+
+  function closeWorkForm(saved: boolean) {
+    setNewTaskOpen(false);
+    setSwitchingFrom(null);
+    setSwitchRequest(null);
+    if (todoWork) {
+      setTodoWork(null);
+      if (!saved) setTodoOpen(true);
+    } else if (saved) {
+      setWorkDraft(emptyWorkDraft());
+    }
+  }
   return (
     <DesktopWindow
       density={layout.current.density}
@@ -224,6 +281,8 @@ export default function App() {
             className="timer-card"
             aria-label="当前工作"
             aria-busy={session.loading || session.busy}
+            ref={currentWork}
+            tabIndex={-1}
           >
             <div className="task-row flex items-center justify-between gap-4">
               <div className="task-copy">
@@ -302,20 +361,24 @@ export default function App() {
         )}
         {formOpen && (
           <section className="form-card new-task-page" aria-label={switching ? "切换任务" : "新建任务"}>
+            {todoWork && <h2 className="todo-work-title">{todoWork.todo.title}</h2>}
             {switching && !switchValid && <p className="notice" role="status">原任务状态已变化，请返回当前任务确认。填写内容仍保留。</p>}
             {!switching && active && <p className="notice" role="status">已有任务从其他入口开始，请返回当前任务。填写内容仍保留。</p>}
             {candidate && !active && <p className="hint">已识别{name(candidate.category)}工作页面；也可在灵动岛确认开始。手动填写内容仍保留。</p>}
-            <WorkForm draft={workDraft} onDraftChange={setWorkDraft} minimal={compact} switching={switching} disabled={unavailable || (switching ? !switchValid : !!active)}
-              starting={session.pending === "start_task"} onCancel={() => { setNewTaskOpen(false); setSwitchingFrom(null); setSwitchRequest(null); }}
+            <WorkForm draft={todoWork?.draft ?? workDraft} onDraftChange={draft => {
+              if (todoWork) setTodoWork({ ...todoWork, draft });
+              else setWorkDraft(draft);
+            }} minimal={compact} switching={switching} disabled={unavailable || (switching ? !switchValid : !!active)}
+              starting={session.pending === "start_task"} cancelLabel={todoWork ? "返回待办" : undefined} onCancel={() => closeWorkForm(false)}
               onStart={async input => {
                 if (switching) {
                   if (!switchValid || !active) return false;
-                  setSwitchRequest({input, id: switchingFrom, category: active.category});
+                  setSwitchRequest({input, id: switchingFrom, category: active.category, todoId: todoWork?.todo.id});
                   return false;
                 }
                 if (active) return false;
-                const saved = await session.start(input);
-                if (saved) { setNewTaskOpen(false); setWorkDraft(emptyWorkDraft()); }
+                const saved = await session.start(input, null, todoWork?.todo.id);
+                if (saved) closeWorkForm(true);
                 return saved;
               }} />
           </section>
@@ -329,6 +392,7 @@ export default function App() {
           >
             待补全 {session.snapshot?.pending_count ?? "—"}
           </button>
+          {session.native && <button type="button" className="text-button" onClick={() => setTodoOpen(true)}>待办</button>}
         </div>
         <TodayWorkloadStrip items={today} error={todayError} onOpen={() => { void dashboard.open("today"); }} />
         {monitor?.idle_warning && (
@@ -357,8 +421,9 @@ export default function App() {
             <>
               <p>
                 结束并保存当前暂停的“{name(switchRequest.category)}”，再开始“
-                {name(switchRequest.input.category)}”。原记录保留在待补全列表。
+                {todoWork?.todo.title ?? name(switchRequest.input.category)}”。原记录保留在待补全列表。
               </p>
+              {todoWork && session.commandError && <p className="inline-error" role="alert">{session.commandError}</p>}
               <div className="settings-actions">
                 <button
                   className="secondary"
@@ -371,9 +436,9 @@ export default function App() {
                   disabled={session.busy}
                   onClick={() => {
                     void session
-                      .start(switchRequest.input, switchRequest.id)
+                      .start(switchRequest.input, switchRequest.id, switchRequest.todoId)
                       .then((ok) => {
-                        if (ok) { setSwitchRequest(null); setSwitchingFrom(null); setNewTaskOpen(false); setWorkDraft(emptyWorkDraft()); }
+                        if (ok) closeWorkForm(true);
                       });
                   }}
                 >
@@ -383,6 +448,9 @@ export default function App() {
             </>
           )}
         </UiDialog>
+        {session.native && <TodoDialog open={todoOpen && !switchRequest && !(noteOpen && record)}
+          startHint={todoStartHint} workFormOpen={formOpen} activeRecordId={active?.id ?? null}
+          onClose={() => setTodoOpen(false)} onStart={startTodo} onShowWork={showTodoWork} />}
         <UiDialog
           open={noteOpen && !!record}
           onClose={() => setNoteOpen(false)}

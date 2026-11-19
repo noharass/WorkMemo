@@ -1298,11 +1298,11 @@ fn checked_start_rejects_stale_or_missing_confirmation_without_modifying_task() 
         quantity: None,
         remark: "".into(),
     };
-    assert!(h.store.start_checked(input(), None).is_err());
-    assert!(h.store.start_checked(input(), Some(id + 1)).is_err());
+    assert!(h.store.start_checked(input(), None, None).is_err());
+    assert!(h.store.start_checked(input(), Some(id + 1), None).is_err());
     assert_eq!(h.store.active().unwrap().unwrap().id, id);
     assert_eq!(h.saved(id).status, "WORKING");
-    h.store.start_checked(input(), Some(id)).unwrap();
+    h.store.start_checked(input(), Some(id), None).unwrap();
     assert_eq!(h.saved(id).end_reason.as_deref(), Some("SWITCH"));
     assert_ne!(h.store.active().unwrap().unwrap().id, id);
 }
@@ -1844,7 +1844,7 @@ fn schema_seven_rules_migrate_and_modes_round_trip_without_touching_active_work(
     let h = Harness::new();
     h.store
         .connection
-        .execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE manual_entry_requests; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; UPDATE sqlite_sequence SET seq=99 WHERE name='work_urls'; ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;")
+        .execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE todo_work_records; DROP TABLE todos; DROP TABLE manual_entry_requests; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; UPDATE sqlite_sequence SET seq=99 WHERE name='work_urls'; ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;")
         .unwrap();
     let c = h.store.connection;
     let mut store = Store::initialize(c, Box::new(h.clock), None).unwrap();

@@ -13,6 +13,9 @@ return page.addInitScript(() => {
     if(window.qa.active)window.qa.active.task_name='当前任务';
   }
   window.qa.browse = params.has('browse');
+  window.qa.todos = [];
+  window.qa.nextTodoId = 1;
+  window.qa.todoOpenRequest = params.has('openTodos');
   window.isTauri = true;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: id => listeners.delete(id) };
   window.__TAURI_INTERNALS__ = {
@@ -30,6 +33,14 @@ return page.addInitScript(() => {
       }
       if (command === q.fail) { await new Promise(r => setTimeout(r, q.delay || 120)); throw Error('隔离保存失败，请重试'); }
       if (command === 'get_snapshot') return snapshot();
+      if (command === 'list_todos') return structuredClone([...q.todos].sort((a, b) =>
+        Number(a.completed_at != null) - Number(b.completed_at != null)
+        || Number(b.completed_at) - Number(a.completed_at) || Number(a.id) - Number(b.id)));
+      if (command === 'create_todo') { q.todos.push({ id: String(q.nextTodoId++), title: args.title, completed_at: null, open_record_id: null }); return null; }
+      if (command === 'rename_todo') { q.todos.find(t => t.id === args.id).title = args.title; return null; }
+      if (command === 'set_todo_completed') { q.todos.find(t => t.id === args.id).completed_at = args.completed ? Date.now() : null; return null; }
+      if (command === 'delete_todo') { q.todos = q.todos.filter(t => t.id !== args.id); return null; }
+      if (command === 'take_todo_open_request') { const requested = q.todoOpenRequest; q.todoOpenRequest = false; return requested; }
       if (command === 'get_notice') return structuredClone(q.notice);
       if (command === 'get_appearance') return { version: 1, theme: params.get('theme') || 'cream', opacity: Number(params.get('opacity') || 65) };
       if (command === 'get_category_names') return { revision: 0, names: Object.fromEntries(categories.map(c => [c, c])) };
@@ -48,7 +59,7 @@ return page.addInitScript(() => {
       if (command === 'get_startup_status') return { enabled: false, available: true, error: null };
       if (command === 'pause_task') { q.active = { ...q.active, is_paused: true, pause_reason: 'MANUAL' }; return snapshot(); }
       if (command === 'resume_task') { q.active = { ...q.active, is_paused: false, pause_reason: null }; return snapshot(); }
-      if (command === 'finish_task') { q.notice = { kind: 'ended', record: { ...q.active, status: 'FINISHED', end_time: Date.now(), settlement_status: 'PENDING' } }; q.active = null; return snapshot(); }
+      if (command === 'finish_task') { q.notice = { kind: 'ended', record: { ...q.active, status: 'FINISHED', end_time: Date.now(), settlement_status: 'PENDING' } }; q.todos.forEach(t => { if (t.open_record_id === q.active?.id) t.open_record_id = null; }); q.active = null; return snapshot(); }
       if (command === 'confirm_work') {
         await new Promise(r => setTimeout(r, q.delay));
         if (q.active || !q.candidate || q.candidate.id !== args.candidateId) throw Error('开工提示已失效');
@@ -57,7 +68,11 @@ return page.addInitScript(() => {
       if (command === 'enter_browsing') { q.browse = true; q.candidate = null; return snapshot(); }
       if (command === 'start_task') {
         if ((q.active?.id ?? null) !== args.expectedActiveId || (q.active && !q.active.is_paused)) throw Error('当前任务已变化，请刷新后重新确认');
-        q.active = { ...record, ...args.input, id: 9, control_mode: 'MANUAL', is_paused: false }; q.candidate = null; return snapshot();
+        const todo = q.todos.find(t => t.id === args.todoId);
+        if (args.todoId !== undefined && (!todo || todo.completed_at !== null || todo.open_record_id !== null)) throw Error('待办已变化');
+        q.active = { ...record, ...args.input, id: 9, control_mode: 'MANUAL', is_paused: false };
+        if (todo) { todo.open_record_id = q.active.id; q.active.task_name = todo.title; }
+        q.candidate = null; return snapshot();
       }
       if (command === 'settle_record') { await new Promise(r => setTimeout(r, q.delay)); if (q.notice?.record.id !== args.input.id || q.notice.record.revision !== args.input.expected_revision) throw Error('记录已变化'); q.notice = null; return snapshot(); }
       if (command === 'defer_notice') { if (q.notice?.record.id === args.id) q.notice = null; return null; }

@@ -120,7 +120,7 @@ export function useWorkSession() {
     switchTask:(taskId:number)=>run("confirm_recovery_task",{taskId}),
     confirmWork:(candidateId:number|null)=>run("confirm_work",{candidateId}),
     browse:()=>run("enter_browsing",{}),
-    start: (input: StartInput, expectedActiveId: number | null = null) => run("start_task", { input, expectedActiveId }),
+    start: (input: StartInput, expectedActiveId: number | null = null, todoId?: string) => run("start_task", { input, expectedActiveId, todoId }),
     pause: (id: number) => run("pause_task", { id }),
     resume: (id: number) => run("resume_task", { id }),
     finish: (id: number) => run("finish_task", { id }),

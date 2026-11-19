@@ -171,6 +171,7 @@ impl Store {
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(db_error)?;
             let tables = [
+                "todo_work_records",
                 "manual_entry_requests",
                 "category_names",
                 "import_sources",
@@ -182,6 +183,7 @@ impl Store {
                 "work_tasks",
                 "monitoring_settings",
                 "work_records",
+                "todos",
             ];
             for table in tables {
                 tx.execute(&format!("DELETE FROM main.{table}"), [])
@@ -762,6 +764,68 @@ pub async fn import_preview(
 mod tests {
     use super::*;
     use crate::database::tests::{TestClock, TestDirectory};
+
+    #[test]
+    fn todo_full_backup_restores_links_and_schema_12_restores_without_todos() {
+        let dir = TestDirectory::new();
+        let path = dir.db();
+        let config = path.parent().unwrap();
+        let mut store = Store::open(&path, Box::new(TestClock::new())).unwrap();
+        let input = || StartInput {
+            category: "开发".into(),
+            quantity: None,
+            remark: "原备注".into(),
+        };
+        store.start(input()).unwrap();
+        let legacy_id = store.active().unwrap().unwrap().id;
+        store.finish(legacy_id).unwrap();
+        store
+            .connection
+            .execute_batch(
+                "DROP TABLE todo_work_records; DROP TABLE todos; PRAGMA user_version=12;",
+            )
+            .unwrap();
+        let legacy_backup = store.archive(config).unwrap();
+        drop(store);
+
+        let mut store = Store::open(&path, Box::new(TestClock::new())).unwrap();
+        assert_eq!(
+            store
+                .connection
+                .pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                .unwrap(),
+            13
+        );
+        assert_eq!(store.record(legacy_id).unwrap().remark, "原备注");
+        assert!(store.list_todos().unwrap().is_empty());
+        store.create_todo("备份关联").unwrap();
+        let todo = store.list_todos().unwrap().remove(0).id;
+        store.start_checked(input(), None, Some(&todo)).unwrap();
+        let record = store.active().unwrap().unwrap().id;
+        store.pause(record).unwrap();
+        store.set_todo_completed(&todo, true).unwrap();
+        let expected = store.list_todos().unwrap();
+        let new_backup = store.archive(config).unwrap();
+        store.delete_todo(&todo).unwrap();
+        let image = checked_image(&new_backup, config).unwrap();
+        store.apply_image(&image.0).unwrap();
+        assert_eq!(store.list_todos().unwrap(), expected);
+        assert_eq!(
+            store.record(record).unwrap().task_name.as_deref(),
+            Some("备份关联")
+        );
+        let legacy_image = checked_image(&legacy_backup, config).unwrap();
+        store.apply_image(&legacy_image.0).unwrap();
+        assert!(store.list_todos().unwrap().is_empty());
+        assert_eq!(store.record(legacy_id).unwrap().remark, "原备注");
+        assert!(store.record(record).is_err());
+        store.create_todo("恢复后新建的另一条待办").unwrap();
+        assert!(store.delete_todo(&todo).is_err());
+        assert_eq!(
+            store.list_todos().unwrap()[0].title,
+            "恢复后新建的另一条待办"
+        );
+    }
     #[test]
     fn merge_is_idempotent_conflicts_do_not_replace_and_restore_rolls_back() {
         let mut a = Store::initialize(
@@ -897,7 +961,7 @@ mod tests {
             target.monitor_config().unwrap().rules[0].match_mode,
             "domain_suffix"
         );
-        source.connection.execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE manual_entry_requests; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
+        source.connection.execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE todo_work_records; DROP TABLE todos; DROP TABLE manual_entry_requests; DROP INDEX paused_records_by_day; ALTER TABLE work_records DROP COLUMN paused_at; DROP TABLE ignored_work_urls; DROP TABLE work_tasks; DELETE FROM work_urls; ALTER TABLE work_urls RENAME TO temporary_rules; CREATE TABLE work_urls(id INTEGER PRIMARY KEY AUTOINCREMENT,url_prefix TEXT NOT NULL UNIQUE,category TEXT NOT NULL); INSERT INTO work_urls(id,url_prefix,category) SELECT id,url_prefix,category FROM temporary_rules; DROP TABLE temporary_rules; INSERT INTO work_urls(url_prefix,category) VALUES('https://example.com/','开发'); ALTER TABLE monitoring_settings DROP COLUMN idle_pause_seconds; DROP TABLE category_names; PRAGMA user_version=7;").unwrap();
         let image = checked_image(&source.archive(&dir).unwrap(), &dir).unwrap();
         target.apply_image(&image.0).unwrap();
         assert_eq!(

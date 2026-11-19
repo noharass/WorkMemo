@@ -60,6 +60,7 @@ pub fn run() {
             ));
             app.manage(connection::ConnectionState::initialize(app));
             app.manage(service::Backend::initialize(app));
+            app.manage(service::TodoNavigation::default());
             app.manage(desktop::IslandState::initialize(app));
             windows::initialize(app)?;
             app.manage(appearance::AppearanceState::initialize(app));
@@ -128,6 +129,13 @@ pub fn run() {
             appearance::save_appearance,
             service::get_snapshot,
             service::start_task,
+            service::list_todos,
+            service::create_todo,
+            service::rename_todo,
+            service::set_todo_completed,
+            service::delete_todo,
+            service::open_todos,
+            service::take_todo_open_request,
             service::pause_task,
             service::resume_task,
             service::finish_task,
