@@ -77,16 +77,16 @@ node scripts/verify-multi-url.mjs
 
 0.2.6 源码阶段新增 `verify-v026.mjs`，覆盖监测首页、连续开工入口、旧结算草稿、新任务并存，以及设置保存的节点、请求次数、焦点和逐帧稳定性；支持 `WORKMEMO_UI_URL` 指向生产预览资源。`--baseline` 仅用于开发前的缺陷复现，不能作为修复后的验收入口。既有桌面、名称脚本已适配显式「新建任务」入口和取消后保留草稿。源码阶段与原生限制见 [UPDATE-0.2.6-PHASE-1.md](UPDATE-0.2.6-PHASE-1.md)。
 
-## 构建 v0.2.13
+## 构建 v0.2.14
 
-当前版本正式成品输出 `artifacts/0.2.13`。打包前检查本项目构建输出及 Vite 开发进程。
+当前版本正式成品输出 `artifacts/0.2.14`。打包前检查本项目构建输出及 Vite 开发进程。
 
 ```powershell
 & .\scripts\package-windows.ps1
-& .\scripts\verify-windows-candidate.ps1 -Directory artifacts/0.2.13 -PreserveDirectory artifacts/0.2.12
+& .\scripts\verify-windows-candidate.ps1 -Directory artifacts/0.2.14 -PreserveDirectory artifacts/0.2.13
 ```
 
-校验器默认读取当前版本。`PreserveDirectory` 用于核对旧版本目录。独立原生 HTTP 核验默认使用 `package.json` 版本，也可通过 `WORKMEMO_NATIVE_VERSION` 指定对应预览版本。发布脚本使用 Python 标准库和现有 Git 凭据助手，具体命令见 [发布记录](RELEASE-0.2.13.md)。
+校验器默认读取当前版本。`PreserveDirectory` 用于核对旧版本目录。独立原生 HTTP 核验默认使用 `package.json` 版本，也可通过 `WORKMEMO_NATIVE_VERSION` 指定对应预览版本。发布脚本使用 Python 标准库和现有 Git 凭据助手，具体命令见 [发布记录](RELEASE-0.2.14.md)。
 
 ## 构建网页改造候选（0.2.10，尚未公开）
 

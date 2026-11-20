@@ -8,11 +8,11 @@
 <p align="center">一个安静待在桌面上的工作记录小工具。记下做了什么、花了多久，工作量可以忙完再补。</p>
 
 <p align="center">
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.13/WorkMemo_0.2.13_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.14/WorkMemo_0.2.14_x64-setup.exe"><strong>下载 Windows 安装版</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.13/WorkMemo_0.2.13_windows_x64.zip">下载免安装 ZIP</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/download/v0.2.14/WorkMemo_0.2.14_windows_x64.zip">下载免安装 ZIP</a>
   &nbsp;·&nbsp;
-  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.13">v0.2.13 更新说明</a>
+  <a href="https://github.com/noharass/WorkMemo/releases/tag/v0.2.14">v0.2.14 更新说明</a>
 </p>
 <p align="center">Windows 10 / 11 · x64 · 无需注册账号 · 记录保存在本机</p>
 
@@ -38,13 +38,13 @@
 
 自动记录需要 Chrome 配套扩展；手动计时不需要。软件使用 Microsoft WebView2，安装版会在缺少时引导安装。
 
-## 这次更新：待办清单
+## 这次更新：今日待办与工时明细
 
-**v0.2.13** 新增待办清单。主窗口的「待补全」旁和灵动岛展开区都能打开待办。一条待办可以记录多段工时，由你决定何时勾完。删除待办后，之前的工作记录仍可查询。
+**v0.2.14** 可把事项加入「今天要做」，查看每项待办的累计有效工时和明细。再次开工会预选上次的工作类别。紧凑列表把改名、删除和今日安排收进「更多」，旧的同名待办显示各自的编号。
 
-本次升级将数据库迁移至 schema 13，完整备份包含待办及其工时关联。升级前请备份。Windows x64 成品未签名，需 WebView2。
+本次升级将数据库迁移至 schema 14，完整备份包含今日安排、待办及其工时关联。升级前请备份。Windows x64 成品未签名，需 WebView2。
 
-[查看 v0.2.13 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.13) · [构建校验与验收记录](docs/RELEASE-0.2.13.md)
+[查看 v0.2.14 下载与更新说明](https://github.com/noharass/WorkMemo/releases/tag/v0.2.14) · [构建校验与验收记录](docs/RELEASE-0.2.14.md)
 
 历史版本和开发阶段记录继续保留在 docs 与 Releases 中。
 

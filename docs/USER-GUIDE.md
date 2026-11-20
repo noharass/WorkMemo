@@ -1,4 +1,6 @@
-# WorkMemo v0.2.13 使用说明
+# WorkMemo v0.2.14 使用说明
+
+v0.2.14 增加「今天要做」、累计有效工时和计时明细。再次开工预选上次类别，待办行更紧凑，未完成的重名项会收到提示。数据库升级至 schema 14，升级前请保存完整备份。
 
 v0.2.13 新增待办清单，可从主窗口和灵动岛打开。数据库升级至 schema 13，完整备份包含待办及计时关联。升级前请先备份。
 
@@ -16,10 +18,10 @@ WorkMemo 是 Windows 本地工作记录工具。可以手动计时，也可以�
 
 适用于 Windows 10 / 11 x64，需要 Microsoft Edge WebView2 Runtime。
 
-- **安装版**：运行 `WorkMemo_0.2.13_x64-setup.exe`，按向导安装。缺少 WebView2 时需要联网安装 Microsoft 官方运行环境。
-- **免安装版**：完整解压 `WorkMemo_0.2.13_windows_x64.zip`，打开 `WorkMemo/workmemo.exe`。主程序旁边的浏览器组件、`extension` 文件夹和修复脚本都请保留。缺少 WebView2 时，从 [Microsoft 官网](https://developer.microsoft.com/microsoft-edge/webview2/)安装。
+- **安装版**：运行 `WorkMemo_0.2.14_x64-setup.exe`，按向导安装。缺少 WebView2 时需要联网安装 Microsoft 官方运行环境。
+- **免安装版**：完整解压 `WorkMemo_0.2.14_windows_x64.zip`，打开 `WorkMemo/workmemo.exe`。主程序旁边的浏览器组件、`extension` 文件夹和修复脚本都请保留。缺少 WebView2 时，从 [Microsoft 官网](https://developer.microsoft.com/microsoft-edge/webview2/)安装。
 - 不需要开发工具或数据库服务。免安装表示程序不用安装；记录仍存放在当前 Windows 用户的数据目录，不会随解压文件夹移动。
-- 从 [WorkMemo v0.2.13 正式版](https://github.com/noharass/WorkMemo/releases/tag/v0.2.13)下载安装版或完整 ZIP。程序暂未签名，可用随附 `SHA256SUMS.txt` 核对下载文件。
+- 从 [WorkMemo v0.2.14 正式版](https://github.com/noharass/WorkMemo/releases/tag/v0.2.14)下载安装版或完整 ZIP。程序暂未签名，可用随附 `SHA256SUMS.txt` 核对下载文件。
 
 ## 手动记录一段工作
 
@@ -37,9 +39,9 @@ WorkMemo 是 Windows 本地工作记录工具。可以手动计时，也可以�
 
 未完成的待办标题必须不同。标题会去掉首尾空白，英文字母大小写视为相同。已完成的标题可以再次使用。如果取消勾选时已有同名的未完成项，先给已完成项改名。旧数据中的同名项会显示各自的编号，方便选对条目。
 
-在待办的「更多」中可加入或移出「今天要做」，也可以改名和删除。按北京时间跨天后，前一天选中的未完成项会回到其他待办。有已结束计时的事项会显示次数和累计有效工时，点开可查看每次的日期、类别和时长。再次开工会预选上次的工作类别，你仍可改选后再确认。此段适用于源码中的待办增强版。[变更与兼容性](TODO-DAILY-WORK.md)
+在待办的「更多」中可加入或移出「今天要做」，也可以改名和删除。按北京时间跨天后，前一天选中的未完成项会回到其他待办。有已结束计时的事项会显示次数和累计有效工时，点开可查看每次的日期、类别和时长。再次开工会预选上次的工作类别，你仍可改选后再确认。[变更与兼容性](TODO-DAILY-WORK.md)
 
-灵动岛启用时，待机状态也可以展开打开待办。完整备份包含待办及其工作记录关联。v0.2.12 使用 schema 12，回退时请使用升级前的备份。详见 [待办交付](TODO.md)。
+灵动岛启用时，待机状态也可以展开打开待办。完整备份包含今日安排、待办及其工作记录关联。回退到 v0.2.13 时请使用升级前适用于 schema 13 的备份。[发布记录](RELEASE-0.2.14.md)
 
 ## 使用 Chrome 自动记录
 
