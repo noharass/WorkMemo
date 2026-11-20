@@ -1,5 +1,5 @@
 use super::{Result, Store, db_error};
-use rusqlite::{OptionalExtension, Transaction, params};
+use rusqlite::{OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::Serialize;
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -8,6 +8,7 @@ pub struct Todo {
     pub title: String,
     pub completed_at: Option<i64>,
     pub open_record_id: Option<i64>,
+    pub duplicate_number: Option<i64>,
 }
 
 fn title(value: &str) -> Result<&str> {
@@ -41,11 +42,39 @@ pub(super) fn title_for_start(tx: &Transaction<'_>, id: &str) -> Result<String> 
     Ok(title)
 }
 
+fn todo_title_and_completion(tx: &Transaction<'_>, id: &str) -> Result<(String, Option<i64>)> {
+    tx.query_row(
+        "SELECT title,completed_at FROM todos WHERE id=?1",
+        [id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )
+    .optional()
+    .map_err(db_error)?
+    .ok_or_else(|| "待办已删除，请刷新清单。".into())
+}
+
+fn ensure_pending_title_available(tx: &Transaction<'_>, title: &str, action: &str) -> Result<()> {
+    let exists: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM todos WHERE completed_at IS NULL AND title=?1 COLLATE NOCASE)",
+            [title],
+            |row| row.get(0),
+        )
+        .map_err(db_error)?;
+    if exists {
+        return Err(format!("已有同名的未完成待办，{action}。"));
+    }
+    Ok(())
+}
+
 impl Store {
     pub fn list_todos(&self) -> Result<Vec<Todo>> {
         self.connection
             .prepare(&format!(
-                "SELECT t.id,t.title,t.completed_at,({OPEN_RECORD}) FROM todos AS t
+                "SELECT t.id,t.title,t.completed_at,({OPEN_RECORD}),
+                 CASE WHEN COUNT(*) OVER (PARTITION BY t.title COLLATE NOCASE,t.completed_at IS NOT NULL)>1
+                      THEN t.sequence END
+                 FROM todos AS t
                  ORDER BY t.completed_at IS NOT NULL,t.completed_at DESC,t.sequence"
             ))
             .map_err(db_error)?
@@ -55,6 +84,7 @@ impl Store {
                     title: row.get(1)?,
                     completed_at: row.get(2)?,
                     open_record_id: row.get(3)?,
+                    duplicate_number: row.get(4)?,
                 })
             })
             .map_err(db_error)?
@@ -62,37 +92,63 @@ impl Store {
             .map_err(db_error)
     }
 
-    pub fn create_todo(&self, value: &str) -> Result<()> {
-        self.connection
-            .execute(
-                "INSERT INTO todos(title,created_at) VALUES(?1,?2)",
-                params![title(value)?, self.clock.now().wall_ms.max(0)],
-            )
+    pub fn create_todo(&mut self, value: &str) -> Result<()> {
+        let title = title(value)?;
+        let now = self.clock.now().wall_ms.max(0);
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(db_error)?;
-        Ok(())
-    }
-
-    pub fn rename_todo(&self, id: &str, value: &str) -> Result<()> {
-        self.update_todo(
-            "UPDATE todos SET title=?2 WHERE id=?1",
-            params![id, title(value)?],
+        ensure_pending_title_available(&tx, title, "请换个标题")?;
+        tx.execute(
+            "INSERT INTO todos(title,created_at) VALUES(?1,?2)",
+            params![title, now],
         )
+        .map_err(db_error)?;
+        tx.commit().map_err(db_error)
     }
 
-    pub fn set_todo_completed(&self, id: &str, completed: bool) -> Result<()> {
-        let at = completed.then(|| self.clock.now().wall_ms.max(0));
-        self.update_todo(
-            "UPDATE todos SET completed_at=CASE WHEN ?2 IS NULL THEN NULL ELSE COALESCE(completed_at,?2) END WHERE id=?1",
+    pub fn rename_todo(&mut self, id: &str, value: &str) -> Result<()> {
+        let title = title(value)?;
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(db_error)?;
+        let (current_title, completed_at) = todo_title_and_completion(&tx, id)?;
+        if completed_at.is_none() && !current_title.eq_ignore_ascii_case(title) {
+            ensure_pending_title_available(&tx, title, "请换个标题")?;
+        }
+        tx.execute("UPDATE todos SET title=?2 WHERE id=?1", params![id, title])
+            .map_err(db_error)?;
+        tx.commit().map_err(db_error)
+    }
+
+    pub fn set_todo_completed(&mut self, id: &str, completed: bool) -> Result<()> {
+        let now = self.clock.now().wall_ms.max(0);
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(db_error)?;
+        let (title, completed_at) = todo_title_and_completion(&tx, id)?;
+        if !completed && completed_at.is_some() {
+            ensure_pending_title_available(&tx, &title, "请先改名再取消勾选")?;
+        }
+        let at = completed.then(|| completed_at.unwrap_or(now));
+        tx.execute(
+            "UPDATE todos SET completed_at=?2 WHERE id=?1",
             params![id, at],
         )
+        .map_err(db_error)?;
+        tx.commit().map_err(db_error)
     }
 
     pub fn delete_todo(&self, id: &str) -> Result<()> {
-        self.update_todo("DELETE FROM todos WHERE id=?1", [id])
-    }
-
-    fn update_todo(&self, sql: &str, values: impl rusqlite::Params) -> Result<()> {
-        if self.connection.execute(sql, values).map_err(db_error)? == 0 {
+        if self
+            .connection
+            .execute("DELETE FROM todos WHERE id=?1", [id])
+            .map_err(db_error)?
+            == 0
+        {
             return Err("待办已删除，请刷新清单。".into());
         }
         Ok(())

@@ -15,6 +15,12 @@ return page.addInitScript(() => {
   window.qa.browse = params.has('browse');
   window.qa.todos = [];
   window.qa.nextTodoId = 1;
+  const titleKey = title => title.replace(/[A-Z]/g, letter => letter.toLowerCase());
+  function checkTitle(title, excludeId, action) {
+    if (window.qa.todos.some(todo => todo.id !== excludeId && todo.completed_at === null && titleKey(todo.title) === titleKey(title))) {
+      throw `已有同名的未完成待办，${action}。`;
+    }
+  }
   window.qa.todoOpenRequest = params.has('openTodos');
   window.isTauri = true;
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: id => listeners.delete(id) };
@@ -35,10 +41,29 @@ return page.addInitScript(() => {
       if (command === 'get_snapshot') return snapshot();
       if (command === 'list_todos') return structuredClone([...q.todos].sort((a, b) =>
         Number(a.completed_at != null) - Number(b.completed_at != null)
-        || Number(b.completed_at) - Number(a.completed_at) || Number(a.id) - Number(b.id)));
-      if (command === 'create_todo') { q.todos.push({ id: String(q.nextTodoId++), title: args.title, completed_at: null, open_record_id: null }); return null; }
-      if (command === 'rename_todo') { q.todos.find(t => t.id === args.id).title = args.title; return null; }
-      if (command === 'set_todo_completed') { q.todos.find(t => t.id === args.id).completed_at = args.completed ? Date.now() : null; return null; }
+        || Number(b.completed_at) - Number(a.completed_at) || Number(a.id) - Number(b.id)).map(todo => {
+          const duplicate = q.todos.some(other => other.id !== todo.id
+            && (other.completed_at === null) === (todo.completed_at === null)
+            && titleKey(other.title) === titleKey(todo.title));
+          return { ...todo, duplicate_number: duplicate ? Number(todo.id) : null };
+        }));
+      if (command === 'create_todo') {
+        checkTitle(args.title, null, '请换个标题');
+        q.todos.push({ id: String(q.nextTodoId++), title: args.title, completed_at: null, open_record_id: null });
+        return null;
+      }
+      if (command === 'rename_todo') {
+        const todo = q.todos.find(t => t.id === args.id);
+        if (todo.completed_at === null && titleKey(todo.title) !== titleKey(args.title)) checkTitle(args.title, todo.id, '请换个标题');
+        todo.title = args.title;
+        return null;
+      }
+      if (command === 'set_todo_completed') {
+        const todo = q.todos.find(t => t.id === args.id);
+        if (!args.completed && todo.completed_at !== null) checkTitle(todo.title, todo.id, '请先改名再取消勾选');
+        todo.completed_at = args.completed ? Date.now() : null;
+        return null;
+      }
       if (command === 'delete_todo') { q.todos = q.todos.filter(t => t.id !== args.id); return null; }
       if (command === 'take_todo_open_request') { const requested = q.todoOpenRequest; q.todoOpenRequest = false; return requested; }
       if (command === 'get_notice') return structuredClone(q.notice);

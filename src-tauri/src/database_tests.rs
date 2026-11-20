@@ -71,7 +71,7 @@ fn todo_crud_is_persistent_and_keeps_pending_order() {
     assert!(store.snapshot().unwrap().recent_records.is_empty());
     drop(store);
 
-    let store = Store::open(&directory.db(), Box::new(clock)).unwrap();
+    let mut store = Store::open(&directory.db(), Box::new(clock)).unwrap();
     let items = store.list_todos().unwrap();
     assert_eq!(items[0].title, "复查");
     assert_eq!(items[1].title, "改名");
@@ -81,6 +81,48 @@ fn todo_crud_is_persistent_and_keeps_pending_order() {
     store.delete_todo(&first.id).unwrap();
     assert_eq!(store.list_todos().unwrap().len(), 1);
     assert!(store.rename_todo(&first.id, "下标失效").is_err());
+}
+
+#[test]
+fn pending_todo_names_are_unique_on_add_rename_and_reopen() {
+    let (mut store, _) = memory();
+    store.create_todo("　QA　").unwrap();
+    let original = store.list_todos().unwrap().remove(0);
+    assert!(store.create_todo(" qa ").is_err());
+    store.rename_todo(&original.id, "qa").unwrap();
+    store.create_todo("复查").unwrap();
+    let other = store.list_todos().unwrap().remove(1);
+    assert!(store.rename_todo(&other.id, " QA ").is_err());
+    assert_eq!(store.list_todos().unwrap()[1].title, "复查");
+    store.set_todo_completed(&original.id, true).unwrap();
+    store.create_todo("QA").unwrap();
+    assert!(store.set_todo_completed(&original.id, false).is_err());
+    assert!(store.list_todos().unwrap()[2].completed_at.is_some());
+    store.rename_todo(&original.id, "上次 QA").unwrap();
+    store.set_todo_completed(&original.id, false).unwrap();
+    assert!(store.list_todos().unwrap()[0].completed_at.is_none());
+}
+
+#[test]
+fn legacy_duplicate_todos_keep_distinct_numbers_and_can_be_renamed() {
+    let (mut store, _) = memory();
+    store.create_todo("111").unwrap();
+    // Released schema 13 allowed identical pending titles.
+    store
+        .connection
+        .execute("INSERT INTO todos(title,created_at) VALUES('111',0)", [])
+        .unwrap();
+    store.create_todo("222").unwrap();
+    let items = store.list_todos().unwrap();
+    assert_eq!(items[0].duplicate_number, Some(1));
+    assert_eq!(items[1].duplicate_number, Some(2));
+    assert_eq!(items[2].duplicate_number, None);
+    store.rename_todo(&items[1].id, "111").unwrap();
+    store.rename_todo(&items[1].id, "111 复查").unwrap();
+    let after = store.list_todos().unwrap();
+    assert_eq!(after.len(), 3);
+    assert_eq!(after[1].id, items[1].id);
+    assert!(after.iter().all(|todo| todo.duplicate_number.is_none()));
 }
 
 #[test]

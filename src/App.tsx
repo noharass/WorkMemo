@@ -26,7 +26,7 @@ import { useMainContentHeight } from "./useMainContentHeight";
 import { PageBindingPrompt } from "./PageBindingPrompt";
 import { FinishedPagePrompt } from "./FinishedPagePrompt";
 import { TaskList, useOpenTasks } from "./TaskList";
-import { TodoDialog, type Todo } from "./TodoDialog";
+import { TodoDialog, todoDisplayTitle, type Todo } from "./TodoDialog";
 export default function App() {
   const session = useWorkSession();
   const openTasks = useOpenTasks(session.snapshot, session.native);
@@ -361,7 +361,7 @@ export default function App() {
         )}
         {formOpen && (
           <section className="form-card new-task-page" aria-label={switching ? "切换任务" : "新建任务"}>
-            {todoWork && <h2 className="todo-work-title">{todoWork.todo.title}</h2>}
+            {todoWork && <h2 className="todo-work-title">{todoDisplayTitle(todoWork.todo)}</h2>}
             {switching && !switchValid && <p className="notice" role="status">原任务状态已变化，请返回当前任务确认。填写内容仍保留。</p>}
             {!switching && active && <p className="notice" role="status">已有任务从其他入口开始，请返回当前任务。填写内容仍保留。</p>}
             {candidate && !active && <p className="hint">已识别{name(candidate.category)}工作页面；也可在灵动岛确认开始。手动填写内容仍保留。</p>}
@@ -421,7 +421,7 @@ export default function App() {
             <>
               <p>
                 结束并保存当前暂停的“{name(switchRequest.category)}”，再开始“
-                {todoWork?.todo.title ?? name(switchRequest.input.category)}”。原记录保留在待补全列表。
+                {todoWork ? todoDisplayTitle(todoWork.todo) : name(switchRequest.input.category)}”。原记录保留在待补全列表。
               </p>
               {todoWork && session.commandError && <p className="inline-error" role="alert">{session.commandError}</p>}
               <div className="settings-actions">

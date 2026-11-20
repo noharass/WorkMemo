@@ -8,13 +8,18 @@ export interface Todo {
   title: string;
   completed_at: number | null;
   open_record_id: number | null;
+  duplicate_number: number | null;
+}
+
+export function todoDisplayTitle(todo: Todo) {
+  return todo.duplicate_number == null ? todo.title : `${todo.title}（编号 ${todo.duplicate_number}）`;
 }
 
 function TodoTitleForm({ initial = "", disabled, inputRef, onSave, onCancel }: {
   initial?: string;
   disabled: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
-  onSave: (title: string) => Promise<boolean>;
+  onSave: (title: string, reportError: (message: string) => void) => Promise<boolean>;
   onCancel?: () => void;
 }) {
   const [value, setValue] = useState(initial);
@@ -27,12 +32,16 @@ function TodoTitleForm({ initial = "", disabled, inputRef, onSave, onCancel }: {
     event.preventDefault();
     if (disabled) return;
     const title = value.trim();
-    if (!title || Array.from(title).length > 80 || /\p{Cc}/u.test(title)) {
-      setError("请输入 1 到 80 个字符的单行标题。");
+    function reportError(message: string) {
+      setError(message);
       field.current?.focus();
+    }
+    if (!title || Array.from(title).length > 80 || /\p{Cc}/u.test(title)) {
+      reportError("请输入 1 到 80 个字符的单行标题。");
       return;
     }
-    if (await onSave(title) && !onCancel) {
+    setError("");
+    if (await onSave(title, reportError) && !onCancel) {
       setValue("");
       field.current?.focus();
     }
@@ -66,6 +75,7 @@ export function TodoDialog({ open, startHint, workFormOpen, activeRecordId, onCl
   const [busy, setBusy] = useState(false);
   const [readError, setReadError] = useState("");
   const [writeError, setWriteError] = useState("");
+  const [toggleError, setToggleError] = useState<{ id: string; message: string } | null>(null);
   const saving = useRef(false);
   const request = useRef(0);
   const newTitle = useRef<HTMLInputElement>(null);
@@ -105,18 +115,21 @@ export function TodoDialog({ open, startHint, workFormOpen, activeRecordId, onCl
     if (deleting) cancelDelete.current?.focus();
   }, [deleting]);
 
-  async function mutate(command: string, args: Record<string, unknown>, onSaved?: () => void) {
+  async function mutate(command: string, args: Record<string, unknown>, {
+    onSaved, onError = setWriteError,
+  }: { onSaved?: () => void; onError?: (message: string) => void } = {}) {
     if (saving.current) return false;
     saving.current = true;
     setBusy(true);
     setWriteError("");
+    setToggleError(null);
     try {
       await invoke(command, args);
       await refresh();
       onSaved?.();
       return true;
     } catch (error) {
-      setWriteError(String(error));
+      onError(String(error));
       return false;
     } finally {
       saving.current = false;
@@ -144,23 +157,35 @@ export function TodoDialog({ open, startHint, workFormOpen, activeRecordId, onCl
     const done = todo.completed_at !== null;
     const checkbox = `todo-check-${todo.id}`;
     const openRecordId = todo.open_record_id;
+    const label = todoDisplayTitle(todo);
+    const error = toggleError?.id === todo.id ? toggleError.message : null;
     return <div key={todo.id} className="todo-row" data-todo-id={todo.id}>
       {editing === todo.id ? <TodoTitleForm initial={todo.title} disabled={busy}
-        onSave={title => mutate("rename_todo", { id: todo.id, title }, () => { setEditing(null); focusAction(todo.id, "rename"); })}
+        onSave={(title, onError) => mutate("rename_todo", { id: todo.id, title }, {
+          onSaved: () => { setEditing(null); focusAction(todo.id, "rename"); },
+          onError,
+        })}
         onCancel={() => { setEditing(null); setWriteError(""); focusAction(todo.id, "rename"); }} /> : <>
         <label htmlFor={checkbox} className="todo-check">
           <input id={checkbox} type="checkbox" checked={done} disabled={busy} data-todo-action="check"
-            onChange={event => { void mutate("set_todo_completed", { id: todo.id, completed: event.target.checked }, () => focusAction(todo.id, "check")); }} />
-          <span>{todo.title}</span>
+            aria-describedby={error ? `${checkbox}-error` : undefined}
+            onChange={event => {
+              void mutate("set_todo_completed", { id: todo.id, completed: event.target.checked }, {
+                onSaved: () => focusAction(todo.id, "check"),
+                onError: message => { setToggleError({ id: todo.id, message }); focusAction(todo.id, "check"); },
+              });
+            }} />
+          <span>{label}</span>
         </label>
+        {error && <p id={`${checkbox}-error`} className="inline-error" role="alert">{error}</p>}
         <div className="todo-row-actions">
           {openRecordId !== null ? <button type="button" className="text-button" disabled={busy || workFormOpen}
-            aria-label={`查看未结束工作：${todo.title}`} onClick={() => onShowWork(openRecordId)}>查看未结束工作</button> :
+            aria-label={`查看未结束工作：${label}`} onClick={() => onShowWork(openRecordId)}>查看未结束工作</button> :
             !done && <button type="button" className="text-button" disabled={busy || !!startHint}
-              aria-label={`开始计时：${todo.title}`} onClick={() => onStart(todo)}>开始计时</button>}
-          <button type="button" className="text-button" disabled={busy} data-todo-action="rename" aria-label={`改名：${todo.title}`}
+              aria-label={`开始计时：${label}`} onClick={() => onStart(todo)}>开始计时</button>}
+          <button type="button" className="text-button" disabled={busy} data-todo-action="rename" aria-label={`改名：${label}`}
             onClick={() => { setWriteError(""); setEditing(todo.id); }}>改名</button>
-          <button type="button" className="text-button" disabled={busy} aria-label={`删除：${todo.title}`}
+          <button type="button" className="text-button" disabled={busy} aria-label={`删除：${label}`}
             onClick={() => { setWriteError(""); setDeleting(todo); }}>删除</button>
         </div>
       </>}
@@ -170,7 +195,7 @@ export function TodoDialog({ open, startHint, workFormOpen, activeRecordId, onCl
   return <>
     <UiDialog open={open} onClose={onClose} title="待办清单" id="todo-title" className="todo-dialog" closeDisabled={busy}>
       <div ref={content} aria-busy={busy}>
-        <TodoTitleForm disabled={busy} inputRef={newTitle} onSave={title => mutate("create_todo", { title })} />
+        <TodoTitleForm disabled={busy} inputRef={newTitle} onSave={(title, onError) => mutate("create_todo", { title }, { onError })} />
         {readError && <p className="inline-error" role="alert">无法读取待办：{readError} <button type="button" className="text-button" onClick={() => { void refresh(); }}>重试</button></p>}
         {writeError && !deleting && <p className="inline-error" role="alert">{writeError}</p>}
         {startHint && (workFormOpen || pending.some(todo => todo.open_record_id === null)) && <p className="hint">{startHint}</p>}
@@ -185,14 +210,16 @@ export function TodoDialog({ open, startHint, workFormOpen, activeRecordId, onCl
     </UiDialog>
     <UiDialog open={open && !!deleting} onClose={closeDelete} title="删除待办" id="todo-delete-title" closeDisabled={busy}>
       {deleting && <>
-        <p>删除「{deleting.title}」？已记录的工时会保留。</p>
+        <p>删除「{todoDisplayTitle(deleting)}」？已记录的工时会保留。</p>
         {writeError && <p className="inline-error" role="alert">{writeError}</p>}
         <div className="settings-actions">
           <button type="button" className="secondary" ref={cancelDelete} disabled={busy} onClick={closeDelete}>取消</button>
           <button type="button" disabled={busy} onClick={() => {
-            void mutate("delete_todo", { id: deleting.id }, () => {
-              closeDelete();
-              requestAnimationFrame(() => newTitle.current?.focus());
+            void mutate("delete_todo", { id: deleting.id }, {
+              onSaved: () => {
+                closeDelete();
+                requestAnimationFrame(() => newTitle.current?.focus());
+              },
             });
           }}>删除</button>
         </div>

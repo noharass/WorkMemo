@@ -48,6 +48,12 @@ try {
   assert.equal(await title.inputValue(), '输入保留');
   await page.evaluate(() => { window.qa.fail = ''; });
   await add('检查记录');
+  await title.fill('　检查记录　');
+  await checklist.getByRole('button', { name: '添加' }).click();
+  await checklist.getByRole('alert').filter({ hasText: '已有同名的未完成待办，请换个标题。' }).waitFor();
+  assert.equal(await title.inputValue(), '　检查记录　');
+  assert.equal(await title.getAttribute('aria-invalid'), 'true');
+  assert.ok(await title.evaluate(el => document.activeElement === el));
   await add('整理材料');
   assert.deepEqual(await checklist.locator('.todo-check span').allTextContents(), ['检查记录', '整理材料']);
 
@@ -66,6 +72,10 @@ try {
 
   await checklist.getByRole('button', { name: '改名：检查记录' }).click();
   const rename = checklist.getByRole('textbox', { name: '修改标题' });
+  await rename.fill('整理材料');
+  await rename.press('Enter');
+  await checklist.getByRole('alert').filter({ hasText: '已有同名的未完成待办，请换个标题。' }).waitFor();
+  assert.equal(await rename.inputValue(), '整理材料');
   await rename.fill('复查记录');
   await rename.press('Enter');
   await checklist.getByRole('checkbox', { name: '复查记录' }).waitFor();
@@ -128,6 +138,27 @@ try {
   assert.equal(await checklist.getByRole('checkbox', { name: '复查记录' }).isChecked(), false);
   assert.equal(await available.isEnabled(), true);
   assert.equal(await page.evaluate(() => window.qa.calls.find(call => call.command === 'start_task').args.todoId), '1');
+
+  await page.evaluate(() => {
+    window.qa.todos = [
+      { id: '10', title: '111', completed_at: null, open_record_id: null },
+      { id: '11', title: '111', completed_at: null, open_record_id: null },
+      { id: '12', title: '111', completed_at: 1000, open_record_id: null },
+    ];
+    window.qa.emit('workmemo:data-changed');
+  });
+  await checklist.getByRole('checkbox', { name: '111（编号 10）', exact: true }).waitFor();
+  await checklist.getByRole('button', { name: '开始计时：111（编号 11）', exact: true }).click();
+  await form.getByRole('heading', { name: '111（编号 11）', exact: true }).waitFor();
+  await form.getByRole('button', { name: '返回待办' }).click();
+  const completed = checklist.locator('.todo-completed');
+  if (!(await completed.evaluate(details => details.open))) {
+    await completed.getByText('已完成 1', { exact: true }).click();
+  }
+  const done = completed.getByRole('checkbox', { name: '111', exact: true });
+  await done.click();
+  await completed.getByRole('alert').filter({ hasText: '请先改名再取消勾选' }).waitFor();
+  assert.equal(await done.isChecked(), true);
 
   await page.goto(`${base}?notice&state=empty`);
   await page.getByRole('button', { name: '展开任务与提醒' }).click();
