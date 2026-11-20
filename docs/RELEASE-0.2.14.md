@@ -63,3 +63,9 @@ git status --short --branch
 | WorkMemo_0.2.14_windows_x64.zip | 5186305 | `f38b99f495aebebd7b72227856e3b1f1c61a2d1f821138553c14afbae5625636` |
 | THIRD-PARTY-LICENSES.txt | 2570495 | `998efb4d5965b2fd8fe366b023a3b45855adc91dafabda9d20d195a6b8107b2c` |
 | SHA256SUMS.txt | 288 | `f09c435b404b877aef2e8719d73f85d82003e1c5e0338c389cc3dcfa55731b7d` |
+
+## 公开发布回执
+
+北京时间 2026-11-20 10:25:13 已公开为正式 Latest，Release ID 为 `452192267`。标签 `v0.2.14` 指向构建提交 `24c6eff5c4ad1ee352237e4e8c7e9057fed6c57a`。四项文件已从 GitHub 匿名下载并与上表逐项核对大小及 SHA256。上一版本 v0.2.13 的标签和发布资产亦通过复核。[GitHub Release](https://github.com/noharass/WorkMemo/releases/tag/v0.2.14)
+
+本地回执位于 `E:\WorkMemo\artifacts\0.2.14\public-receipt.json`。本记录另行同步至 `main`。
