@@ -130,6 +130,8 @@ pub fn run() {
             service::get_snapshot,
             service::start_task,
             service::list_todos,
+            service::todo_work_history,
+            service::set_todo_today,
             service::create_todo,
             service::rename_todo,
             service::set_todo_completed,

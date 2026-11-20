@@ -232,13 +232,23 @@ button.danger-button:hover:not(:disabled) { background: var(--error-background);
 .todo-title-controls input { flex: 1; margin-top: 0; }
 .todo-title-controls button { width: auto; flex-shrink: 0; }
 .todo-dialog .inline-error { margin-top: 8px; }
-.todo-row { padding: 6px 0; border-top: 1px solid var(--line); }
-.todo-dialog .todo-title-form + .todo-row { margin-top: 12px; }
-.todo-check { display: flex; align-items: center; gap: 9px; min-height: 44px; cursor: pointer; }
+.todo-row { padding: 4px 0; border-top: 1px solid var(--line); }
+.todo-groups { margin-top: 8px; }
+.todo-group-heading { margin: 0 0 3px; color: var(--text-muted); font-size: .8em; }
+.todo-row + .todo-group-heading { margin-top: 8px; }
+.todo-row-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 4px; }
+.todo-check { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
 .todo-check input { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--accent); }
 .todo-check span, .todo-work-title { overflow-wrap: anywhere; }
-.todo-row-actions { display: flex; gap: 4px 9px; flex-wrap: wrap; padding-left: 25px; }
-.todo-row-actions button, .todo-dialog .inline-error button { width: auto; }
+.todo-row-actions, .todo-overflow { display: flex; align-items: center; gap: 4px; }
+.todo-overflow { flex-wrap: wrap; padding-left: 24px; }
+.todo-row-actions button, .todo-overflow button, .todo-dialog .inline-error button { width: auto; min-height: 36px; padding: 4px 6px; }
+.todo-row-actions button { white-space: nowrap; }
+.todo-history { margin: 0 0 3px 24px; color: var(--text-muted); font-size: .78em; }
+.todo-history summary { display: list-item; cursor: pointer; padding: 2px 0; }
+.todo-history[open] > summary { margin-bottom: 4px; }
+.todo-history-entries { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.todo-history-entries li { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 8px; }
 .todo-completed { margin-top: 8px; }
 .todo-completed summary { display: list-item; padding: 6px 0; cursor: pointer; }
 .todo-work-title { margin: 0 0 10px; font-size: 1em; }

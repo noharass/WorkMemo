@@ -4,7 +4,7 @@ const DAY_MS: i64 = 86_400_000;
 const BEIJING_OFFSET_MS: i64 = 8 * 3_600_000;
 
 // Calendar policy uses fixed UTC+8, independently of the Windows time zone.
-fn beijing_day_start(wall_ms: i64) -> i64 {
+pub(super) fn beijing_day_start(wall_ms: i64) -> i64 {
     wall_ms.max(0).saturating_add(BEIJING_OFFSET_MS) / DAY_MS * DAY_MS - BEIJING_OFFSET_MS
 }
 

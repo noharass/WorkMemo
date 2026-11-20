@@ -14,6 +14,7 @@ return page.addInitScript(() => {
   }
   window.qa.browse = params.has('browse');
   window.qa.todos = [];
+  window.qa.todoHistory = {};
   window.qa.nextTodoId = 1;
   const titleKey = title => title.replace(/[A-Z]/g, letter => letter.toLowerCase());
   function checkTitle(title, excludeId, action) {
@@ -45,8 +46,17 @@ return page.addInitScript(() => {
           const duplicate = q.todos.some(other => other.id !== todo.id
             && (other.completed_at === null) === (todo.completed_at === null)
             && titleKey(other.title) === titleKey(todo.title));
-          return { ...todo, duplicate_number: duplicate ? Number(todo.id) : null };
+          const history = q.todoHistory[todo.id] || [];
+          return { planned_today: false, ...todo, duplicate_number: duplicate ? Number(todo.id) : null,
+            finished_count: history.length,
+            finished_duration_ms: history.reduce((total, entry) => total + entry.duration_ms, 0),
+            last_category: history[0]?.category ?? null };
         }));
+      if (command === 'todo_work_history') return structuredClone(q.todoHistory[args.id] || []);
+      if (command === 'set_todo_today') {
+        q.todos.find(todo => todo.id === args.id).planned_today = args.today;
+        return null;
+      }
       if (command === 'create_todo') {
         checkTitle(args.title, null, '请换个标题');
         q.todos.push({ id: String(q.nextTodoId++), title: args.title, completed_at: null, open_record_id: null });
@@ -84,7 +94,17 @@ return page.addInitScript(() => {
       if (command === 'get_startup_status') return { enabled: false, available: true, error: null };
       if (command === 'pause_task') { q.active = { ...q.active, is_paused: true, pause_reason: 'MANUAL' }; return snapshot(); }
       if (command === 'resume_task') { q.active = { ...q.active, is_paused: false, pause_reason: null }; return snapshot(); }
-      if (command === 'finish_task') { q.notice = { kind: 'ended', record: { ...q.active, status: 'FINISHED', end_time: Date.now(), settlement_status: 'PENDING' } }; q.todos.forEach(t => { if (t.open_record_id === q.active?.id) t.open_record_id = null; }); q.active = null; return snapshot(); }
+      if (command === 'finish_task') {
+        q.notice = { kind: 'ended', record: { ...q.active, status: 'FINISHED', end_time: Date.now(), settlement_status: 'PENDING' } };
+        const todo = q.todos.find(item => item.open_record_id === q.active?.id);
+        if (todo) {
+          const { id, category, start_time, duration_ms } = q.active;
+          (q.todoHistory[todo.id] ??= []).unshift({ id, category, start_time, duration_ms });
+          todo.open_record_id = null;
+        }
+        q.active = null;
+        return snapshot();
+      }
       if (command === 'confirm_work') {
         await new Promise(r => setTimeout(r, q.delay));
         if (q.active || !q.candidate || q.candidate.id !== args.candidateId) throw Error('开工提示已失效');

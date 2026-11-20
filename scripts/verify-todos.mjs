@@ -56,6 +56,16 @@ try {
   assert.ok(await title.evaluate(el => document.activeElement === el));
   await add('整理材料');
   assert.deepEqual(await checklist.locator('.todo-check span').allTextContents(), ['检查记录', '整理材料']);
+  assert.equal(await checklist.getByRole('button', { name: '改名：整理材料' }).count(), 0);
+  const materialActions = checklist.getByRole('button', { name: '更多：整理材料' });
+  await materialActions.press('Enter');
+  await checklist.getByRole('button', { name: '加入今天' }).click();
+  await checklist.getByRole('heading', { name: '今天要做' }).waitFor();
+  assert.deepEqual(await checklist.locator('.todo-check span').allTextContents(), ['整理材料', '检查记录']);
+  await materialActions.click();
+  await checklist.getByRole('button', { name: '移出今天' }).click();
+  await checklist.getByRole('heading', { name: '今天要做' }).waitFor({ state: 'hidden' });
+  assert.deepEqual(await checklist.locator('.todo-check span').allTextContents(), ['检查记录', '整理材料']);
 
   const first = checklist.getByRole('checkbox', { name: '检查记录' });
   await first.focus();
@@ -70,6 +80,7 @@ try {
   await summary.waitFor({ state: 'hidden' });
   await first.waitFor();
 
+  await checklist.getByRole('button', { name: '更多：检查记录' }).click();
   await checklist.getByRole('button', { name: '改名：检查记录' }).click();
   const rename = checklist.getByRole('textbox', { name: '修改标题' });
   await rename.fill('整理材料');
@@ -79,6 +90,7 @@ try {
   await rename.fill('复查记录');
   await rename.press('Enter');
   await checklist.getByRole('checkbox', { name: '复查记录' }).waitFor();
+  await materialActions.click();
   await checklist.getByRole('button', { name: '删除：整理材料' }).click();
   const confirmDelete = page.getByRole('dialog', { name: '删除待办' });
   await confirmDelete.waitFor();
@@ -116,7 +128,7 @@ try {
   await timer.getByText('复查记录', { exact: true }).waitFor();
   await entry.click();
   assert.ok(await checklist.getByRole('button', { name: '开始计时：第二项' }).isDisabled());
-  await checklist.getByRole('button', { name: '查看未结束工作：复查记录' }).click();
+  await checklist.getByRole('button', { name: '查看工作：复查记录' }).click();
   await checklist.waitFor({ state: 'hidden' });
   await timer.getByRole('button', { name: '暂停', exact: true }).click();
   await timer.getByRole('button', { name: '继续工作' }).waitFor();
@@ -129,7 +141,7 @@ try {
   await confirmation.getByText(/第二项/).waitFor();
   await confirmation.getByRole('button', { name: '取消' }).click();
   await switching.getByRole('button', { name: '返回待办' }).click();
-  await checklist.getByRole('button', { name: '查看未结束工作：复查记录' }).click();
+  await checklist.getByRole('button', { name: '去继续：复查记录' }).click();
   await timer.getByRole('button', { name: '继续工作' }).click();
   await timer.getByRole('button', { name: '结束', exact: true }).click();
   await entry.click();
@@ -138,6 +150,15 @@ try {
   assert.equal(await checklist.getByRole('checkbox', { name: '复查记录' }).isChecked(), false);
   assert.equal(await available.isEnabled(), true);
   assert.equal(await page.evaluate(() => window.qa.calls.find(call => call.command === 'start_task').args.todoId), '1');
+  const history = checklist.locator('.todo-history summary').filter({ hasText: '已计时 1 次 · 共 1 分钟' });
+  assert.equal(await page.evaluate(() => window.qa.calls.some(call => call.command === 'todo_work_history')), false);
+  await history.press('Enter');
+  await checklist.getByText('00:01:00', { exact: true }).waitFor();
+  await history.press('Enter');
+  await available.click();
+  assert.equal(await form.getByRole('combobox', { name: '工作类别' }).inputValue(), '开发');
+  await form.getByRole('combobox', { name: '工作类别' }).selectOption('质检');
+  await form.getByRole('button', { name: '返回待办' }).click();
 
   await page.evaluate(() => {
     window.qa.todos = [
@@ -159,6 +180,9 @@ try {
   await done.click();
   await completed.getByRole('alert').filter({ hasText: '请先改名再取消勾选' }).waitFor();
   assert.equal(await done.isChecked(), true);
+  await page.setViewportSize({ width: 360, height: 320 });
+  await add('长'.repeat(80));
+  assert.ok(await checklist.evaluate(dialog => dialog.scrollWidth <= dialog.clientWidth + 1));
 
   await page.goto(`${base}?notice&state=empty`);
   await page.getByRole('button', { name: '展开任务与提醒' }).click();

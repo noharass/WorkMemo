@@ -166,6 +166,78 @@ fn todo_can_be_timed_more_than_once_and_keeps_existing_records() {
 }
 
 #[test]
+fn planning_today_survives_reopen_and_unsets_at_beijing_midnight() {
+    let directory = TestDirectory::new();
+    let clock = TestClock::new();
+    clock.advance(57_599_999 - 1_000_000);
+    let mut store = Store::open(&directory.db(), Box::new(clock.clone())).unwrap();
+    store.create_todo("跨天计划").unwrap();
+    let todo = store.list_todos().unwrap().remove(0).id;
+    store.set_todo_today(&todo, true).unwrap();
+    drop(store);
+    let mut store = Store::open(&directory.db(), Box::new(clock.clone())).unwrap();
+    assert!(store.list_todos().unwrap()[0].planned_today);
+    clock.advance(1);
+    let item = store.list_todos().unwrap().remove(0);
+    assert!(!item.planned_today);
+    assert_eq!(item.completed_at, None);
+    store.set_todo_today(&todo, true).unwrap();
+    store.set_todo_today(&todo, false).unwrap();
+    assert!(!store.list_todos().unwrap()[0].planned_today);
+    store.set_todo_completed(&todo, true).unwrap();
+    assert!(store.set_todo_today(&todo, true).is_err());
+}
+
+#[test]
+fn todo_work_history_uses_linked_finished_records_and_latest_available_category() {
+    let (mut store, clock) = memory();
+    store.create_todo("合计实际工时").unwrap();
+    let todo = store.list_todos().unwrap().remove(0).id;
+    store.start_checked(input(), None, Some(&todo)).unwrap();
+    let first = id(&store);
+    clock.advance(1600);
+    store.pause(first).unwrap();
+    clock.advance(3400);
+    store.resume(first).unwrap();
+    clock.advance(2200);
+    store.finish(first).unwrap();
+    store
+        .start_checked(
+            StartInput {
+                category: "文档".into(),
+                ..input()
+            },
+            None,
+            Some(&todo),
+        )
+        .unwrap();
+    let second = id(&store);
+    let summary = store.list_todos().unwrap().remove(0);
+    assert_eq!(summary.finished_count, 1);
+    assert_eq!(summary.finished_duration_ms, 3800);
+    assert_eq!(summary.last_category.as_deref(), Some("开发"));
+    clock.advance(1200);
+    store.finish(second).unwrap();
+    let summary = store.list_todos().unwrap().remove(0);
+    assert_eq!(summary.finished_count, 2);
+    assert_eq!(summary.finished_duration_ms, 5000);
+    assert_eq!(summary.last_category.as_deref(), Some("文档"));
+    let detail = store.todo_work_history(&todo).unwrap();
+    assert_eq!(
+        detail.iter().map(|record| record.id).collect::<Vec<_>>(),
+        [second, first]
+    );
+    assert_eq!(
+        detail.iter().map(|record| record.duration_ms).sum::<i64>(),
+        5000
+    );
+    store.delete_record(second).unwrap();
+    let summary = store.list_todos().unwrap().remove(0);
+    assert_eq!(summary.finished_count, 1);
+    assert_eq!(summary.last_category.as_deref(), Some("开发"));
+}
+
+#[test]
 fn todo_switch_rejects_stale_or_completed_items_and_rolls_back_failed_association() {
     let (mut store, clock) = memory();
     store.create_todo("继续写文档").unwrap();

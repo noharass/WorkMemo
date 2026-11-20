@@ -151,7 +151,7 @@ export default function App() {
 
   function startTodo(todo: Todo) {
     if (todoStartHint) return;
-    setTodoWork({ todo, draft: emptyWorkDraft() });
+    setTodoWork({ todo, draft: { ...emptyWorkDraft(), category: todo.last_category ?? "" } });
     setTodoOpen(false);
     if (active) setSwitchingFrom(active.id);
     else setNewTaskOpen(true);
@@ -450,6 +450,7 @@ export default function App() {
         </UiDialog>
         {session.native && <TodoDialog open={todoOpen && !switchRequest && !(noteOpen && record)}
           startHint={todoStartHint} workFormOpen={formOpen} activeRecordId={active?.id ?? null}
+          activeRunning={!!active && !active.is_paused && !active.recovery_pending}
           onClose={() => setTodoOpen(false)} onStart={startTodo} onShowWork={showTodoWork} />}
         <UiDialog
           open={noteOpen && !!record}

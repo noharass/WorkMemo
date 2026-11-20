@@ -794,17 +794,19 @@ mod tests {
                 .connection
                 .pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
                 .unwrap(),
-            13
+            14
         );
         assert_eq!(store.record(legacy_id).unwrap().remark, "原备注");
         assert!(store.list_todos().unwrap().is_empty());
         store.create_todo("备份关联").unwrap();
         let todo = store.list_todos().unwrap().remove(0).id;
+        store.set_todo_today(&todo, true).unwrap();
         store.start_checked(input(), None, Some(&todo)).unwrap();
         let record = store.active().unwrap().unwrap().id;
         store.pause(record).unwrap();
         store.set_todo_completed(&todo, true).unwrap();
         let expected = store.list_todos().unwrap();
+        assert!(expected[0].planned_today);
         let new_backup = store.archive(config).unwrap();
         store.delete_todo(&todo).unwrap();
         let image = checked_image(&new_backup, config).unwrap();
@@ -826,6 +828,47 @@ mod tests {
             "恢复后新建的另一条待办"
         );
     }
+
+    #[test]
+    fn schema_13_backup_migrates_with_todos_and_no_selected_day() {
+        let dir = TestDirectory::new();
+        let path = dir.db();
+        let config = path.parent().unwrap();
+        let mut store = Store::open(&path, Box::new(TestClock::new())).unwrap();
+        store.create_todo("旧版待办").unwrap();
+        let todo = store.list_todos().unwrap().remove(0).id;
+        store
+            .start_checked(
+                StartInput {
+                    category: "质检".into(),
+                    quantity: None,
+                    remark: String::new(),
+                },
+                None,
+                Some(&todo),
+            )
+            .unwrap();
+        let record = store.active().unwrap().unwrap().id;
+        store.finish(record).unwrap();
+        store
+            .connection
+            .execute_batch("ALTER TABLE todos DROP COLUMN planned_day; PRAGMA user_version=13;")
+            .unwrap();
+        let backup = store.archive(config).unwrap();
+        drop(store);
+        let mut store = Store::open(&path, Box::new(TestClock::new())).unwrap();
+        assert_eq!(store.list_todos().unwrap()[0].id, todo);
+        store.set_todo_today(&todo, true).unwrap();
+        let image = checked_image(&backup, config).unwrap();
+        store.apply_image(&image.0).unwrap();
+        let items = store.list_todos().unwrap();
+        assert_eq!(items[0].id, todo);
+        assert!(!items[0].planned_today);
+        assert_eq!(items[0].finished_count, 1);
+        assert_eq!(items[0].last_category.as_deref(), Some("质检"));
+        assert_eq!(store.todo_work_history(&todo).unwrap()[0].id, record);
+    }
+
     #[test]
     fn merge_is_idempotent_conflicts_do_not_replace_and_restore_rolls_back() {
         let mut a = Store::initialize(

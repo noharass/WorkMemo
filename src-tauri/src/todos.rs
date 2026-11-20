@@ -1,3 +1,4 @@
+use super::day_rollover::beijing_day_start;
 use super::{Result, Store, db_error};
 use rusqlite::{OptionalExtension, Transaction, TransactionBehavior, params};
 use serde::Serialize;
@@ -9,6 +10,18 @@ pub struct Todo {
     pub completed_at: Option<i64>,
     pub open_record_id: Option<i64>,
     pub duplicate_number: Option<i64>,
+    pub planned_today: bool,
+    pub finished_count: i64,
+    pub finished_duration_ms: i64,
+    pub last_category: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+pub struct TodoWorkEntry {
+    pub id: i64,
+    pub start_time: i64,
+    pub duration_ms: i64,
+    pub category: String,
 }
 
 fn title(value: &str) -> Result<&str> {
@@ -71,25 +84,77 @@ impl Store {
     pub fn list_todos(&self) -> Result<Vec<Todo>> {
         self.connection
             .prepare(&format!(
-                "SELECT t.id,t.title,t.completed_at,({OPEN_RECORD}),
+                "WITH finished AS (
+                    SELECT link.todo_id,COUNT(*) AS record_count,SUM(r.duration_ms) AS duration_ms,
+                           MAX(r.id) AS last_id
+                    FROM todo_work_records AS link JOIN work_records AS r ON r.id=link.record_id
+                    WHERE r.status='FINISHED' AND r.is_demo=0
+                    GROUP BY link.todo_id
+                 )
+                 SELECT t.id,t.title,t.completed_at,({OPEN_RECORD}),
                  CASE WHEN COUNT(*) OVER (PARTITION BY t.title COLLATE NOCASE,t.completed_at IS NOT NULL)>1
-                      THEN t.sequence END
+                      THEN t.sequence END,
+                 COALESCE(t.planned_day=?1,0),COALESCE(f.record_count,0),
+                 COALESCE(f.duration_ms,0),last_record.category
                  FROM todos AS t
+                 LEFT JOIN finished AS f ON f.todo_id=t.id
+                 LEFT JOIN work_records AS last_record ON last_record.id=f.last_id
                  ORDER BY t.completed_at IS NOT NULL,t.completed_at DESC,t.sequence"
             ))
             .map_err(db_error)?
-            .query_map([], |row| {
+            .query_map([beijing_day_start(self.clock.now().wall_ms)], |row| {
                 Ok(Todo {
                     id: row.get(0)?,
                     title: row.get(1)?,
                     completed_at: row.get(2)?,
                     open_record_id: row.get(3)?,
                     duplicate_number: row.get(4)?,
+                    planned_today: row.get(5)?,
+                    finished_count: row.get(6)?,
+                    finished_duration_ms: row.get(7)?,
+                    last_category: row.get(8)?,
                 })
             })
             .map_err(db_error)?
             .collect::<rusqlite::Result<_>>()
             .map_err(db_error)
+    }
+
+    pub fn todo_work_history(&self, id: &str) -> Result<Vec<TodoWorkEntry>> {
+        self.connection
+            .prepare(
+                "SELECT r.id,r.start_time,r.duration_ms,r.category
+                 FROM todo_work_records AS link JOIN work_records AS r ON r.id=link.record_id
+                 WHERE link.todo_id=?1 AND r.status='FINISHED' AND r.is_demo=0
+                 ORDER BY r.id DESC",
+            )
+            .map_err(db_error)?
+            .query_map([id], |row| {
+                Ok(TodoWorkEntry {
+                    id: row.get(0)?,
+                    start_time: row.get(1)?,
+                    duration_ms: row.get(2)?,
+                    category: row.get(3)?,
+                })
+            })
+            .map_err(db_error)?
+            .collect::<rusqlite::Result<_>>()
+            .map_err(db_error)
+    }
+
+    pub fn set_todo_today(&self, id: &str, today: bool) -> Result<()> {
+        let day = today.then(|| beijing_day_start(self.clock.now().wall_ms));
+        let changed = self
+            .connection
+            .execute(
+                "UPDATE todos SET planned_day=?2 WHERE id=?1 AND completed_at IS NULL",
+                params![id, day],
+            )
+            .map_err(db_error)?;
+        if changed == 0 {
+            return Err("这项待办已完成或已删除，请刷新清单。".into());
+        }
+        Ok(())
     }
 
     pub fn create_todo(&mut self, value: &str) -> Result<()> {

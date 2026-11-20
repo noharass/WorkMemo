@@ -7,7 +7,7 @@ use crate::{
     clock::{Clock, SystemClock},
     database::{
         HistoryPage, HistoryQuery, Notice, Result, SettleInput, Snapshot, StartInput, Store, Todo,
-        WorkRecord,
+        TodoWorkEntry, WorkRecord,
     },
 };
 use std::{
@@ -392,6 +392,33 @@ pub async fn list_todos(
 ) -> Result<Vec<Todo>> {
     require_main(&window)?;
     access(state.inner.clone(), |store| store.list_todos()).await
+}
+
+#[tauri::command]
+pub async fn todo_work_history(
+    window: tauri::WebviewWindow,
+    state: State<'_, Backend>,
+    id: String,
+) -> Result<Vec<TodoWorkEntry>> {
+    require_main(&window)?;
+    access(state.inner.clone(), move |store| {
+        store.todo_work_history(&id)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn set_todo_today(
+    window: tauri::WebviewWindow,
+    state: State<'_, Backend>,
+    id: String,
+    today: bool,
+) -> Result<()> {
+    require_main(&window)?;
+    access(state.inner.clone(), move |store| {
+        store.set_todo_today(&id, today)
+    })
+    .await
 }
 
 #[tauri::command]

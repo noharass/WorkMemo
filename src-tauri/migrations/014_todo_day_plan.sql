@@ -1,0 +1,1 @@
+ALTER TABLE todos ADD COLUMN planned_day INTEGER;

@@ -109,7 +109,7 @@ fn read_record(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkRecord> {
 
 #[path = "todos.rs"]
 mod todos;
-pub use todos::Todo;
+pub use todos::{Todo, TodoWorkEntry};
 
 impl Store {
     pub fn open(path: &Path, clock: Box<dyn Clock>) -> Result<Self> {
@@ -162,7 +162,7 @@ impl Store {
                 tx.execute_batch(include_str!("../migrations/001_initial.sql"))
                     .map_err(db_error)?;
             }
-            1..=13 => {}
+            1..=14 => {}
             _ => return Err("数据库来自较新版本，请使用较新版本的 WorkMemo；未修改数据。".into()),
         }
         if version < 2 {
@@ -235,6 +235,12 @@ impl Store {
             tx.execute_batch(include_str!("../migrations/013_todos.sql"))
                 .map_err(db_error)?;
             tx.pragma_update(None, "user_version", 13)
+                .map_err(db_error)?;
+        }
+        if version < 14 {
+            tx.execute_batch(include_str!("../migrations/014_todo_day_plan.sql"))
+                .map_err(db_error)?;
+            tx.pragma_update(None, "user_version", 14)
                 .map_err(db_error)?;
         }
         let invalid: Option<String> = tx
